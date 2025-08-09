@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { createClientBrowser } from '@/lib/supabase';
+import { createClientBrowser } from '@/lib/supabase-browser';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -15,7 +15,6 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setMsg(null);
-
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
@@ -38,9 +37,7 @@ export default function LoginPage() {
         </button>
       </form>
       {msg && <p className="mt-3 text-sm">{msg}</p>}
-      <p className="mt-4 text-sm">
-        New here? <a className="underline" href="/register">Create an account</a>
-      </p>
+      <p className="mt-4 text-sm">New here? <a className="underline" href="/register">Create an account</a></p>
     </div>
   );
 }

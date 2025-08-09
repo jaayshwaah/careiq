@@ -1,7 +1,8 @@
-import { createClientServer } from '@/lib/supabase';
+import { createClientServer } from '@/lib/supabase-server';
 
 export default async function HomePage() {
   const supabase = createClientServer();
+
   const [{ data: userRes }, { data: profileRes }] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from('profiles').select('full_name, role, facility_id').maybeSingle(),

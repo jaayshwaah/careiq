@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { createClientBrowser } from '@/lib/supabase';
+import { createClientBrowser } from '@/lib/supabase-browser';
 
 const ROLES = [
   'Administrator','Director of Nursing','HR/Payroll','MDS Coordinator',
@@ -71,9 +71,7 @@ export default function RegisterPage() {
         </button>
       </form>
       {msg && <p className="mt-3 text-sm">{msg}</p>}
-      <p className="mt-4 text-sm">
-        Already have an account? <a className="underline" href="/login">Log in</a>
-      </p>
+      <p className="mt-4 text-sm">Already have an account? <a className="underline" href="/login">Log in</a></p>
     </div>
   );
 }
