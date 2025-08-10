@@ -2,10 +2,11 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 export async function GET(
-  _req: Request,
+  _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
@@ -17,7 +18,7 @@ export async function GET(
 }
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { id } = params;

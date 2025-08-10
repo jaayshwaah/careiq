@@ -1,5 +1,6 @@
+// src/app/api/chat/route.ts
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic'; // keeps it from being edge/experimental by accident
+export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 
@@ -18,8 +19,11 @@ export async function POST(req: Request) {
 
     // If no key, run in mock mode so UI still works
     if (!OPENROUTER_API_KEY) {
+      const lastUser = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
       return NextResponse.json({
-        reply: "👋 (Mock) I’m running in local dev without a model key. Add OPENROUTER_API_KEY to use real responses.",
+        reply:
+          `👋 (Mock) CareIQ here. You said:\n\n“${lastUser}”\n\n` +
+          `Add OPENROUTER_API_KEY to use real model responses.`,
         provider: "mock",
       });
     }
@@ -52,7 +56,8 @@ export async function POST(req: Request) {
       "No content returned from model.";
 
     return NextResponse.json({ reply, provider: "openrouter" });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Unexpected error' }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unexpected error';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
