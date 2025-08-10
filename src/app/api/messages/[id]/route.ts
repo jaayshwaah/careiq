@@ -1,17 +1,22 @@
+// src/app/api/messages/[id]/route.ts
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
-import { createClientServer } from '@/lib/supabase-server';
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const supabase = createClientServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+type RouteContext = { params: { id: string } };
 
-  const { data, error } = await supabase
-    .from('messages')
-    .select('id, role, content, created_at')
-    .eq('conversation_id', params.id)
-    .order('created_at', { ascending: true });
+export async function GET(_req: Request, { params }: RouteContext) {
+  const { id } = params;
+  return NextResponse.json({
+    messages: [
+      { id: 'm1', chatId: id, role: 'assistant', content: '👋 Mock message for this chat.' }
+    ],
+  });
+}
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json(data ?? []);
+export async function POST(req: Request, { params }: RouteContext) {
+  const { id } = params;
+  const body = await req.json().catch(() => ({}));
+  return NextResponse.json({ ok: true, chatId: id, received: body });
 }
