@@ -1,33 +1,21 @@
-import { createClientServer } from '@/lib/supabase-server';
+// src/app/page.tsx
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-export default async function HomePage() {
-  const supabase = createClientServer();
-
-  const [{ data: userRes }, { data: profileRes }] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase.from('profiles').select('full_name, role, facility_id').maybeSingle(),
-  ]);
-
-  const user = userRes.user;
-  const profile = profileRes;
-
+export default function HomePage() {
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-semibold mb-2">CareIQ</h1>
-      <p className="text-sm text-gray-600">You are logged in as <b>{user?.email}</b></p>
-      <div className="mt-4 space-y-1">
-        <p><b>Name:</b> {profile?.full_name ?? '—'}</p>
-        <p><b>Role:</b> {profile?.role ?? '—'}</p>
-        <p><b>Facility ID:</b> {profile?.facility_id ?? '—'}</p>
-      </div>
-      <form action="/api/logout" method="post" className="mt-6">
-        <button className="border rounded px-3 py-2">Log out</button>
-      </form>
+    <main className="mx-auto max-w-2xl p-6 space-y-6">
+      <h1 className="text-3xl font-semibold">CareIQ</h1>
+      <p className="opacity-80">
+        Welcome. This build runs in mock mode — visit <code>/chat</code> to try the chat UI.
+      </p>
+      <a
+        href="/chat"
+        className="inline-block px-4 py-2 rounded-lg bg-blue-600 text-white"
+      >
+        Go to Chat
+      </a>
     </main>
   );
 }
-import Link from 'next/link';
-// ...
-<p className="mt-6">
-  <Link href="/chat/new" className="rounded border px-3 py-2 inline-block">+ New chat</Link>
-</p>

@@ -1,43 +1,42 @@
+// src/app/(auth)/login/page.tsx
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 'use client';
+
 import { useState } from 'react';
-import { createClientBrowser } from '@/lib/supabase-browser';
-import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const supabase = createClientBrowser();
-  const router = useRouter();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [msg, setMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMsg(null);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      router.push('/');
-    } catch (err: any) {
-      setMsg(err.message || 'Login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [pass, setPass] = useState('');
 
   return (
-    <div className="mx-auto max-w-md p-6">
-      <h1 className="text-2xl font-semibold mb-4">Welcome back</h1>
-      <form className="space-y-3" onSubmit={onSubmit}>
-        <input className="w-full border rounded p-2" placeholder="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-        <input className="w-full border rounded p-2" placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-        <button className="w-full bg-black text-white rounded p-2 disabled:opacity-50" disabled={loading}>
-          {loading ? 'Logging in...' : 'Log in'}
+    <main className="mx-auto max-w-md p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">Login</h1>
+      <p className="text-sm opacity-70">Mock auth for now — no backend calls.</p>
+      <div className="space-y-3">
+        <input
+          className="w-full border rounded-lg px-3 py-2"
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          className="w-full border rounded-lg px-3 py-2"
+          type="password"
+          placeholder="Password"
+          value={pass}
+          onChange={(e) => setPass(e.target.value)}
+        />
+        <button
+          className="w-full px-4 py-2 rounded-lg bg-blue-600 text-white"
+          onClick={() => alert('Mock login only.')}
+        >
+          Sign in
         </button>
-      </form>
-      {msg && <p className="mt-3 text-sm">{msg}</p>}
-      <p className="mt-4 text-sm">New here? <a className="underline" href="/register">Create an account</a></p>
-    </div>
+      </div>
+    </main>
   );
 }
