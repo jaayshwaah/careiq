@@ -4,9 +4,10 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 
-type RouteContext = { params: { id: string } };
-
-export async function GET(_req: Request, { params }: RouteContext) {
+export async function GET(
+  _req: Request,
+  { params }: { params: { id: string } }
+) {
   const { id } = params;
   return NextResponse.json({
     messages: [
@@ -15,7 +16,10 @@ export async function GET(_req: Request, { params }: RouteContext) {
   });
 }
 
-export async function POST(req: Request, { params }: RouteContext) {
+export async function POST(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
   const { id } = params;
   const body = await req.json().catch(() => ({}));
   return NextResponse.json({ ok: true, chatId: id, received: body });
