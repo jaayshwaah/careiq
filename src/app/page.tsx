@@ -26,3 +26,8 @@ export default async function HomePage() {
     </main>
   );
 }
+import Link from 'next/link';
+// ...
+<p className="mt-6">
+  <Link href="/chat/new" className="rounded border px-3 py-2 inline-block">+ New chat</Link>
+</p>
