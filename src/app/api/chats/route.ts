@@ -1,35 +1,50 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
+// src/app/api/chats/route.ts
+export const runtime = 'nodejs'; // ✅ Force Node.js runtime on Vercel
+export const dynamic = 'force-dynamic'; // Avoid static/edge compilation
 
-export async function POST() {
-  // If you're using server-side Supabase helpers, swap this for your existing pattern
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY! // service key so we can insert; or use RLS with user_id
-  );
+import { NextResponse } from 'next/server';
+import { createClientServer } from '@/lib/supabase-server'; // adjust if path differs
 
-  // Get the user id from your auth cookie/session if you store it; stubbed here:
-  const userIdCookie = (await cookies()).get("sb-user-id");
-  const user_id = userIdCookie?.value ?? null;
+export async function GET() {
+  try {
+    const supabase = createClientServer();
 
-  const { data, error } = await supabase
-    .from("chats")
-    .insert({
-      title: "New chat",
-      user_id, // nullable is fine if you allow anon, else enforce auth
-    })
-    .select("id, title, created_at")
-    .single();
+    // Example: get all chats for the current user (adjust query as needed)
+    const { data, error } = await supabase
+      .from('chats')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) throw error;
+
+    return NextResponse.json({ chats: data ?? [] });
+  } catch (err) {
+    console.error('Error in GET /api/chats:', err);
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
-
-  return NextResponse.json(data, { status: 201 });
 }
 
-// (Optional) block GET so people can't hit it in the browser accidentally
-export function GET() {
-  return NextResponse.json({ error: "Use POST" }, { status: 405 });
+export async function POST(req: Request) {
+  try {
+    const body = await req.json().catch(() => ({}));
+
+    const supabase = createClientServer();
+
+    // Example: insert a new chat record (adjust fields as needed)
+    const { data, error } = await supabase
+      .from('chats')
+      .insert({
+        title: body.title ?? 'Untitled Chat',
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ chat: data });
+  } catch (err) {
+    console.error('Error in POST /api/chats:', err);
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
 }

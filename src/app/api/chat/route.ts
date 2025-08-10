@@ -1,3 +1,6 @@
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic'; // keeps it from being edge/experimental by accident
+
 import { NextResponse } from 'next/server';
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
