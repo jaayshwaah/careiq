@@ -8,6 +8,7 @@ import { createEmptyChat, Storage } from "@/lib/storage";
 export default function HomePage() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const activeChat = chats.find((c) => c.id === activeId) || null;
 
   useEffect(() => {
@@ -54,143 +55,138 @@ export default function HomePage() {
       target = newChat;
     }
 
-    // 1) Add the user message
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
       content,
       createdAt: Date.now(),
     };
+
+    // Optimistic add of user message
     let updated = (Storage.getChats().length ? Storage.getChats() : chats).map((c) =>
       c.id === target!.id ? { ...c, messages: [...c.messages, userMsg] } : c
     );
     setChats(updated);
     Storage.saveChats(updated);
 
-    // 2) Add a placeholder assistant message we will stream into
-    const aiId = crypto.randomUUID();
-    const assistantMsg: Message = {
-      id: aiId,
-      role: "assistant",
-      content: "",
-      createdAt: Date.now(),
-    };
-    updated = updated.map((c) =>
-      c.id === target!.id ? { ...c, messages: [...c.messages, assistantMsg] } : c
-    );
-    setChats(updated);
-    Storage.saveChats(updated);
-
-    // 3) Stream tokens
+    // Try streaming first; fallback to non-streaming
     try {
-      const resp = await fetch("/api/messages/stream", {
+      const res = await fetch("/api/messages/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chatId: target!.id, message: userMsg }),
       });
+      if (!res.ok || !res.body) throw new Error("no-stream");
 
-      if (!resp.ok || !resp.body) throw new Error("No stream");
+      // Insert placeholder assistant message and stream into it
+      const aiId = crypto.randomUUID();
+      updated = updated.map((c) =>
+        c.id === target!.id
+          ? { ...c, messages: [...c.messages, { id: aiId, role: "assistant", content: "", createdAt: Date.now() }] }
+          : c
+      );
+      setChats(updated);
+      Storage.saveChats(updated);
 
-      const reader = resp.body.getReader();
+      const reader = res.body.getReader();
       const decoder = new TextDecoder("utf-8");
-      let done = false;
       let buffer = "";
+      let done = false;
 
       while (!done) {
         const { value, done: d } = await reader.read();
         done = d;
         if (value) buffer += decoder.decode(value, { stream: true });
 
-        // Parse Server-Sent Events: lines like "data: {...}\n\n"
         let idx;
         while ((idx = buffer.indexOf("\n\n")) !== -1) {
-          const rawEvent = buffer.slice(0, idx).trim();
+          const raw = buffer.slice(0, idx).trim();
           buffer = buffer.slice(idx + 2);
-          if (!rawEvent.startsWith("data:")) continue;
-          const data = rawEvent.slice(5).trim();
-
+          if (!raw.startsWith("data:")) continue;
+          const data = raw.slice(5).trim();
           if (data === "[DONE]") {
-            // Heuristic title: first line of the user's first message
+            // Title heuristic
             const title = userMsg.content.split("\n")[0].slice(0, 40);
-            const finalized = Storage.getChats().map((c) =>
+            const final = Storage.getChats().map((c) =>
               c.id === target!.id ? { ...c, title: c.title || title } : c
             );
-            setChats(finalized);
-            Storage.saveChats(finalized);
+            setChats(final);
+            Storage.saveChats(final);
             break;
           }
-
           try {
             const json = JSON.parse(data);
-            // OpenAI/OR format: choices[0].delta.content
             const token: string | undefined =
               json?.choices?.[0]?.delta?.content ?? json?.choices?.[0]?.message?.content;
-
             if (token) {
               const now = Storage.getChats();
-              const next = now.map((c) => {
-                if (c.id !== target!.id) return c;
-                return {
-                  ...c,
-                  messages: c.messages.map((m) =>
-                    m.id === aiId ? { ...m, content: (m.content || "") + token } : m
-                  ),
-                };
-              });
+              const next = now.map((c) =>
+                c.id !== target!.id
+                  ? c
+                  : {
+                      ...c,
+                      messages: c.messages.map((m) => (m.id === aiId ? { ...m, content: m.content + token } : m)),
+                    }
+              );
               setChats(next);
               Storage.saveChats(next);
             }
-
-            // Optional: if server sent an error envelope, replace placeholder text
             if (json?.error?.hint) {
               const now = Storage.getChats();
-              const next = now.map((c) => {
-                if (c.id !== target!.id) return c;
-                return {
-                  ...c,
-                  messages: c.messages.map((m) =>
-                    m.id === aiId ? { ...m, content: "I couldn’t reach the model just now. Please try again." } : m
-                  ),
-                };
-              });
+              const next = now.map((c) =>
+                c.id !== target!.id
+                  ? c
+                  : {
+                      ...c,
+                      messages: c.messages.map((m) =>
+                        m.id === aiId ? { ...m, content: "I couldn’t reach the model. Please try again." } : m
+                      ),
+                    }
+              );
               setChats(next);
               Storage.saveChats(next);
             }
           } catch {
-            // ignore JSON parse errors on keepalive/comments
+            // ignore
           }
         }
       }
+      return;
     } catch {
-      // Fallback: call non-streaming endpoint so user still gets a reply
-      const res = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId: target!.id, message: userMsg }),
-      });
-      const data = await res.json();
-      const now = Storage.getChats();
-      const next = now.map((c) => {
-        if (c.id !== target!.id) return c;
-        return {
-          ...c,
-          messages: c.messages.map((m) =>
-            m.id === assistantMsg.id ? { ...m, content: data?.message?.content || "Sorry, try again." } : m
-          ),
-          title: c.title || data?.title || c.title,
-        };
-      });
-      setChats(next);
-      Storage.saveChats(next);
+      // fallback to non-streaming
     }
+
+    const res = await fetch(`/api/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId: target!.id, message: userMsg }),
+    });
+    const data = await res.json();
+    const aiMsg: Message = data.message;
+
+    const finalized = Storage.getChats().map((c) =>
+      c.id === target!.id
+        ? {
+            ...c,
+            messages: [...c.messages, aiMsg],
+            title: c.title || data.title || c.title,
+          }
+        : c
+    );
+    setChats(finalized);
+    Storage.saveChats(finalized);
   }
 
+  const cols = sidebarOpen ? "grid-cols-[300px_1fr]" : "grid-cols-[72px_1fr]";
+
   return (
-    <main className="grid h-dvh grid-cols-[300px_1fr] bg-black">
+    <main className={`grid h-dvh ${cols} bg-black`}>
       <aside className="border-r border-white/10 bg-[#0b0b0b]">
         <Sidebar
           chats={chats}
           activeId={activeId}
+          collapsed={!sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
           onNewChat={onNewChat}
           onSelectChat={onSelectChat}
           onRenameChat={onRenameChat}

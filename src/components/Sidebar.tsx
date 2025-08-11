@@ -7,6 +7,8 @@ import type { Chat } from "@/types";
 export default function Sidebar({
   chats,
   activeId,
+  collapsed,
+  onToggleSidebar,
   onNewChat,
   onSelectChat,
   onRenameChat,
@@ -14,6 +16,8 @@ export default function Sidebar({
 }: {
   chats: Chat[];
   activeId: string | null;
+  collapsed: boolean;
+  onToggleSidebar: () => void;
   onNewChat: () => void;
   onSelectChat: (id: string) => void;
   onRenameChat: (id: string, title: string) => void;
@@ -22,64 +26,99 @@ export default function Sidebar({
   const [query, setQuery] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const filtered = useMemo(
-    () =>
-      chats.filter((c) =>
-        (c.title || "New chat").toLowerCase().includes(query.toLowerCase())
-      ),
-    [chats, query]
-  );
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    return chats.filter((c) => (c.title || "New chat").toLowerCase().includes(q));
+  }, [chats, query]);
 
   return (
     <>
-      <div className="flex h-full flex-col">
-        {/* Header: Logo + New Chat */}
-        <div className="flex items-center gap-3 border-b border-white/10 p-4">
+      <div className={`flex h-full flex-col ${collapsed ? "items-center" : ""}`}>
+        {/* Header: Logo + Collapse/Expand icon */}
+        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} border-b border-white/10 p-4 w-full`}>
           <Link
             href="/"
-            className="flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
+            className={`flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 ${collapsed ? "justify-center" : ""}`}
             aria-label="Go to Home"
           >
-            {/* Placeholder logo — swap with your SVG when ready */}
+            {/* Placeholder logo — swap with your SVG */}
             <div className="grid h-8 w-8 place-items-center rounded-xl bg-white text-black font-bold">
               CQ
             </div>
-            <span className="select-none text-sm font-semibold tracking-tight">
-              CareIQ
-            </span>
+            {!collapsed && (
+              <span className="select-none text-sm font-semibold tracking-tight">CareIQ</span>
+            )}
           </Link>
 
+          {/* Toggle button (replaces old New Chat spot) */}
           <button
-            onClick={onNewChat}
-            className="ml-auto rounded-full bg-white px-3 py-1 text-xs font-medium text-black hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/20"
+            onClick={onToggleSidebar}
+            className={`rounded-full ${collapsed ? "absolute right-2 top-2" : ""} bg-white/10 p-2 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20`}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            New Chat
+            {/* Simple chevron icon */}
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              className={`${collapsed ? "" : "rotate-180"} transition-transform`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
           </button>
         </div>
 
-        {/* Search */}
-        <div className="p-3">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search chats"
-            className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm outline-none ring-1 ring-inset ring-white/10 placeholder:text-white/40 focus:ring-2 focus:ring-white/20"
-          />
+        {/* New Chat row with icon */}
+        <div className={`w-full border-b border-white/10 ${collapsed ? "px-2 py-3" : "px-3 py-3"}`}>
+          <button
+            onClick={onNewChat}
+            className={`flex w-full items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20 ${collapsed ? "justify-center" : ""}`}
+            title="New Chat"
+            aria-label="New Chat"
+          >
+            <PlusIcon />
+            {!collapsed && <span className="font-medium">New Chat</span>}
+          </button>
         </div>
 
-        {/* Chat list */}
-        <div className="flex-1 overflow-y-auto px-2 pb-2">
-          {filtered.map((c) => (
-            <ChatRow
-              key={c.id}
-              chat={c}
-              active={c.id === activeId}
-              onSelect={() => onSelectChat(c.id)}
-              onRename={(title) => onRenameChat(c.id, title)}
-              onDelete={() => onDeleteChat(c.id)}
+        {/* Search (hidden when collapsed) */}
+        {!collapsed && (
+          <div className="w-full p-3">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search chats"
+              className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm outline-none ring-1 ring-inset ring-white/10 placeholder:text-white/40 focus:ring-2 focus:ring-white/20"
             />
-          ))}
-          {filtered.length === 0 && (
+          </div>
+        )}
+
+        {/* Chat list */}
+        <div className={`flex-1 overflow-y-auto ${collapsed ? "w-full px-2 pb-2" : "w-full px-2 pb-2"}`}>
+          {filtered.map((c) =>
+            collapsed ? (
+              <CollapsedChatDot
+                key={c.id}
+                title={c.title || "New chat"}
+                active={c.id === activeId}
+                onClick={() => onSelectChat(c.id)}
+              />
+            ) : (
+              <ChatRow
+                key={c.id}
+                chat={c}
+                active={c.id === activeId}
+                onSelect={() => onSelectChat(c.id)}
+                onRename={(title) => onRenameChat(c.id, title)}
+                onDelete={() => onDeleteChat(c.id)}
+              />
+            )
+          )}
+          {filtered.length === 0 && !collapsed && (
             <div className="p-3 text-center text-xs text-white/50">No chats</div>
           )}
         </div>
@@ -87,19 +126,22 @@ export default function Sidebar({
         {/* Footer: Account row opens Settings */}
         <button
           onClick={() => setSettingsOpen(true)}
-          className="group flex items-center gap-3 border-t border-white/10 p-4 text-left hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
+          className={`group flex w-full items-center gap-3 border-t border-white/10 p-4 text-left hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 ${collapsed ? "justify-center" : ""}`}
           aria-label="Open settings"
+          title="Settings"
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-black font-semibold">
             CK
           </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">CareIQ Guest</div>
-            <div className="truncate text-xs text-white/50">guest@careiq.local</div>
-          </div>
-          <span className="ml-auto text-xs text-white/50 group-hover:text-white/70">
-            Settings
-          </span>
+          {!collapsed && (
+            <>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold">CareIQ Guest</div>
+                <div className="truncate text-xs text-white/50">guest@careiq.local</div>
+              </div>
+              <span className="ml-auto text-xs text-white/50 group-hover:text-white/70">Settings</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -175,6 +217,30 @@ function ChatRow({
   );
 }
 
+function CollapsedChatDot({
+  title,
+  active,
+  onClick,
+}: {
+  title: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`mb-2 flex w-full items-center justify-center`}
+    >
+      <div
+        className={`h-7 w-7 rounded-lg ${active ? "bg-white" : "bg-white/10"} text-black grid place-items-center text-xs`}
+      >
+        💬
+      </div>
+    </button>
+  );
+}
+
 function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {
     if (!open) return;
@@ -218,17 +284,13 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
 
         <div className="space-y-3 text-sm">
           <div className="rounded-xl border border-white/10 p-3">
-            <div className="mb-1 text-xs uppercase tracking-wide text-white/50">
-              Account
-            </div>
+            <div className="mb-1 text-xs uppercase tracking-wide text-white/50">Account</div>
             <div className="font-medium">CareIQ Guest</div>
             <div className="text-white/60">guest@careiq.local</div>
           </div>
 
           <div className="rounded-xl border border-white/10 p-3">
-            <div className="mb-1 text-xs uppercase tracking-wide text-white/50">
-              App
-            </div>
+            <div className="mb-1 text-xs uppercase tracking-wide text-white/50">App</div>
             <div className="flex items-center justify-between">
               <span>Version</span>
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs">v0.1</span>
@@ -246,5 +308,13 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
         </div>
       </div>
     </div>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
   );
 }
