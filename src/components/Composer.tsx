@@ -6,7 +6,9 @@ type Props = {
   id?: string;
   placeholder?: string;
   maxHeightPx?: number; // limit the auto-resize
-  onSend?: (text: string) => void | Promise<void>; // client->client safe
+  onSend?: (text: string) => void | Promise<void>;
+  /** Stick the composer to the page bottom (after first message) */
+  stickyAtBottom?: boolean;
 };
 
 const IconSend = (props: React.SVGProps<SVGSVGElement>) => (
@@ -20,6 +22,7 @@ export default function Composer({
   placeholder = "Send a message…",
   maxHeightPx = 240,
   onSend,
+  stickyAtBottom = false,
 }: Props) {
   const ref = React.useRef<HTMLTextAreaElement | null>(null);
   const [value, setValue] = React.useState("");
@@ -59,9 +62,7 @@ export default function Composer({
       if (onSend) {
         await onSend(text);
       } else {
-        // Fallback: emit a DOM event (optional)
         window.dispatchEvent(new CustomEvent("composer:send", { detail: { text } }));
-        console.log("send:", text);
       }
     } finally {
       setValue("");
@@ -71,17 +72,20 @@ export default function Composer({
 
   return (
     <form
-      className="sticky bottom-6"
+      className={stickyAtBottom ? "sticky bottom-0" : "sticky bottom-6"}
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
+      }}
+      style={{
+        background: "var(--bg)",
+        paddingTop: stickyAtBottom ? 8 : 0,
       }}
     >
       <div
         className="rounded-2xl border p-1.5"
         style={{ background: "var(--panel)", borderColor: "var(--border)" }}
       >
-        {/* Row: textarea + icon button (inline) */}
         <div className="flex items-end gap-2">
           <textarea
             id={id}
@@ -95,7 +99,7 @@ export default function Composer({
             style={{
               background: "transparent",
               border: "none",
-              minHeight: 40, // slim initial height
+              minHeight: 40,
               maxHeight: maxHeightPx,
               paddingTop: 8,
               paddingBottom: 8,

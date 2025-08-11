@@ -9,7 +9,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing 'text' string in body" }, { status: 400 });
     }
 
-    // Simple stubbed assistant reply tailored for HR/nursing home context.
     const reply = generateStubbedReply(text);
 
     return NextResponse.json({
@@ -25,17 +24,24 @@ export async function POST(req: Request) {
 }
 
 function generateStubbedReply(userText: string): string {
-  // Lightweight heuristic: give a structured, concise response that "feels" helpful.
-  const lead = "Got it — here’s a concise starting point:";
-  if (/pbj/i.test(userText)) {
-    return `${lead}\n\n• Verify pay period dates and facility CCN\n• Map job titles to CMS categories\n• Reconcile hours vs. payroll register\n• Validate agency hours and census alignment\n• Export XML, run CMS checker, then submit\n\nWant a step-by-step checklist?`;
+  const t = userText.trim();
+
+  // Friendly greetings for short/hello-style inputs
+  if (/^(hi|hello|hey|yo|sup|good (morning|afternoon|evening))\b/i.test(t) || t.length <= 5) {
+    return "Hi there! 👋 How can I help today — staffing, PBJ, payroll, survey prep, or something else?";
   }
-  if (/overtime|ot/i.test(userText)) {
-    return `${lead}\n\n1) Confirm non-exempt status and base rate\n2) Track all hours worked (including change-of-shift)\n3) Apply OT at 1.5× regular rate >40 hrs/week\n4) Include differentials/bonuses in regular-rate calc\n5) Audit for double shifts and call-ins\n\nI can generate a policy blurb or calculator next.`;
+
+  // Topic heuristics
+  if (/pbj/i.test(t)) {
+    return "Here’s a quick PBJ checklist:\n\n• Verify pay period dates & CCN\n• Map titles → CMS job categories\n• Reconcile payroll hours vs PBJ totals\n• Include agency hours & align to census\n• Export XML, run CMS checker, then submit\n\nWant me to generate a step-by-step for your dates?";
   }
-  if (/survey|doh|state/i.test(userText)) {
-    return `${lead}\n\n• Daily: med pass audits, falls huddles, infection logs\n• Weekly: care plan timeliness, skin rounds, MAR/TAR spot checks\n• Docs: incident packets, QA minutes, staff education proofs\n• Environment: call lights, PPE, signage, temp logs\n\nWant me to build a survey-readiness checklist PDF?`;
+  if (/overtime|ot/i.test(t)) {
+    return "Overtime essentials:\n\n1) Confirm non-exempt status + base rate\n2) Track all hours worked (incl. handoffs)\n3) 1.5× regular rate >40 hrs/wk (include diffs/bonuses in calc)\n4) Watch double shifts/call-ins\n5) Run an audit report monthly\n\nNeed a calculator or policy snippet?";
   }
-  // Default generic helper
-  return `${lead}\n\n• Clarify the goal and constraints\n• List needed data/systems (Rippling, LMS, PBJ, census)\n• Draft the steps and owners\n• Add timelines and a quick template\n\nSay “make the template” and I’ll produce it.`;
+  if (/survey|doh|state/i.test(t)) {
+    return "Survey readiness focus:\n\n• Daily: med pass audits, falls huddles, infection logs\n• Weekly: care plan timeliness, skin rounds, MAR/TAR spot checks\n• Docs: incident packets, QA minutes, education proofs\n• Environment: call lights, PPE, signage, temp logs\n\nI can assemble a readiness checklist tailored to your units.";
+  }
+
+  // Default helper
+  return "Got it. Tell me the goal and any constraints, and I’ll outline the steps, owners, and a quick template to get you moving.";
 }

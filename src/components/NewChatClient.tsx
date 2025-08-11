@@ -16,7 +16,6 @@ type Message = {
 
 export default function NewChatClient() {
   const [messages, setMessages] = React.useState<Message[]>([]);
-  const [sending, setSending] = React.useState(false);
   const endRef = React.useRef<HTMLDivElement | null>(null);
 
   const scrollToEnd = React.useCallback(() => {
@@ -37,7 +36,6 @@ export default function NewChatClient() {
     };
 
     setMessages((m) => [...m, userMsg, pendingAssist]);
-    setSending(true);
 
     try {
       const res = await fetch("/api/messages", {
@@ -46,20 +44,21 @@ export default function NewChatClient() {
         body: JSON.stringify({ text }),
       });
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      const assistant: Message = data?.message ?? {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: "I had trouble generating a reply just now. Try again?",
-      };
+      const ok = res.ok;
+      const data = ok ? await res.json() : null;
+
+      const assistant: Message = ok && data?.message
+        ? data.message
+        : {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: "I had trouble generating a reply just now. Try again?",
+          };
 
       setMessages((m) =>
         m.map((msg) => (msg.id === pendingAssist.id ? assistant : msg))
       );
-    } catch (e) {
+    } catch {
       setMessages((m) =>
         m.map((msg) =>
           msg.id === pendingAssist.id
@@ -73,54 +72,76 @@ export default function NewChatClient() {
             : msg
         )
       );
-    } finally {
-      setSending(false);
     }
   }
 
+  const hasMessages = messages.length > 0;
+
   return (
-    <div className="w-full h-full">
-      {/* Big centered header */}
+    <div className="w-full min-h-screen">
+      {/* Big centered header (shown always; ChatGPT generally hides it after, but keeping per your earlier spec) */}
       <HeaderBanner />
 
-      {/* Smaller 2×2 suggestion bubbles */}
-      <Suggestions targetId="composer-input" />
+      {/* Suggestions only before first message */}
+      {!hasMessages && <Suggestions targetId="composer-input" />}
 
-      {/* Messages list + Composer */}
+      {/* Body */}
       <div className="mx-auto max-w-3xl px-4" style={{ background: "var(--bg)" }}>
-        <div className="pt-2 pb-10 space-y-4">
+        <div className={`pt-2 ${hasMessages ? "pb-20" : "pb-10"} space-y-4`}>
           {/* Messages */}
-          {messages.length > 0 && (
-            <div className="space-y-3">
-              {messages.map((m) => (
-                <div key={m.id} className="w-full">
-                  <div
-                    className="rounded-2xl border p-4"
-                    style={{
-                      background:
-                        m.role === "assistant" ? "var(--panel)" : "var(--panel-2)",
-                      borderColor: m.error ? "#e57373" : "var(--border)",
-                      opacity: m.pending ? 0.8 : 1,
-                    }}
-                  >
-                    <div
-                      className="text-xs mb-1"
-                      style={{ color: "var(--text-dim)" }}
-                    >
-                      {m.role}
+          {hasMessages && (
+            <div className="space-y-4">
+              {messages.map((m) => {
+                if (m.role === "user") {
+                  // Right-aligned, green bubble, size to content
+                  return (
+                    <div key={m.id} className="flex justify-end">
+                      <div
+                        className="inline-block rounded-2xl px-3 py-2"
+                        style={{
+                          maxWidth: "80%",
+                          background: "rgba(16,163,127,0.12)", // soft green tint
+                          border: "1px solid rgba(16,163,127,0.35)",
+                          color: "var(--text)",
+                        }}
+                      >
+                        <div className="text-sm whitespace-pre-wrap leading-6">
+                          {m.content}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm" style={{ color: "var(--text)" }}>
-                      {m.content}
+                  );
+                }
+
+                // Assistant: not a bubble — clean block like ChatGPT
+                return (
+                  <div key={m.id} className="flex justify-start">
+                    <div
+                      className="w-full"
+                      style={{
+                        maxWidth: "90%",
+                      }}
+                    >
+                      <div
+                        className="text-sm whitespace-pre-wrap leading-7"
+                        style={{ color: "var(--text)", opacity: m.pending ? 0.85 : 1 }}
+                      >
+                        {m.content}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div ref={endRef} />
             </div>
           )}
 
-          {/* Slim → expanding composer */}
-          <Composer id="composer-input" onSend={handleSend} />
+          {/* Composer */}
+          <Composer
+            id="composer-input"
+            onSend={handleSend}
+            stickyAtBottom={hasMessages}
+          />
         </div>
       </div>
     </div>
