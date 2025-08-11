@@ -1,36 +1,25 @@
+import HeaderBanner from "@/components/HeaderBanner";
 import Suggestions from "@/components/Suggestions";
 
 export default function HomePage() {
   return (
     <div className="w-full h-full">
-      {/* Chat header bar */}
-      <div
-        className="sticky top-0 z-10"
-        style={{
-          background: "var(--panel)",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
-        <div className="mx-auto max-w-4xl px-4 py-3">
-          <h1 className="text-sm font-medium" style={{ color: "var(--text-dim)" }}>
-            New Chat
-          </h1>
-        </div>
-      </div>
+      {/* Randomized main header on each load */}
+      <HeaderBanner subline="Start with a prompt below or type your own." />
 
-      {/* Suggested messages (only on the new chat page) */}
+      {/* Suggested messages (centered buttons, below header) */}
       <Suggestions targetId="composer-input" />
 
       {/* Chat canvas */}
       <div className="mx-auto max-w-3xl px-4" style={{ background: "var(--bg)" }}>
         <div className="py-8 space-y-6">
-          {/* Empty state */}
+          {/* Empty state card (optional) */}
           <div
             className="rounded-2xl border"
             style={{ background: "var(--panel)", borderColor: "var(--border)" }}
           >
             <div className="p-6 text-sm" style={{ color: "var(--text-dim)" }}>
-              Ask me anything to get started — or click a suggested prompt above.
+              Ask me anything — HR, PBJ, staffing, payroll, survey readiness, and more.
             </div>
           </div>
 

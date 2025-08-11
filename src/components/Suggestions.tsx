@@ -60,7 +60,7 @@ export default function Suggestions({ targetId = "composer-input", count = 4 }: 
     }
     try {
       await navigator.clipboard.writeText(text);
-    } catch {/* no-op */}
+    } catch {/* ignore */}
   };
 
   return (
@@ -68,20 +68,26 @@ export default function Suggestions({ targetId = "composer-input", count = 4 }: 
       className="border-y"
       style={{ background: "var(--panel)", borderColor: "var(--border)" }}
     >
-      <div className="mx-auto max-w-4xl px-3 sm:px-4 py-3 flex flex-wrap gap-2">
-        {items.map((s, i) => (
-          <button
-            key={i}
-            className="btn btn-ghost px-3 py-2 rounded-xl text-sm"
-            onClick={() => handleClick(s)}
-            title="Click to prefill the composer"
-            style={{ boxShadow: "0 1px 0 rgba(255,255,255,.5), 0 .5px 1px rgba(0,0,0,.06)" }}
-          >
-            {s}
-          </button>
-        ))}
-        <div className="ml-auto text-[11px] self-center pr-1" style={{ color: "var(--text-dim)" }}>
-          Suggestions refresh each time this page loads
+      <div className="mx-auto max-w-3xl px-4 py-4">
+        <div
+          className="w-full grid justify-center gap-2"
+          style={{
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          }}
+        >
+          {items.map((s, i) => (
+            <button
+              key={i}
+              className="btn btn-ghost px-3 py-2 rounded-xl text-sm"
+              onClick={() => handleClick(s)}
+              title="Click to prefill the composer"
+              style={{
+                boxShadow: "0 1px 0 rgba(255,255,255,.5), 0 .5px 1px rgba(0,0,0,.06)",
+              }}
+            >
+              {s}
+            </button>
+          ))}
         </div>
       </div>
     </div>
