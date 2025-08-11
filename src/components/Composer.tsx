@@ -5,14 +5,12 @@ import React from "react";
 type Props = {
   id?: string;
   placeholder?: string;
-  onSend?: (text: string) => void | Promise<void>;
   maxHeightPx?: number; // limit the auto-resize
 };
 
 export default function Composer({
   id = "composer-input",
   placeholder = "Send a message…",
-  onSend,
   maxHeightPx = 240,
 }: Props) {
   const ref = React.useRef<HTMLTextAreaElement | null>(null);
@@ -33,7 +31,7 @@ export default function Composer({
   const handleInput = () => autoresize();
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
-    // Submit on Enter, new line with Shift+Enter (ChatGPT-like)
+    // Submit on Enter, newline with Shift+Enter (ChatGPT-like)
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void submit();
@@ -45,8 +43,13 @@ export default function Composer({
     if (!el) return;
     const text = el.value.trim();
     if (!text) return;
+
     try {
-      await onSend?.(text);
+      // Default behavior for now; replace with your API call if desired.
+      console.log("send:", text);
+
+      // Emit a DOM event in case you want to listen elsewhere (optional)
+      window.dispatchEvent(new CustomEvent("composer:send", { detail: { text } }));
     } finally {
       el.value = "";
       autoresize();

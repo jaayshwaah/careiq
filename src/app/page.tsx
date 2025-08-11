@@ -14,13 +14,7 @@ export default function HomePage() {
       {/* Slim → expanding composer */}
       <div className="mx-auto max-w-3xl px-4" style={{ background: "var(--bg)" }}>
         <div className="pb-10">
-          <Composer
-            id="composer-input"
-            onSend={async (text) => {
-              // TODO: wire to your chat API
-              console.log("send:", text);
-            }}
-          />
+          <Composer id="composer-input" />
         </div>
       </div>
     </div>
