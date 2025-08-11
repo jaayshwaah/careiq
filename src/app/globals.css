@@ -1,12 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4 style import */
+@import "tailwindcss";
 
 /* 
   Design goals:
-  - Default: ChatGPT light feel (soft off-white canvas, crisp surfaces)
-  - Dark: true dark with subtle contrast, not gray mush
-  - Apple-like: generous whitespace, subtle separators, motion that's present but calm
+  - Default: ChatGPT light feel
+  - Dark: true dark with subtle contrast
+  - Apple-like: subtle blur, soft shadows, refined spacing
 */
 
 :root {
@@ -47,10 +46,9 @@ html {
 }
 
 body {
-  @apply antialiased;
   background: var(--bg);
   color: var(--text);
-  transition: background-color .3s smooth, color .3s smooth;
+  transition: background-color .3s cubic-bezier(.2,.8,.2,1), color .3s cubic-bezier(.2,.8,.2,1);
 }
 
 /* Smooth focus rings */
@@ -79,54 +77,43 @@ body {
   background-color: rgba(255,255,255,0.18);
 }
 
-/* Utility surfaces */
+/* Utility surface */
 .surface {
   background: var(--panel);
   border: 1px solid var(--border);
   box-shadow: var(--shadow, 0 1px 2px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.06));
 }
 
-/* Buttons */
-.btn {
-  @apply inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all;
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(255,255,255,.5), 0 .5px 1px rgba(0,0,0,.06);
-}
-.btn:hover {
-  transform: translateY(-1px);
-}
-.btn:active {
-  transform: translateY(0);
-}
+/* Put @apply rules inside a Tailwind layer so Tailwind can resolve utilities */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 0 rgba(255,255,255,.5), 0 .5px 1px rgba(0,0,0,.06);
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
 
-/* Primary */
-.btn-primary {
-  background: var(--accent);
-  color: white;
-  border-color: transparent;
-}
-.btn-primary:hover {
-  background: var(--accent-hover);
-}
+  .btn-primary {
+    @apply text-white;
+    background: var(--accent);
+    border-color: transparent;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
 
-/* Ghost */
-.btn-ghost {
-  background: transparent;
-  border-color: transparent;
-}
-.btn-ghost:hover {
-  background: var(--panel-2);
-}
+  .btn-ghost {
+    background: transparent;
+    border-color: transparent;
+  }
+  .btn-ghost:hover { background: var(--panel-2); }
 
-/* Inputs */
-.input {
-  @apply w-full rounded-xl px-3 py-2 text-sm;
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-.input::placeholder {
-  color: var(--muted);
+  .input {
+    @apply w-full rounded-xl px-3 py-2 text-sm;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .input::placeholder { color: var(--muted); }
 }

@@ -13,20 +13,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Example: wire new chat callback & example chats
-  const handleNewChat = async () => {
-    try {
-      // If you already have an API route to create chats, call it here.
-      await fetch("/api/chats", { method: "POST" });
-      // Optionally refresh router or redirect.
-      // router.refresh()
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const exampleChats = [
-    // Replace with your fetched chats
+    // Replace with fetched chats server-side if needed
     // { id: "123", title: "Welcome to CareIQ" },
   ];
 
@@ -35,7 +23,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider defaultTheme="light">
           <div className="min-h-screen grid" style={{ gridTemplateColumns: "auto 1fr" }}>
-            <Sidebar chats={exampleChats} onNewChat={handleNewChat} />
+            <Sidebar chats={exampleChats} />
             <main className="min-h-screen">
               {children}
             </main>

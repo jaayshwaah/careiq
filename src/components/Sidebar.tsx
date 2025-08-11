@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import React from "react";
 import { useTheme } from "./ThemeProvider";
 
@@ -42,21 +42,40 @@ type Chat = {
 
 type Props = {
   chats?: Chat[];       // pass in list (if logged-in)
-  onNewChat?: () => void;
   collapsedByDefault?: boolean;
 };
 
-export default function Sidebar({ chats = [], onNewChat, collapsedByDefault = false }: Props) {
+export default function Sidebar({ chats = [], collapsedByDefault = false }: Props) {
   const [collapsed, setCollapsed] = React.useState(collapsedByDefault);
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, resolvedTheme, setTheme } = useTheme();
 
   const toggleTheme = () => {
-    // Cycle: light -> dark -> system -> light
     const order: ("light" | "dark" | "system")[] = ["light", "dark", "system"];
     const idx = order.indexOf(theme);
     const next = order[(idx + 1) % order.length];
     setTheme(next);
+  };
+
+  const handleNewChat = async () => {
+    try {
+      const res = await fetch("/api/chats", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.id) {
+          router.push(`/chat/${data.id}`);
+          return;
+        }
+      }
+      // Fallback: just go home and refresh
+      router.push("/");
+      router.refresh();
+    } catch (e) {
+      console.error(e);
+      router.push("/");
+      router.refresh();
+    }
   };
 
   return (
@@ -99,7 +118,7 @@ export default function Sidebar({ chats = [], onNewChat, collapsedByDefault = fa
       <div className="p-3" style={{ borderBottom: "1px solid var(--border)", background: "var(--panel)" }}>
         <button
           className="btn btn-primary w-full"
-          onClick={onNewChat}
+          onClick={handleNewChat}
           title="Start a new chat"
         >
           <IconPlus className="w-4 h-4" />

@@ -19,7 +19,6 @@ const config: Config = {
       },
       colors: {
         brand: {
-          // ChatGPT-ish accent with a tad more Apple-like neutrality
           DEFAULT: "#10A37F",
           hover: "#0E8F70",
           ring: "rgba(16,163,127,0.35)",

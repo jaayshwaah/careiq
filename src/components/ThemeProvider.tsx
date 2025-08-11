@@ -36,7 +36,6 @@ export const ThemeProvider: React.FC<React.PropsWithChildren<{ defaultTheme?: Th
     theme === "system" ? getSystemPref() : (theme as "light" | "dark")
   );
 
-  // Apply on mount & when theme changes
   useEffect(() => {
     applyTheme(theme);
     setResolvedTheme(theme === "system" ? getSystemPref() : (theme as "light" | "dark"));
@@ -47,7 +46,6 @@ export const ThemeProvider: React.FC<React.PropsWithChildren<{ defaultTheme?: Th
     }
   }, [theme]);
 
-  // Watch system changes when on system mode
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = () => {
