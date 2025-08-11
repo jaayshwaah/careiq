@@ -1,20 +1,16 @@
-// src/app/layout.tsx
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
-import './globals.css';
-import type { Metadata } from 'next';
+import "../styles/globals.css";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'CareIQ',
-  description: 'AI-assisted tools for senior care operations.',
+  title: "CareIQ Chat",
+  description: "Apple‑style ChatGPT layout with sidebar and local chat history",
+  appleWebApp: true,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" className="h-full bg-black text-white">
+      <body className="h-full antialiased">{children}</body>
     </html>
   );
 }

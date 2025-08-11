@@ -1,79 +1,101 @@
-// src/app/page.tsx
-'use client';
+"use client";
+import { useEffect, useState } from "react";
+import Sidebar from "@/components/Sidebar";
+import ChatWindow from "@/components/ChatWindow";
+import { Chat, Message } from "@/types";
+import { createEmptyChat, Storage } from "@/lib/storage";
 
-import { useState } from 'react';
+export default function HomePage() {
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeChat = chats.find((c) => c.id === activeId) || null;
 
-type Msg = { role: 'system' | 'user' | 'assistant'; content: string };
+  useEffect(() => {
+    const all = Storage.getChats();
+    setChats(all);
+    if (all.length && !activeId) setActiveId(all[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-export default function HomeChatPage() {
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Msg[]>([
-    { role: 'system', content: 'You are CareIQ, a helpful assistant for senior care operations.' }
-  ]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  function onNewChat() {
+    const chat = createEmptyChat();
+    const updated = [chat, ...chats];
+    setChats(updated);
+    setActiveId(chat.id);
+    Storage.saveChats(updated);
+  }
 
-  async function sendMessage() {
-    if (!input.trim()) return;
-    setError(null);
-    const next = [...messages, { role: 'user', content: input }];
-    setMessages(next);
-    setInput('');
-    setLoading(true);
+  function onSelectChat(id: string) {
+    setActiveId(id);
+  }
 
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Request failed');
-      const reply = data?.reply ?? '(no reply)';
-      setMessages([...next, { role: 'assistant', content: reply }]);
-    } catch (e: any) {
-      setError(e?.message || 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
+  function onRenameChat(id: string, title: string) {
+    const updated = chats.map((c) => (c.id === id ? { ...c, title } : c));
+    setChats(updated);
+    Storage.saveChats(updated);
+  }
+
+  function onDeleteChat(id: string) {
+    const updated = chats.filter((c) => c.id !== id);
+    setChats(updated);
+    Storage.saveChats(updated);
+    if (activeId === id) setActiveId(updated[0]?.id ?? null);
+  }
+
+  async function onSendMessage(content: string) {
+    if (!activeChat) return;
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content,
+      createdAt: Date.now(),
+    };
+
+    // Optimistic update
+    const updated = chats.map((c) =>
+      c.id === activeChat.id ? { ...c, messages: [...c.messages, userMsg] } : c
+    );
+    setChats(updated);
+    Storage.saveChats(updated);
+
+    // Call our mock/LLM API
+    const res = await fetch(`/api/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId: activeChat.id, message: userMsg }),
+    });
+
+    const data = await res.json();
+    const aiMsg: Message = data.message;
+
+    const updated2 = Storage.getChats().map((c) =>
+      c.id === activeChat.id
+        ? {
+            ...c,
+            messages: [...c.messages, aiMsg],
+            title: c.title || data.title || c.title,
+          }
+        : c
+    );
+    setChats(updated2);
+    Storage.saveChats(updated2);
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-6 space-y-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">CareIQ</h1>
-        <span className="text-sm opacity-60">Mock mode</span>
-      </header>
-
-      <div className="border rounded-xl p-4 space-y-3 bg-black/5">
-        {messages
-          .filter(m => m.role !== 'system')
-          .map((m, i) => (
-            <div key={i} className={`p-3 rounded-lg ${m.role === 'user' ? 'bg-white' : 'bg-gray-100'}`}>
-              <div className="text-xs uppercase tracking-wider opacity-70">{m.role}</div>
-              <div className="whitespace-pre-wrap">{m.content}</div>
-            </div>
-          ))}
-        {loading && <div className="text-sm opacity-70">…thinking</div>}
-        {error && <div className="text-sm text-red-600">Error: {error}</div>}
-      </div>
-
-      <div className="flex gap-2 sticky bottom-6">
-        <input
-          className="flex-1 border rounded-lg px-3 py-3"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Message CareIQ…"
-          onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+    <main className="grid h-dvh grid-cols-[300px_1fr] bg-black">
+      <aside className="border-r border-white/10 bg-[#0b0b0b]">
+        <Sidebar
+          chats={chats}
+          activeId={activeId}
+          onNewChat={onNewChat}
+          onSelectChat={onSelectChat}
+          onRenameChat={onRenameChat}
+          onDeleteChat={onDeleteChat}
         />
-        <button
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60"
-          onClick={sendMessage}
-          disabled={loading}
-        >
-          Send
-        </button>
-      </div>
+      </aside>
+      <section className="relative">
+        <ChatWindow chat={activeChat} onSend={onSendMessage} />
+      </section>
     </main>
   );
 }
