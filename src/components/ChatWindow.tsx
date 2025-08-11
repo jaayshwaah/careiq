@@ -38,8 +38,12 @@ export default function ChatWindow({
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // ⌘Enter (macOS) or Ctrl+Enter (Windows/Linux) to send. Shift+Enter = newline (default)
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    // Send on Enter. Allow newline with Shift+Enter.
+    // Guard for IME composition (e.g., Japanese/Chinese input).
+    // Also ignore if any modifier keys (except Shift) are pressed.
+    const isEnter = e.key === "Enter";
+    const hasModifier = e.metaKey || e.ctrlKey || e.altKey;
+    if (isEnter && !hasModifier && !e.shiftKey && !(e as any).isComposing) {
       e.preventDefault();
       sendCurrent();
     }
@@ -85,7 +89,7 @@ export default function ChatWindow({
               onKeyDown={handleKeyDown}
             />
             <div className="flex items-center justify-between px-1 pb-1">
-              <span className="text-xs text-white/40">Press ⌘⏎ (or Ctrl⏎) to send</span>
+              <span className="text-xs text-white/40">Press Enter to send • Shift+Enter for newline</span>
               <button
                 type="submit"
                 className="rounded-lg bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-50"
@@ -133,7 +137,7 @@ export default function ChatWindow({
           onKeyDown={handleKeyDown}
         />
         <div className="flex items-center justify-between px-1 pb-1">
-          <span className="text-xs text-white/40">Press ⌘⏎ (or Ctrl⏎) to send</span>
+          <span className="text-xs text-white/40">Press Enter to send • Shift+Enter for newline</span>
           <button
             type="submit"
             className="rounded-lg bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-50"
