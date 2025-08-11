@@ -5,7 +5,7 @@ import type { Message } from "@/types";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Simple mock fallback so the app still works if no API key is set
+// Minimal mock fallback so UX still works without a key
 function basicAIResponse(prompt: string): string {
   const lower = prompt.toLowerCase();
   if (lower.includes("hello") || lower.includes("hi")) return "Hey! How can I help today?";
@@ -16,23 +16,29 @@ function basicAIResponse(prompt: string): string {
   return `You said: "${prompt}". I'm a demo for now — add an API key to get smarter responses.`;
 }
 
+// Strip quotes and whitespace from env values (handles accidental pasting with quotes)
+function sanitizeEnv(val: string | undefined) {
+  return val?.trim().replace(/^['"]|['"]$/g, "");
+}
+
+// Normalize SITE_URL to a bare origin (no trailing slash/path)
+function getOrigin(siteUrl: string | undefined, fallback = "https://careiq.vercel.app") {
+  const raw = sanitizeEnv(siteUrl) || fallback;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return raw.replace(/\/+$/, "");
+  }
+}
+
 export async function POST(req: Request) {
   const { chatId, message } = (await req.json()) as { chatId: string; message: Message };
   const title = message.content.split("\n")[0].slice(0, 40);
 
-  // Trim key to avoid hidden whitespace/newlines
-  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
-  const model = (process.env.OPENROUTER_MODEL || "openrouter/auto").trim();
+  const apiKey = sanitizeEnv(process.env.OPENROUTER_API_KEY);
+  const model = sanitizeEnv(process.env.OPENROUTER_MODEL) || "openrouter/auto";
+  const site = getOrigin(process.env.SITE_URL);
 
-  // Normalize SITE_URL to a clean origin (no trailing slash)
-  let site = process.env.SITE_URL || "https://careiq.vercel.app";
-  try {
-    site = new URL(site).origin;
-  } catch {
-    site = site.replace(/\/+$/, "");
-  }
-
-  // No key? Keep working with the mock so UX doesn’t break.
   if (!apiKey) {
     const reply: Message = {
       id: crypto.randomUUID(),
@@ -66,7 +72,8 @@ export async function POST(req: Request) {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        // Use origin only; OpenRouter checks allowed origins against this
+        // These help with origin allowlists on OpenRouter keys
+        Origin: site,
         Referer: site,
         "HTTP-Referer": site,
         "X-Title": "CareIQ",
@@ -83,7 +90,8 @@ export async function POST(req: Request) {
       if (resp.status === 429) msg = "Rate limit hit. Try again in a moment.";
       if (resp.status >= 500) msg = "Provider issue. Try again shortly.";
 
-      console.error("OpenRouter error", { status: resp.status, body: text });
+      // Log details for debugging in Vercel logs
+      console.error("OpenRouter error", { status: resp.status, body: text.slice(0, 400) });
       const reply: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
