@@ -5,7 +5,7 @@ import type { Message } from "@/types";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Minimal mock fallback so UX still works without a key
+// Minimal mock fallback so UX still works without a key/credits
 function basicAIResponse(prompt: string): string {
   const lower = prompt.toLowerCase();
   if (lower.includes("hello") || lower.includes("hi")) return "Hey! How can I help today?";
@@ -13,22 +13,15 @@ function basicAIResponse(prompt: string): string {
     return "PBJ (Payroll-Based Journal) reporting requires accurate staffing hours by job code…";
   if (lower.includes("email"))
     return "Here’s a clean draft you can tweak: \n\nSubject: Quick follow-up\n\nHi [Name],\n\n…";
-  return `You said: "${prompt}". I'm a demo for now — add an API key to get smarter responses.`;
+  return `You said: "${prompt}". I'm a demo for now — add an API key/credits to get smarter responses.`;
 }
 
-// Strip quotes and whitespace from env values (handles accidental pasting with quotes)
 function sanitizeEnv(val: string | undefined) {
   return val?.trim().replace(/^['"]|['"]$/g, "");
 }
-
-// Normalize SITE_URL to a bare origin (no trailing slash/path)
-function getOrigin(siteUrl: string | undefined, fallback = "https://careiq.vercel.app") {
+function originOf(siteUrl: string | undefined, fallback = "https://careiq.vercel.app") {
   const raw = sanitizeEnv(siteUrl) || fallback;
-  try {
-    return new URL(raw).origin;
-  } catch {
-    return raw.replace(/\/+$/, "");
-  }
+  try { return new URL(raw).origin; } catch { return raw.replace(/\/+$/, ""); }
 }
 
 export async function POST(req: Request) {
@@ -37,8 +30,9 @@ export async function POST(req: Request) {
 
   const apiKey = sanitizeEnv(process.env.OPENROUTER_API_KEY);
   const model = sanitizeEnv(process.env.OPENROUTER_MODEL) || "openrouter/auto";
-  const site = getOrigin(process.env.SITE_URL);
+  const site = originOf(process.env.SITE_URL);
 
+  // If no key, return mock
   if (!apiKey) {
     const reply: Message = {
       id: crypto.randomUUID(),
@@ -72,7 +66,6 @@ export async function POST(req: Request) {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        // These help with origin allowlists on OpenRouter keys
         Origin: site,
         Referer: site,
         "HTTP-Referer": site,
@@ -81,26 +74,45 @@ export async function POST(req: Request) {
       body: JSON.stringify(body),
     });
 
+    // Non-200: provide actionable text; 401/402 → seamless mock fallback
     if (!resp.ok) {
       const text = await resp.text().catch(() => "");
-      let msg = "Hmm, I couldn’t reach the model.";
-      if (resp.status === 401) msg = "The API key looks invalid or missing on the server.";
-      if (resp.status === 403) msg = "Access forbidden (check OpenRouter Allowed Origins).";
-      if (resp.status === 404) msg = "Model not found (check OPENROUTER_MODEL).";
-      if (resp.status === 429) msg = "Rate limit hit. Try again in a moment.";
-      if (resp.status >= 500) msg = "Provider issue. Try again shortly.";
+      const status = resp.status;
 
-      // Log details for debugging in Vercel logs
-      console.error("OpenRouter error", { status: resp.status, body: text.slice(0, 400) });
+      // Build a helpful message for you (dev), but keep user experience smooth.
+      let devHint = "Provider error.";
+      if (status === 401) devHint = "Invalid/missing API key.";
+      if (status === 402) devHint = "Insufficient credits on OpenRouter.";
+      if (status === 403) devHint = "Origin forbidden — check OpenRouter Allowed Origins.";
+      if (status === 404) devHint = "Model not found — check OPENROUTER_MODEL.";
+      if (status === 429) devHint = "Rate limited.";
+      if (status >= 500) devHint = "Provider is having an issue.";
+
+      console.error("OpenRouter error", { status, body: text.slice(0, 400) });
+
+      // If auth/credits issue, auto-fallback to mock so users still get a reply.
+      if (status === 401 || status === 402) {
+        const reply: Message = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: basicAIResponse(message.content),
+          createdAt: Date.now(),
+        };
+        // Add a dev flag so you can see what's happening in the network tab if needed
+        return NextResponse.json({ ok: true, message: reply, title, devHint }, { status: 200 });
+      }
+
+      // Other errors: return a concise message to the user
       const reply: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: msg,
+        content: "I couldn’t reach the model just now. Please try again shortly.",
         createdAt: Date.now(),
       };
-      return NextResponse.json({ ok: true, message: reply, title }, { status: 200 });
+      return NextResponse.json({ ok: true, message: reply, title, devHint }, { status: 200 });
     }
 
+    // Success
     const data = await resp.json();
     const content: string =
       data?.choices?.[0]?.message?.content ?? "Sorry, I couldn’t generate a reply just now.";
