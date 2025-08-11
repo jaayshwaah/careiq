@@ -67,11 +67,31 @@ export default function Suggestions({ targetId = "composer-input", count = 4 }: 
           {items.map((s, i) => (
             <button
               key={i}
-              className="btn btn-ghost w-full px-2 py-1.5 rounded-lg text-xs sm:text-sm"
               onClick={() => handleClick(s)}
               title="Click to prefill the message"
+              className="w-full rounded-xl text-xs sm:text-sm px-3 py-2 border transition-all"
               style={{
-                boxShadow: "0 1px 0 rgba(255,255,255,.5), 0 .5px 1px rgba(0,0,0,.06)",
+                background: "var(--panel-2)",
+                borderColor: "var(--border)",
+                color: "var(--text)",
+                boxShadow:
+                  "0 1px 0 rgba(255,255,255,.45), 0 .5px 1px rgba(0,0,0,.06)",
+              }}
+              // Subtle hover/active states using CSS variables
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "var(--panel)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "var(--panel-2)";
+              }}
+              onMouseDown={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.transform =
+                  "translateY(1px)";
+              }}
+              onMouseUp={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.transform = "";
               }}
             >
               {s}
