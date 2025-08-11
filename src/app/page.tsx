@@ -1,3 +1,5 @@
+import Suggestions from "@/components/Suggestions";
+
 export default function HomePage() {
   return (
     <div className="w-full h-full">
@@ -16,11 +18,11 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Suggested messages (only on the new chat page) */}
+      <Suggestions targetId="composer-input" />
+
       {/* Chat canvas */}
-      <div
-        className="mx-auto max-w-3xl px-4"
-        style={{ background: "var(--bg)" }}
-      >
+      <div className="mx-auto max-w-3xl px-4" style={{ background: "var(--bg)" }}>
         <div className="py-8 space-y-6">
           {/* Empty state */}
           <div
@@ -28,7 +30,7 @@ export default function HomePage() {
             style={{ background: "var(--panel)", borderColor: "var(--border)" }}
           >
             <div className="p-6 text-sm" style={{ color: "var(--text-dim)" }}>
-              Ask me anything to get started.
+              Ask me anything to get started — or click a suggested prompt above.
             </div>
           </div>
 
@@ -39,13 +41,14 @@ export default function HomePage() {
               style={{ background: "var(--panel)", borderColor: "var(--border)" }}
             >
               <textarea
+                id="composer-input"
                 className="input resize-none"
                 rows={3}
                 placeholder="Send a message…"
                 style={{ background: "transparent", border: "none" }}
               />
               <div className="mt-3 flex justify-end">
-                <button className="btn btn-primary">Send</button>
+                <button className="btn btn-primary" type="submit">Send</button>
               </div>
             </div>
           </form>

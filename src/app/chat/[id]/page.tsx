@@ -40,10 +40,7 @@ export default async function ChatThreadPage({
       </div>
 
       {/* Messages */}
-      <div
-        className="mx-auto max-w-3xl px-4"
-        style={{ background: "var(--bg)" }}
-      >
+      <div className="mx-auto max-w-3xl px-4" style={{ background: "var(--bg)" }}>
         <div className="py-8 space-y-4">
           {messages.map((m) => (
             <div key={m.id} className="w-full">
@@ -55,10 +52,7 @@ export default async function ChatThreadPage({
                   borderColor: "var(--border)",
                 }}
               >
-                <div
-                  className="text-xs mb-1"
-                  style={{ color: "var(--text-dim)" }}
-                >
+                <div className="text-xs mb-1" style={{ color: "var(--text-dim)" }}>
                   {m.role}
                 </div>
                 <div className="text-sm" style={{ color: "var(--text)" }}>
@@ -75,13 +69,14 @@ export default async function ChatThreadPage({
               style={{ background: "var(--panel)", borderColor: "var(--border)" }}
             >
               <textarea
+                id="composer-input"
                 className="input resize-none"
                 rows={3}
                 placeholder="Send a message…"
                 style={{ background: "transparent", border: "none" }}
               />
               <div className="mt-3 flex justify-end">
-                <button className="btn btn-primary">Send</button>
+                <button className="btn btn-primary" type="submit">Send</button>
               </div>
             </div>
           </form>
