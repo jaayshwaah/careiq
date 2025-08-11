@@ -35,7 +35,7 @@ const NURSING_HOME_SUGGESTIONS: string[] = [
 
 type Props = {
   targetId?: string; // textarea id to prefill
-  count?: number;    // how many suggestions to show
+  count?: number;    // how many suggestions to show (defaults 4)
 };
 
 function pickRandom<T>(arr: T[], n: number): T[] {
@@ -50,37 +50,26 @@ function pickRandom<T>(arr: T[], n: number): T[] {
 export default function Suggestions({ targetId = "composer-input", count = 4 }: Props) {
   const [items] = React.useState<string[]>(() => pickRandom(NURSING_HOME_SUGGESTIONS, count));
 
-  const handleClick = async (text: string) => {
+  const handleClick = (text: string) => {
     const el = document.getElementById(targetId) as HTMLTextAreaElement | null;
     if (el) {
       el.value = text;
+      el.dispatchEvent(new Event("input", { bubbles: true })); // trigger autoresize
       el.focus();
       el.setSelectionRange(el.value.length, el.value.length);
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {/* ignore */}
   };
 
   return (
-    <div
-      className="border-y"
-      style={{ background: "var(--panel)", borderColor: "var(--border)" }}
-    >
-      <div className="mx-auto max-w-3xl px-4 py-4">
-        <div
-          className="w-full grid justify-center gap-2"
-          style={{
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          }}
-        >
+    <div className="w-full">
+      <div className="mx-auto max-w-2xl px-4 pb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 place-items-stretch">
           {items.map((s, i) => (
             <button
               key={i}
-              className="btn btn-ghost px-3 py-2 rounded-xl text-sm"
+              className="btn btn-ghost w-full px-3 py-2 rounded-xl text-sm"
               onClick={() => handleClick(s)}
-              title="Click to prefill the composer"
+              title="Click to prefill the message"
               style={{
                 boxShadow: "0 1px 0 rgba(255,255,255,.5), 0 .5px 1px rgba(0,0,0,.06)",
               }}

@@ -1,46 +1,26 @@
 import HeaderBanner from "@/components/HeaderBanner";
 import Suggestions from "@/components/Suggestions";
+import Composer from "@/components/Composer";
 
 export default function HomePage() {
   return (
     <div className="w-full h-full">
-      {/* Randomized main header on each load */}
-      <HeaderBanner subline="Start with a prompt below or type your own." />
+      {/* Big centered header */}
+      <HeaderBanner />
 
-      {/* Suggested messages (centered buttons, below header) */}
+      {/* Centered 2x2 suggestion bubbles */}
       <Suggestions targetId="composer-input" />
 
-      {/* Chat canvas */}
+      {/* Slim → expanding composer */}
       <div className="mx-auto max-w-3xl px-4" style={{ background: "var(--bg)" }}>
-        <div className="py-8 space-y-6">
-          {/* Empty state card (optional) */}
-          <div
-            className="rounded-2xl border"
-            style={{ background: "var(--panel)", borderColor: "var(--border)" }}
-          >
-            <div className="p-6 text-sm" style={{ color: "var(--text-dim)" }}>
-              Ask me anything — HR, PBJ, staffing, payroll, survey readiness, and more.
-            </div>
-          </div>
-
-          {/* Composer */}
-          <form className="sticky bottom-6">
-            <div
-              className="rounded-2xl border p-3"
-              style={{ background: "var(--panel)", borderColor: "var(--border)" }}
-            >
-              <textarea
-                id="composer-input"
-                className="input resize-none"
-                rows={3}
-                placeholder="Send a message…"
-                style={{ background: "transparent", border: "none" }}
-              />
-              <div className="mt-3 flex justify-end">
-                <button className="btn btn-primary" type="submit">Send</button>
-              </div>
-            </div>
-          </form>
+        <div className="pb-10">
+          <Composer
+            id="composer-input"
+            onSend={async (text) => {
+              // TODO: wire to your chat API
+              console.log("send:", text);
+            }}
+          />
         </div>
       </div>
     </div>
