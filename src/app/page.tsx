@@ -43,7 +43,17 @@ export default function HomePage() {
   }
 
   async function onSendMessage(content: string) {
-    if (!activeChat) return;
+    // If there’s no active chat yet, create one so the first message can be sent from the home screen.
+    let targetChat = activeChat;
+    if (!targetChat) {
+      const newChat = createEmptyChat();
+      const updated = [newChat, ...chats];
+      setChats(updated);
+      setActiveId(newChat.id);
+      Storage.saveChats(updated);
+      targetChat = newChat;
+    }
+
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -52,24 +62,25 @@ export default function HomePage() {
     };
 
     // Optimistic update
-    const updated = chats.map((c) =>
-      c.id === activeChat.id ? { ...c, messages: [...c.messages, userMsg] } : c
-    );
-    setChats(updated);
-    Storage.saveChats(updated);
+    const withUser = (prev: Chat[]) =>
+      prev.map((c) => (c.id === targetChat!.id ? { ...c, messages: [...c.messages, userMsg] } : c));
+
+    const optimistic = withUser(Storage.getChats().length ? Storage.getChats() : chats);
+    setChats(optimistic);
+    Storage.saveChats(optimistic);
 
     // Call our mock/LLM API
     const res = await fetch(`/api/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chatId: activeChat.id, message: userMsg }),
+      body: JSON.stringify({ chatId: targetChat!.id, message: userMsg }),
     });
 
     const data = await res.json();
     const aiMsg: Message = data.message;
 
-    const updated2 = Storage.getChats().map((c) =>
-      c.id === activeChat.id
+    const finalized = Storage.getChats().map((c) =>
+      c.id === targetChat!.id
         ? {
             ...c,
             messages: [...c.messages, aiMsg],
@@ -77,8 +88,8 @@ export default function HomePage() {
           }
         : c
     );
-    setChats(updated2);
-    Storage.saveChats(updated2);
+    setChats(finalized);
+    Storage.saveChats(finalized);
   }
 
   return (
