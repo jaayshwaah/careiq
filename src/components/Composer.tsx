@@ -2,14 +2,14 @@
 
 import React from "react";
 
-type Positioning = "sticky-edge" | "static";
+type Positioning = "flow" | "sticky-edge" | "static";
 
 type Props = {
   id?: string;
   placeholder?: string;
   maxHeightPx?: number; // limit the auto-resize
   onSend?: (text: string) => void | Promise<void>;
-  /** Layout mode: "sticky-edge" (before first msg) or "static" (inside fixed wrapper after) */
+  /** "flow" (default) renders in normal layout; "static" is used inside the fixed wrapper after first msg */
   positioning?: Positioning;
 };
 
@@ -24,7 +24,7 @@ export default function Composer({
   placeholder = "Send a message…",
   maxHeightPx = 240,
   onSend,
-  positioning = "sticky-edge",
+  positioning = "flow",
 }: Props) {
   const ref = React.useRef<HTMLTextAreaElement | null>(null);
   const [value, setValue] = React.useState("");
@@ -72,16 +72,19 @@ export default function Composer({
     }
   }
 
-  const positioningClass = positioning === "sticky-edge" ? "sticky bottom-6" : "";
+  // NOTE: we intentionally do NOT use sticky here anymore.
+  // "flow" and "sticky-edge" both render as normal flow; "static" is for the fixed-bottom wrapper.
+  const wrapperClass = positioning === "static" ? "" : "";
+  const wrapperStyle: React.CSSProperties = { background: "var(--bg)" };
 
   return (
     <form
-      className={positioningClass}
+      className={wrapperClass}
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
       }}
-      style={{ background: "var(--bg)" }}
+      style={wrapperStyle}
     >
       <div
         className="rounded-2xl border p-1.5"

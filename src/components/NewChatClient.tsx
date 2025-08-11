@@ -151,9 +151,9 @@ export default function NewChatClient() {
           </div>
         </div>
       ) : (
-        // BEFORE first message: slim/sticky composer in the flow
+        // BEFORE first message: composer in normal flow (NOT sticky)
         <div className="mx-auto w-full max-w-3xl px-4 pb-10">
-          <Composer id="composer-input" onSend={handleSend} positioning="sticky-edge" />
+          <Composer id="composer-input" onSend={handleSend} positioning="flow" />
         </div>
       )}
     </div>
