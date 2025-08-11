@@ -3,6 +3,8 @@ export const runtime = "edge";
 import { NextResponse } from "next/server";
 import type { Message } from "@/types";
 
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+
 // Simple mock fallback so the app still works if no API key is set
 function basicAIResponse(prompt: string): string {
   const lower = prompt.toLowerCase();
@@ -14,16 +16,15 @@ function basicAIResponse(prompt: string): string {
   return `You said: "${prompt}". I'm a demo for now — add an API key to get smarter responses.`;
 }
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-
 export async function POST(req: Request) {
   const { chatId, message } = (await req.json()) as { chatId: string; message: Message };
   const title = message.content.split("\n")[0].slice(0, 40);
 
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.OPENROUTER_MODEL ?? "meta-llama/llama-3.1-8b-instruct";
+  const model = process.env.OPENROUTER_MODEL || "openrouter/auto";
+  const site = process.env.SITE_URL || "https://careiq.vercel.app";
 
-  // If no key is configured, use the mock reply so UX still works
+  // No key? Keep working with the mock so UX doesn’t break.
   if (!apiKey) {
     const reply: Message = {
       id: crypto.randomUUID(),
@@ -35,7 +36,6 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Minimal system prompt — tweak to taste
     const system = [
       "You are CareIQ, a crisp, helpful assistant for nursing homes.",
       "Keep replies concise unless the user asks for detail.",
@@ -48,7 +48,6 @@ export async function POST(req: Request) {
         { role: "system", content: system },
         { role: "user", content: message.content },
       ],
-      // You can turn on streaming later; starting with simple non-stream for reliability
       stream: false,
       max_tokens: 600,
       temperature: 0.3,
@@ -59,22 +58,32 @@ export async function POST(req: Request) {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        // These two help OpenRouter attribute traffic to your app (optional but recommended)
-        "HTTP-Referer": process.env.SITE_URL ?? "https://careiq.vercel.app",
+        // Both headers are accepted; ensures domain attribution works
+        Referer: site,
+        "HTTP-Referer": site,
         "X-Title": "CareIQ",
       } as Record<string, string>,
       body: JSON.stringify(body),
     });
 
     if (!resp.ok) {
-      const text = await resp.text();
-      console.error("OpenRouter error:", resp.status, text);
+      const text = await resp.text().catch(() => "");
+      // Helpful, non-secret client message based on status
+      let msg = "Hmm, I couldn’t reach the model.";
+      if (resp.status === 401) msg = "The API key looks invalid or missing on the server.";
+      if (resp.status === 403) msg = "Access was forbidden (check domain allowlist or plan limits).";
+      if (resp.status === 404) msg = "The selected model wasn’t found (check OPENROUTER_MODEL).";
+      if (resp.status === 429) msg = "Rate limit hit. Try again in a moment.";
+      if (resp.status >= 500) msg = "The model provider is having an issue. Try again shortly.";
+
       const reply: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "Hmm, I couldn't reach the model just now. Try again in a moment.",
+        content: `${msg}`,
         createdAt: Date.now(),
       };
+      // Log full details to server logs for debugging
+      console.error("OpenRouter error", { status: resp.status, body: text });
       return NextResponse.json({ ok: true, message: reply, title }, { status: 200 });
     }
 
@@ -95,7 +104,7 @@ export async function POST(req: Request) {
     const reply: Message = {
       id: crypto.randomUUID(),
       role: "assistant",
-      content: "Something went wrong reaching the model. Please try again.",
+      content: "Network hiccup reaching the model. Please try again.",
       createdAt: Date.now(),
     };
     return NextResponse.json({ ok: true, message: reply, title }, { status: 200 });
