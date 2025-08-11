@@ -3,8 +3,7 @@
 import React from "react";
 
 /**
- * Suggested prompts for nursing home staff.
- * Picked randomly on each page load (no auto-rotation).
+ * Suggested prompts for nursing home staff (random on each page load).
  */
 const NURSING_HOME_SUGGESTIONS: string[] = [
   "Summarize the latest PBJ submission steps and common pitfalls.",
@@ -63,11 +62,12 @@ export default function Suggestions({ targetId = "composer-input", count = 4 }: 
   return (
     <div className="w-full">
       <div className="mx-auto max-w-2xl px-4 pb-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 place-items-stretch">
+        {/* Smaller, uniform bubbles in a 2x2 grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {items.map((s, i) => (
             <button
               key={i}
-              className="btn btn-ghost w-full px-3 py-2 rounded-xl text-sm"
+              className="btn btn-ghost w-full px-2 py-1.5 rounded-lg text-xs sm:text-sm"
               onClick={() => handleClick(s)}
               title="Click to prefill the message"
               style={{

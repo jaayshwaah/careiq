@@ -41,15 +41,30 @@ type Chat = {
 };
 
 type Props = {
-  chats?: Chat[];       // pass in list (if logged-in)
-  collapsedByDefault?: boolean;
+  chats?: Chat[];
+  collapsedByDefault?: boolean; // optional override
 };
 
-export default function Sidebar({ chats = [], collapsedByDefault = false }: Props) {
-  const [collapsed, setCollapsed] = React.useState(collapsedByDefault);
+export default function Sidebar({ chats = [], collapsedByDefault }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, resolvedTheme, setTheme } = useTheme();
+
+  // Default collapsed on home ("/"), unless an explicit prop is provided
+  const [collapsed, setCollapsed] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return collapsedByDefault ?? false;
+    const isHome = window.location.pathname === "/";
+    return collapsedByDefault ?? isHome;
+  });
+
+  // When route changes, set "default" for that route:
+  // - collapse on "/" (home)
+  // - expand elsewhere
+  React.useEffect(() => {
+    if (collapsedByDefault !== undefined) return;
+    setCollapsed(pathname === "/");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const toggleTheme = () => {
     const order: ("light" | "dark" | "system")[] = ["light", "dark", "system"];
@@ -68,7 +83,6 @@ export default function Sidebar({ chats = [], collapsedByDefault = false }: Prop
           return;
         }
       }
-      // Fallback: just go home and refresh
       router.push("/");
       router.refresh();
     } catch (e) {

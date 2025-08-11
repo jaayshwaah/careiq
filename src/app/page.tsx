@@ -8,7 +8,7 @@ export default function HomePage() {
       {/* Big centered header */}
       <HeaderBanner />
 
-      {/* Centered 2x2 suggestion bubbles */}
+      {/* Smaller 2×2 suggestion bubbles */}
       <Suggestions targetId="composer-input" />
 
       {/* Slim → expanding composer */}

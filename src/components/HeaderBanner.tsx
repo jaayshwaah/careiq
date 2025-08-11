@@ -21,10 +21,10 @@ export default function HeaderBanner() {
 
   return (
     <div className="w-full">
-      <div className="mx-auto max-w-3xl px-4 pt-10 pb-4 text-center">
+      <div className="mx-auto max-w-3xl px-4 pt-12 pb-4 text-center">
         <h1
-          className="font-semibold tracking-tight"
-          style={{ color: "var(--text)", fontSize: "clamp(1.5rem, 3vw, 2.25rem)" }}
+          className="font-semibold tracking-tight leading-tight"
+          style={{ color: "var(--text)", fontSize: "clamp(2.25rem, 6vw, 3.25rem)" }}
         >
           {title}
         </h1>
