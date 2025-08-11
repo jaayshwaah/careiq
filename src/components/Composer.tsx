@@ -2,13 +2,15 @@
 
 import React from "react";
 
+type Positioning = "sticky-edge" | "static";
+
 type Props = {
   id?: string;
   placeholder?: string;
   maxHeightPx?: number; // limit the auto-resize
   onSend?: (text: string) => void | Promise<void>;
-  /** Stick the composer to the page bottom (after first message) */
-  stickyAtBottom?: boolean;
+  /** Layout mode: "sticky-edge" (before first msg) or "static" (inside fixed wrapper after) */
+  positioning?: Positioning;
 };
 
 const IconSend = (props: React.SVGProps<SVGSVGElement>) => (
@@ -22,7 +24,7 @@ export default function Composer({
   placeholder = "Send a message…",
   maxHeightPx = 240,
   onSend,
-  stickyAtBottom = false,
+  positioning = "sticky-edge",
 }: Props) {
   const ref = React.useRef<HTMLTextAreaElement | null>(null);
   const [value, setValue] = React.useState("");
@@ -70,17 +72,16 @@ export default function Composer({
     }
   }
 
+  const positioningClass = positioning === "sticky-edge" ? "sticky bottom-6" : "";
+
   return (
     <form
-      className={stickyAtBottom ? "sticky bottom-0" : "sticky bottom-6"}
+      className={positioningClass}
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
       }}
-      style={{
-        background: "var(--bg)",
-        paddingTop: stickyAtBottom ? 8 : 0,
-      }}
+      style={{ background: "var(--bg)" }}
     >
       <div
         className="rounded-2xl border p-1.5"
@@ -99,7 +100,7 @@ export default function Composer({
             style={{
               background: "transparent",
               border: "none",
-              minHeight: 40,
+              minHeight: 40, // slim initial height
               maxHeight: maxHeightPx,
               paddingTop: 8,
               paddingBottom: 8,

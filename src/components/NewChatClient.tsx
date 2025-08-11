@@ -78,17 +78,20 @@ export default function NewChatClient() {
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="w-full min-h-screen">
-      {/* Big centered header (shown always; ChatGPT generally hides it after, but keeping per your earlier spec) */}
-      <HeaderBanner />
+    <div className="w-full min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
+      {/* Show header & suggestions ONLY before the first message */}
+      {!hasMessages && (
+        <>
+          <HeaderBanner />
+          <div className="mx-auto w-full max-w-3xl px-4">
+            <Suggestions targetId="composer-input" />
+          </div>
+        </>
+      )}
 
-      {/* Suggestions only before first message */}
-      {!hasMessages && <Suggestions targetId="composer-input" />}
-
-      {/* Body */}
-      <div className="mx-auto max-w-3xl px-4" style={{ background: "var(--bg)" }}>
-        <div className={`pt-2 ${hasMessages ? "pb-20" : "pb-10"} space-y-4`}>
-          {/* Messages */}
+      {/* Messages area */}
+      <div className="mx-auto w-full max-w-3xl flex-1 px-4">
+        <div className={`pt-2 ${hasMessages ? "pb-36" : "pb-10"} space-y-4`}>
           {hasMessages && (
             <div className="space-y-4">
               {messages.map((m) => {
@@ -116,12 +119,7 @@ export default function NewChatClient() {
                 // Assistant: not a bubble — clean block like ChatGPT
                 return (
                   <div key={m.id} className="flex justify-start">
-                    <div
-                      className="w-full"
-                      style={{
-                        maxWidth: "90%",
-                      }}
-                    >
+                    <div className="w-full" style={{ maxWidth: "90%" }}>
                       <div
                         className="text-sm whitespace-pre-wrap leading-7"
                         style={{ color: "var(--text)", opacity: m.pending ? 0.85 : 1 }}
@@ -135,15 +133,29 @@ export default function NewChatClient() {
               <div ref={endRef} />
             </div>
           )}
-
-          {/* Composer */}
-          <Composer
-            id="composer-input"
-            onSend={handleSend}
-            stickyAtBottom={hasMessages}
-          />
         </div>
       </div>
+
+      {/* Composer */}
+      {hasMessages ? (
+        // AFTER first message: fixed bar at viewport bottom
+        <div
+          className="fixed bottom-0 left-0 right-0"
+          style={{
+            background: "var(--bg)",
+            borderTop: "1px solid var(--border)",
+          }}
+        >
+          <div className="mx-auto max-w-3xl px-4 py-4">
+            <Composer id="composer-input" onSend={handleSend} positioning="static" />
+          </div>
+        </div>
+      ) : (
+        // BEFORE first message: slim/sticky composer in the flow
+        <div className="mx-auto w-full max-w-3xl px-4 pb-10">
+          <Composer id="composer-input" onSend={handleSend} positioning="sticky-edge" />
+        </div>
+      )}
     </div>
   );
 }
