@@ -6,14 +6,12 @@ type Props = {
   id?: string;
   placeholder?: string;
   maxHeightPx?: number; // limit the auto-resize
+  onSend?: (text: string) => void | Promise<void>; // client->client safe
 };
 
 const IconSend = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
-    <path
-      d="M5 12L20 5l-3.5 14-4.5-5-7-2z"
-      fill="currentColor"
-    />
+    <path d="M5 12L20 5l-3.5 14-4.5-5-7-2z" fill="currentColor" />
   </svg>
 );
 
@@ -21,6 +19,7 @@ export default function Composer({
   id = "composer-input",
   placeholder = "Send a message…",
   maxHeightPx = 240,
+  onSend,
 }: Props) {
   const ref = React.useRef<HTMLTextAreaElement | null>(null);
   const [value, setValue] = React.useState("");
@@ -54,18 +53,18 @@ export default function Composer({
   const disabled = value.trim().length === 0;
 
   async function submit() {
-    const el = ref.current;
-    if (!el) return;
     const text = value.trim();
     if (!text) return;
-
     try {
-      // Replace this with your API call when ready
-      console.log("send:", text);
-      window.dispatchEvent(new CustomEvent("composer:send", { detail: { text } }));
+      if (onSend) {
+        await onSend(text);
+      } else {
+        // Fallback: emit a DOM event (optional)
+        window.dispatchEvent(new CustomEvent("composer:send", { detail: { text } }));
+        console.log("send:", text);
+      }
     } finally {
       setValue("");
-      // small async to ensure state flush before measuring
       requestAnimationFrame(() => autoresize());
     }
   }
@@ -105,7 +104,7 @@ export default function Composer({
 
           <button
             type="submit"
-            className="btn btn-primary rounded-full p-0"
+            className="btn btn-primary rounded-full p-0 disabled:opacity-60"
             style={{
               width: 38,
               height: 38,
