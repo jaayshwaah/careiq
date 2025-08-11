@@ -24,7 +24,7 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="light">
           <div className="min-h-screen grid" style={{ gridTemplateColumns: "auto 1fr" }}>
             <Sidebar chats={exampleChats} />
-            <main className="min-h-screen">
+            <main className="min-h-screen" style={{ background: "var(--bg)" }}>
               {children}
             </main>
           </div>
