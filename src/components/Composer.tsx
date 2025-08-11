@@ -8,12 +8,22 @@ type Props = {
   maxHeightPx?: number; // limit the auto-resize
 };
 
+const IconSend = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+    <path
+      d="M5 12L20 5l-3.5 14-4.5-5-7-2z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
 export default function Composer({
   id = "composer-input",
   placeholder = "Send a message…",
   maxHeightPx = 240,
 }: Props) {
   const ref = React.useRef<HTMLTextAreaElement | null>(null);
+  const [value, setValue] = React.useState("");
 
   const autoresize = React.useCallback(() => {
     const el = ref.current;
@@ -28,7 +38,10 @@ export default function Composer({
     autoresize();
   }, [autoresize]);
 
-  const handleInput = () => autoresize();
+  const handleInput: React.ChangeEventHandler<HTMLTextAreaElement> = (e) => {
+    setValue(e.target.value);
+    autoresize();
+  };
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     // Submit on Enter, newline with Shift+Enter (ChatGPT-like)
@@ -38,21 +51,22 @@ export default function Composer({
     }
   };
 
+  const disabled = value.trim().length === 0;
+
   async function submit() {
     const el = ref.current;
     if (!el) return;
-    const text = el.value.trim();
+    const text = value.trim();
     if (!text) return;
 
     try {
-      // Default behavior for now; replace with your API call if desired.
+      // Replace this with your API call when ready
       console.log("send:", text);
-
-      // Emit a DOM event in case you want to listen elsewhere (optional)
       window.dispatchEvent(new CustomEvent("composer:send", { detail: { text } }));
     } finally {
-      el.value = "";
-      autoresize();
+      setValue("");
+      // small async to ensure state flush before measuring
+      requestAnimationFrame(() => autoresize());
     }
   }
 
@@ -65,28 +79,46 @@ export default function Composer({
       }}
     >
       <div
-        className="rounded-2xl border p-2"
+        className="rounded-2xl border p-1.5"
         style={{ background: "var(--panel)", borderColor: "var(--border)" }}
       >
-        <textarea
-          id={id}
-          ref={ref}
-          rows={1}
-          onInput={handleInput}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="input resize-none"
-          style={{
-            background: "transparent",
-            border: "none",
-            minHeight: 40, /* slim initial height */
-            maxHeight: maxHeightPx,
-            paddingTop: 8,
-            paddingBottom: 8,
-          }}
-        />
-        <div className="mt-2 flex justify-end">
-          <button className="btn btn-primary" type="submit">Send</button>
+        {/* Row: textarea + icon button (inline) */}
+        <div className="flex items-end gap-2">
+          <textarea
+            id={id}
+            ref={ref}
+            rows={1}
+            value={value}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            className="input resize-none flex-1"
+            style={{
+              background: "transparent",
+              border: "none",
+              minHeight: 40, // slim initial height
+              maxHeight: maxHeightPx,
+              paddingTop: 8,
+              paddingBottom: 8,
+            }}
+          />
+
+          <button
+            type="submit"
+            className="btn btn-primary rounded-full p-0"
+            style={{
+              width: 38,
+              height: 38,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            title="Send"
+            aria-label="Send message"
+            disabled={disabled}
+          >
+            <IconSend className="w-4.5 h-4.5" />
+          </button>
         </div>
       </div>
     </form>
