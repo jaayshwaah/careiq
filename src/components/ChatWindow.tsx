@@ -11,6 +11,7 @@ export default function ChatWindow({
   onSend: (content: string) => Promise<void>;
 }) {
   const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -19,38 +20,41 @@ export default function ChatWindow({
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [chat?.messages.length]);
 
-  // Auto-focus the composer on mount and when switching chats
+  // Auto-focus on mount / when switching chats
   useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
     return () => clearTimeout(t);
   }, [chat?.id]);
 
-  function sendCurrent() {
+  async function sendCurrent() {
     const text = input.trim();
-    if (!text) return;
-    onSend(text);
+    if (!text || busy) return;
+    setBusy(true);
     setInput("");
+    try {
+      await onSend(text);
+    } finally {
+      setBusy(false);
+      // Refocus after sending
+      inputRef.current?.focus({ preventScroll: true });
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    sendCurrent();
+    void sendCurrent();
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // Send on Enter. Allow newline with Shift+Enter.
-    // Guard for IME composition (e.g., Japanese/Chinese input).
-    // Also ignore if any modifier keys (except Shift) are pressed.
-    const isEnter = e.key === "Enter";
-    const hasModifier = e.metaKey || e.ctrlKey || e.altKey;
-    if (isEnter && !hasModifier && !e.shiftKey && !(e as any).isComposing) {
+    // Enter sends; Shift+Enter newline; ignore if composing or with modifiers
+    if (e.key === "Enter" && !e.shiftKey && !(e as any).isComposing && !e.metaKey && !e.ctrlKey && !e.altKey) {
       e.preventDefault();
-      sendCurrent();
+      void sendCurrent();
     }
   }
 
-  // ---- Home view (no chat yet) ----
   if (!chat) {
+    // Home view with composer
     return (
       <div className="flex h-full flex-col">
         <div className="m-auto max-w-2xl px-6 pb-40 pt-10 text-center">
@@ -68,8 +72,9 @@ export default function ChatWindow({
             ].map((t) => (
               <button
                 key={t}
-                onClick={() => onSend(t)}
-                className="rounded-xl bg-white/5 px-3 py-2 text-left hover:bg-white/10"
+                onClick={() => !busy && onSend(t)}
+                className="rounded-xl bg-white/5 px-3 py-2 text-left hover:bg-white/10 disabled:opacity-50"
+                disabled={busy}
               >
                 {t}
               </button>
@@ -82,20 +87,21 @@ export default function ChatWindow({
           >
             <textarea
               ref={inputRef}
-              className="max-h-40 min-h-[56px] w-full resize-y rounded-xl bg-transparent px-3 py-3 outline-none placeholder:text-white/40"
+              className="max-h-40 min-h-[56px] w-full resize-y rounded-xl bg-transparent px-3 py-3 outline-none placeholder:text-white/40 disabled:opacity-60"
               placeholder="Message CareIQ"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              disabled={busy}
             />
             <div className="flex items-center justify-between px-1 pb-1">
-              <span className="text-xs text-white/40">Press Enter to send • Shift+Enter for newline</span>
+              <span className="text-xs text-white/40">Enter to send • Shift+Enter newline</span>
               <button
                 type="submit"
                 className="rounded-lg bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-50"
-                disabled={!input.trim()}
+                disabled={!input.trim() || busy}
               >
-                Send
+                {busy ? "Sending…" : "Send"}
               </button>
             </div>
           </form>
@@ -104,7 +110,6 @@ export default function ChatWindow({
     );
   }
 
-  // ---- Chat view ----
   return (
     <div className="flex h-full flex-col">
       {/* Top bar */}
@@ -130,20 +135,21 @@ export default function ChatWindow({
       >
         <textarea
           ref={inputRef}
-          className="max-h-40 min-h-[48px] w-full resize-y rounded-xl bg-transparent px-3 py-3 outline-none placeholder:text-white/40"
+          className="max-h-40 min-h-[48px] w-full resize-y rounded-xl bg-transparent px-3 py-3 outline-none placeholder:text-white/40 disabled:opacity-60"
           placeholder="Message CareIQ"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          disabled={busy}
         />
         <div className="flex items-center justify-between px-1 pb-1">
-          <span className="text-xs text-white/40">Press Enter to send • Shift+Enter for newline</span>
+          <span className="text-xs text-white/40">Enter to send • Shift+Enter newline</span>
           <button
             type="submit"
             className="rounded-lg bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-50"
-            disabled={!input.trim()}
+            disabled={!input.trim() || busy}
           >
-            Send
+            {busy ? "Sending…" : "Send"}
           </button>
         </div>
       </form>

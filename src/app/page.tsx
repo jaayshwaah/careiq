@@ -43,53 +43,146 @@ export default function HomePage() {
   }
 
   async function onSendMessage(content: string) {
-    // If there’s no active chat yet, create one so the first message can be sent from the home screen.
-    let targetChat = activeChat;
-    if (!targetChat) {
+    // Ensure a chat exists so we can append the first message from the home view
+    let target = activeChat;
+    if (!target) {
       const newChat = createEmptyChat();
       const updated = [newChat, ...chats];
       setChats(updated);
       setActiveId(newChat.id);
       Storage.saveChats(updated);
-      targetChat = newChat;
+      target = newChat;
     }
 
+    // 1) Add the user message
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
       content,
       createdAt: Date.now(),
     };
-
-    // Optimistic update
-    const withUser = (prev: Chat[]) =>
-      prev.map((c) => (c.id === targetChat!.id ? { ...c, messages: [...c.messages, userMsg] } : c));
-
-    const optimistic = withUser(Storage.getChats().length ? Storage.getChats() : chats);
-    setChats(optimistic);
-    Storage.saveChats(optimistic);
-
-    // Call our mock/LLM API
-    const res = await fetch(`/api/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chatId: targetChat!.id, message: userMsg }),
-    });
-
-    const data = await res.json();
-    const aiMsg: Message = data.message;
-
-    const finalized = Storage.getChats().map((c) =>
-      c.id === targetChat!.id
-        ? {
-            ...c,
-            messages: [...c.messages, aiMsg],
-            title: c.title || data.title || c.title,
-          }
-        : c
+    let updated = (Storage.getChats().length ? Storage.getChats() : chats).map((c) =>
+      c.id === target!.id ? { ...c, messages: [...c.messages, userMsg] } : c
     );
-    setChats(finalized);
-    Storage.saveChats(finalized);
+    setChats(updated);
+    Storage.saveChats(updated);
+
+    // 2) Add a placeholder assistant message we will stream into
+    const aiId = crypto.randomUUID();
+    const assistantMsg: Message = {
+      id: aiId,
+      role: "assistant",
+      content: "",
+      createdAt: Date.now(),
+    };
+    updated = updated.map((c) =>
+      c.id === target!.id ? { ...c, messages: [...c.messages, assistantMsg] } : c
+    );
+    setChats(updated);
+    Storage.saveChats(updated);
+
+    // 3) Stream tokens
+    try {
+      const resp = await fetch("/api/messages/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId: target!.id, message: userMsg }),
+      });
+
+      if (!resp.ok || !resp.body) throw new Error("No stream");
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let done = false;
+      let buffer = "";
+
+      while (!done) {
+        const { value, done: d } = await reader.read();
+        done = d;
+        if (value) buffer += decoder.decode(value, { stream: true });
+
+        // Parse Server-Sent Events: lines like "data: {...}\n\n"
+        let idx;
+        while ((idx = buffer.indexOf("\n\n")) !== -1) {
+          const rawEvent = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 2);
+          if (!rawEvent.startsWith("data:")) continue;
+          const data = rawEvent.slice(5).trim();
+
+          if (data === "[DONE]") {
+            // Heuristic title: first line of the user's first message
+            const title = userMsg.content.split("\n")[0].slice(0, 40);
+            const finalized = Storage.getChats().map((c) =>
+              c.id === target!.id ? { ...c, title: c.title || title } : c
+            );
+            setChats(finalized);
+            Storage.saveChats(finalized);
+            break;
+          }
+
+          try {
+            const json = JSON.parse(data);
+            // OpenAI/OR format: choices[0].delta.content
+            const token: string | undefined =
+              json?.choices?.[0]?.delta?.content ?? json?.choices?.[0]?.message?.content;
+
+            if (token) {
+              const now = Storage.getChats();
+              const next = now.map((c) => {
+                if (c.id !== target!.id) return c;
+                return {
+                  ...c,
+                  messages: c.messages.map((m) =>
+                    m.id === aiId ? { ...m, content: (m.content || "") + token } : m
+                  ),
+                };
+              });
+              setChats(next);
+              Storage.saveChats(next);
+            }
+
+            // Optional: if server sent an error envelope, replace placeholder text
+            if (json?.error?.hint) {
+              const now = Storage.getChats();
+              const next = now.map((c) => {
+                if (c.id !== target!.id) return c;
+                return {
+                  ...c,
+                  messages: c.messages.map((m) =>
+                    m.id === aiId ? { ...m, content: "I couldn’t reach the model just now. Please try again." } : m
+                  ),
+                };
+              });
+              setChats(next);
+              Storage.saveChats(next);
+            }
+          } catch {
+            // ignore JSON parse errors on keepalive/comments
+          }
+        }
+      }
+    } catch {
+      // Fallback: call non-streaming endpoint so user still gets a reply
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId: target!.id, message: userMsg }),
+      });
+      const data = await res.json();
+      const now = Storage.getChats();
+      const next = now.map((c) => {
+        if (c.id !== target!.id) return c;
+        return {
+          ...c,
+          messages: c.messages.map((m) =>
+            m.id === assistantMsg.id ? { ...m, content: data?.message?.content || "Sorry, try again." } : m
+          ),
+          title: c.title || data?.title || c.title,
+        };
+      });
+      setChats(next);
+      Storage.saveChats(next);
+    }
   }
 
   return (
