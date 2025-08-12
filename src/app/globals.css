@@ -1,119 +1,109 @@
-/* Tailwind v4 style import */
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* 
-  Design goals:
-  - Default: ChatGPT light feel
-  - Dark: true dark with subtle contrast
-  - Apple-like: subtle blur, soft shadows, refined spacing
-*/
-
+/* ---------- CSS Variables (light first) ---------- */
 :root {
-  /* Light (ChatGPT-ish) */
-  --bg: #f7f7f8; /* chat canvas */
-  --panel: #ffffff; /* cards, sidebar */
-  --panel-2: #fafafa; /* slight contrast zones */
-  --text: #111114;
-  --text-dim: #4a4a4f;
-  --border: #e7e7ea;
-  --muted: #6b6b70;
-  --accent: #10a37f;
-  --accent-hover: #0e8f70;
-  --ring: 0 0 0 3px rgba(16,163,127,0.35);
+  --bg: #ffffff;
+  --bg-soft: rgba(0,0,0,0.04);
+  --panel: #ffffff;
+  --panel-border: rgba(0,0,0,0.1);
+  --text: #0b0b0b;
+  --text-muted: #6b7280; /* gray-500 */
+  --ring: rgba(0,0,0,0.12);
+  --accent: #0b0b0b; /* black accents for light */
+  --brand: #10A37F;
+  --brand-ring: rgba(16,163,127,0.35);
 }
 
 .dark {
-  /* Dark (ChatGPT-ish) */
-  --bg: #121212;
-  --panel: #1a1a1b;
-  --panel-2: #161617;
-  --text: #e9e9ee;
-  --text-dim: #b2b2b7;
-  --border: #2a2a2e;
-  --muted: #9a9aa2;
-  --accent: #10a37f;
-  --accent-hover: #0e8f70;
-  --ring: 0 0 0 3px rgba(16,163,127,0.4);
+  --bg: #0b0b0b;
+  --bg-soft: rgba(255,255,255,0.06);
+  --panel: #0b0b0b;
+  --panel-border: rgba(255,255,255,0.1);
+  --text: #ffffff;
+  --text-muted: rgba(255,255,255,0.6);
+  --ring: rgba(255,255,255,0.2);
+  --accent: #ffffff;
+  --brand: #10A37F;
+  --brand-ring: rgba(16,163,127,0.35);
 }
 
-html, body, #__next {
+/* ---------- Base ---------- */
+html, body {
   height: 100%;
-}
-
-html {
-  color-scheme: light dark;
-  background: var(--bg);
-}
-
-body {
   background: var(--bg);
   color: var(--text);
-  transition: background-color .3s cubic-bezier(.2,.8,.2,1), color .3s cubic-bezier(.2,.8,.2,1);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Smooth focus rings */
-:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
-  border-radius: 10px;
+::selection {
+  background: var(--brand);
+  color: #fff;
 }
 
-/* Scrollbar (subtle, Apple-like) */
+/* ---------- Panels & borders ---------- */
+.panel {
+  @apply rounded-2xl border shadow-soft;
+  background: var(--panel);
+  border-color: var(--panel-border);
+}
+
+/* ---------- Inputs ---------- */
+.input {
+  @apply w-full rounded-xl text-sm outline-none ring-1 ring-inset px-3 py-2 transition;
+  background: theme(colors.white);
+  color: theme(colors.gray.900);
+  @apply placeholder:text-gray-400 ring-black/10 focus:ring-2 focus:ring-black/20;
+}
+.dark .input {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  @apply placeholder:text-white/40 ring-white/10 focus:ring-2 focus:ring-white/20;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm transition focus:outline-none;
+}
+.btn-ghost {
+  @apply btn;
+  background: var(--bg-soft);
+}
+.btn-ghost:hover { filter: brightness(0.98); }
+.dark .btn-ghost:hover { filter: brightness(1.15); }
+
+.btn-solid {
+  @apply btn text-white;
+  background: var(--accent);
+}
+.btn-solid:hover { filter: brightness(0.95); }
+
+/* ---------- Scrollbars (Chromium/WebKit) ---------- */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,0.25) transparent;
+  scrollbar-width: thin;             /* Firefox */
+  scrollbar-color: var(--panel-border) transparent;
 }
-*::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
-*::-webkit-scrollbar-thumb {
-  background-clip: padding-box;
-  border: 3px solid transparent;
+::-webkit-scrollbar-thumb {
+  background-color: var(--panel-border);
   border-radius: 999px;
-  background-color: rgba(0,0,0,0.18);
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
-.dark *::-webkit-scrollbar-thumb {
-  background-color: rgba(255,255,255,0.18);
-}
-
-/* Utility surface */
-.surface {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow, 0 1px 2px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.06));
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* Put @apply rules inside a Tailwind layer so Tailwind can resolve utilities */
-@layer components {
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all;
-    background: var(--panel);
-    color: var(--text);
-    border: 1px solid var(--border);
-    box-shadow: 0 1px 0 rgba(255,255,255,.5), 0 .5px 1px rgba(0,0,0,.06);
-  }
-  .btn:hover { transform: translateY(-1px); }
-  .btn:active { transform: translateY(0); }
-
-  .btn-primary {
-    @apply text-white;
-    background: var(--accent);
-    border-color: transparent;
-  }
-  .btn-primary:hover { background: var(--accent-hover); }
-
-  .btn-ghost {
-    background: transparent;
-    border-color: transparent;
-  }
-  .btn-ghost:hover { background: var(--panel-2); }
-
-  .input {
-    @apply w-full rounded-xl px-3 py-2 text-sm;
-    background: var(--panel);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-  .input::placeholder { color: var(--muted); }
+/* ---------- Links ---------- */
+a {
+  color: var(--brand);
+}
+a:hover {
+  text-decoration: underline;
 }
