@@ -1,8 +1,21 @@
-import { createClientServer } from '@/lib/supabase-server';
-import { NextResponse } from 'next/server';
+// src/app/api/logout/route.ts
+import { NextResponse } from "next/server";
+import { createClientServer } from "@/lib/supabase-server";
 
 export async function POST() {
-  const supabase = createClientServer();
-  await supabase.auth.signOut();
-  return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'));
+  try {
+    const supabase = createClientServer();
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    return NextResponse.json(
+      { ok: false, error: err?.message ?? "Unknown error" },
+      { status: 500 }
+    );
+  }
 }

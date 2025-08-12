@@ -1,16 +1,40 @@
-import { NextResponse } from 'next/server';
-import { createClientServer } from '@/lib/supabase-server';
+// src/app/api/conversations/list/route.ts
+import { NextResponse } from "next/server";
+import { createClientServer } from "@/lib/supabase-server";
 
 export async function GET() {
-  const supabase = createClientServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const supabase = createClientServer();
 
-  const { data, error } = await supabase
-    .from('conversations')
-    .select('id, title, created_at, updated_at')
-    .order('updated_at', { ascending: false });
+    // Get user session (optional but typical)
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json(data ?? []);
+    if (userErr) {
+      return NextResponse.json({ ok: false, error: userErr.message }, { status: 401 });
+    }
+
+    if (!user) {
+      return NextResponse.json({ ok: true, conversations: [] });
+    }
+
+    const { data, error } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, conversations: data ?? [] });
+  } catch (err: any) {
+    return NextResponse.json(
+      { ok: false, error: err?.message ?? "Unknown error" },
+      { status: 500 }
+    );
+  }
 }
