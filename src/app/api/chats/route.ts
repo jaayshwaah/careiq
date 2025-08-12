@@ -1,38 +1,86 @@
+// src/app/api/chats/route.ts
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { createClientServer } from "@/lib/supabase-server";
 
-export const runtime = "nodejs";
+/**
+ * GET /api/chats
+ * - Returns the current user's chats (empty if not signed in).
+ */
+export async function GET() {
+  try {
+    const supabase = createClientServer();
 
-/** List recent chat sessions */
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 100);
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
+    if (userErr) {
+      return NextResponse.json({ ok: false, error: userErr.message }, { status: 401 });
+    }
 
-  const { data, error } = await supabaseAdmin
-    .from("chat_sessions")
-    .select("id,title,created_at,updated_at,last_message_at")
-    .order("last_message_at", { ascending: false, nullsFirst: false })
-    .order("updated_at", { ascending: false })
-    .limit(limit);
+    if (!user) {
+      // Anonymous request: return empty list instead of 401 so the app can render
+      return NextResponse.json({ ok: true, chats: [] }, { status: 200 });
+    }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ chats: data ?? [] });
+    // Adjust table/columns to your schema. If your table is "conversations", change below.
+    const { data, error } = await supabase
+      .from("chats")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, chats: data ?? [] }, { status: 200 });
+  } catch (err: any) {
+    return NextResponse.json(
+      { ok: false, error: err?.message ?? "Unknown error" },
+      { status: 500 }
+    );
+  }
 }
 
-/** Create a new empty chat session and return its id */
+/**
+ * POST /api/chats
+ * - Creates a new chat for the current user (title optional, defaults to "New chat")
+ */
 export async function POST(req: Request) {
-  let title = "New Chat";
   try {
-    const body = await req.json().catch(() => ({} as any));
-    if (typeof body?.title === "string" && body.title.trim()) title = body.title.trim();
-  } catch {}
+    const supabase = createClientServer();
 
-  const { data, error } = await supabaseAdmin
-    .from("chat_sessions")
-    .insert({ title })
-    .select("id")
-    .single();
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
+    if (userErr) {
+      return NextResponse.json({ ok: false, error: userErr.message }, { status: 401 });
+    }
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
+    }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ id: data!.id });
+    const body = await req.json().catch(() => ({}));
+    const title: string = (body?.title || "New chat").toString();
+
+    // Adjust table/columns to your schema. If your table is "conversations", change below.
+    const { data, error } = await supabase
+      .from("chats")
+      .insert([{ title, user_id: user.id }])
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, chat: data }, { status: 200 });
+  } catch (err: any) {
+    return NextResponse.json(
+      { ok: false, error: err?.message ?? "Unknown error" },
+      { status: 500 }
+    );
+  }
 }
