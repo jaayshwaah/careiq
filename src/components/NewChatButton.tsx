@@ -1,28 +1,50 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 
-export default function NewChatButton({ className = "" }: { className?: string }) {
+type Props = {
+  className?: string;
+  label?: string;
+  /** If your app navigates to a conversation page, pass a builder here. */
+  toConversationHref?: (id: string) => string;
+};
+
+export default function NewChatButton({
+  className,
+  label = "New Chat",
+  toConversationHref,
+}: Props) {
+  const [loading, setLoading] = React.useState(false);
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
 
-  const handleNewChat = async () => {
+  const onClick = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/chats", {
+      const res = await fetch("/api/conversations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "New chat" }),
       });
+
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || `Failed to create chat (${res.status})`);
+        const err = await safeJson(res);
+        throw new Error(err?.error || `Request failed (${res.status})`);
       }
-      const { id } = await res.json();
-      router.push(`/chat/${id}`);
-    } catch (err) {
-      console.error(err);
-      alert((err as Error).message);
+
+      const data = await res.json();
+      // API returns: { ok: true, conversation: {...} }
+      const id = data?.conversation?.id;
+
+      if (id && toConversationHref) {
+        router.push(toConversationHref(id));
+      } else {
+        // No dedicated page? just refresh the list
+        router.refresh();
+      }
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "Failed to create chat");
     } finally {
       setLoading(false);
     }
@@ -31,12 +53,20 @@ export default function NewChatButton({ className = "" }: { className?: string }
   return (
     <button
       type="button"
-      onClick={handleNewChat}
+      onClick={onClick}
       disabled={loading}
-      className={`rounded-2xl px-4 py-2 shadow ${loading ? "opacity-70" : ""} ${className}`}
+      className={className ?? "rounded-xl px-3 py-2 border text-sm hover:bg-neutral-900/10 disabled:opacity-60"}
       aria-busy={loading}
     >
-      {loading ? "Starting…" : "New Chat"}
+      {loading ? "Creating..." : label}
     </button>
   );
+}
+
+async function safeJson(r: Response) {
+  try {
+    return await r.json();
+  } catch {
+    return null;
+  }
 }
