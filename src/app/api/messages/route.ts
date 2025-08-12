@@ -1,76 +1,135 @@
+// src/app/api/messages/route.ts
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { createClientServer } from "@/lib/supabase-server";
 
-export const runtime = "nodejs";
-
-type Body = { chatId?: string; text: string };
-
-export async function POST(req: Request) {
-  let body: Body;
+/**
+ * GET /api/messages?conversation_id=...
+ * - Returns messages for the given conversation owned by the current user
+ */
+export async function GET(req: Request) {
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+    const supabase = createClientServer();
 
-  const text = (body.text || "").trim();
-  if (!text) return NextResponse.json({ error: "Missing 'text'." }, { status: 400 });
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
+    if (userErr) {
+      return NextResponse.json({ ok: false, error: userErr.message }, { status: 401 });
+    }
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
+    }
 
-  // Ensure a session exists (create if missing)
-  let sessionId = body.chatId?.trim();
-  if (!sessionId) {
-    const created = await supabaseAdmin
-      .from("chat_sessions")
-      .insert({ title: "New Chat" })
-      .select("id")
+    const url = new URL(req.url);
+    const conversationId = url.searchParams.get("conversation_id");
+    if (!conversationId) {
+      return NextResponse.json(
+        { ok: false, error: "Missing conversation_id" },
+        { status: 400 }
+      );
+    }
+
+    // Optional: ensure the conversation belongs to the user
+    const { data: conv, error: convErr } = await supabase
+      .from("conversations")
+      .select("id, user_id")
+      .eq("id", conversationId)
       .single();
-    if (created.error) return NextResponse.json({ error: created.error.message }, { status: 500 });
-    sessionId = created.data!.id;
+
+    if (convErr) {
+      return NextResponse.json({ ok: false, error: convErr.message }, { status: 500 });
+    }
+    if (!conv || conv.user_id !== user.id) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, messages: data ?? [] });
+  } catch (err: any) {
+    return NextResponse.json(
+      { ok: false, error: err?.message ?? "Unknown error" },
+      { status: 500 }
+    );
   }
-
-  // Insert user message
-  const userInsert = await supabaseAdmin
-    .from("chat_messages")
-    .insert({ session_id: sessionId, role: "user", content: text })
-    .select("id")
-    .single();
-  if (userInsert.error) return NextResponse.json({ error: userInsert.error.message }, { status: 500 });
-
-  // Stub assistant reply
-  const reply = generateStubbedReply(text);
-
-  const assistInsert = await supabaseAdmin
-    .from("chat_messages")
-    .insert({ session_id: sessionId, role: "assistant", content: reply })
-    .select("id,content")
-    .single();
-  if (assistInsert.error) return NextResponse.json({ error: assistInsert.error.message }, { status: 500 });
-
-  // Update session timestamps
-  await supabaseAdmin
-    .from("chat_sessions")
-    .update({ updated_at: new Date().toISOString(), last_message_at: new Date().toISOString() })
-    .eq("id", sessionId);
-
-  return NextResponse.json({
-    chatId: sessionId,
-    message: { id: assistInsert.data!.id, role: "assistant", content: assistInsert.data!.content },
-  });
 }
 
-function generateStubbedReply(userText: string): string {
-  const t = userText.trim();
-  if (/^(hi|hello|hey|yo|sup|good (morning|afternoon|evening))\b/i.test(t) || t.length <= 5) {
-    return "Hi there! 👋 How can I help today — staffing, PBJ, payroll, survey prep, or something else?";
+/**
+ * POST /api/messages
+ * body: { conversation_id: string, role: "user" | "assistant" | "system", content: string }
+ * - Inserts a new message for the current user’s conversation
+ */
+export async function POST(req: Request) {
+  try {
+    const supabase = createClientServer();
+
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
+    if (userErr) {
+      return NextResponse.json({ ok: false, error: userErr.message }, { status: 401 });
+    }
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const conversation_id: string | undefined = body?.conversation_id;
+    const role: string = body?.role || "user";
+    const content: string = body?.content || "";
+
+    if (!conversation_id) {
+      return NextResponse.json(
+        { ok: false, error: "conversation_id is required" },
+        { status: 400 }
+      );
+    }
+    if (!content) {
+      return NextResponse.json(
+        { ok: false, error: "content is required" },
+        { status: 400 }
+      );
+    }
+
+    // Verify ownership of the conversation
+    const { data: conv, error: convErr } = await supabase
+      .from("conversations")
+      .select("id, user_id")
+      .eq("id", conversation_id)
+      .single();
+
+    if (convErr) {
+      return NextResponse.json({ ok: false, error: convErr.message }, { status: 500 });
+    }
+    if (!conv || conv.user_id !== user.id) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+
+    const { data, error } = await supabase
+      .from("messages")
+      .insert([{ conversation_id, role, content }])
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, message: data });
+  } catch (err: any) {
+    return NextResponse.json(
+      { ok: false, error: err?.message ?? "Unknown error" },
+      { status: 500 }
+    );
   }
-  if (/pbj/i.test(t)) {
-    return "Here’s a quick PBJ checklist:\n\n• Verify pay period dates & CCN\n• Map titles → CMS job categories\n• Reconcile payroll hours vs PBJ totals\n• Include agency hours & align to census\n• Export XML, run CMS checker, then submit\n\nWant me to generate a step-by-step for your dates?";
-  }
-  if (/overtime|ot/i.test(t)) {
-    return "Overtime essentials:\n\n1) Confirm non-exempt status + base rate\n2) Track all hours worked (incl. handoffs)\n3) 1.5× regular rate >40 hrs/wk (include diffs/bonuses)\n4) Watch double shifts/call-ins\n5) Run an audit monthly\n\nNeed a calculator or policy snippet?";
-  }
-  if (/survey|doh|state/i.test(t)) {
-    return "Survey readiness focus:\n\n• Daily: med pass audits, falls huddles, infection logs\n• Weekly: care plan timeliness, skin rounds, MAR/TAR spot checks\n• Docs: incident packets, QA minutes, education proofs\n• Environment: call lights, PPE, signage, temp logs\n\nI can assemble a readiness checklist tailored to your units.";
-  }
-  return "Got it. Tell me the goal and any constraints, and I’ll outline the steps, owners, and a quick template to get you moving.";
 }
