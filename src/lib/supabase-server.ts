@@ -16,13 +16,12 @@ function requiredEnv(name: string): string {
  * Exported name matches your imports in API routes.
  */
 export function createClientServer() {
-  const cookieStore = nextCookies();
-
-  const supabaseUrl = requiredEnv("NEXT_PUBLIC_SUPABASE_URL"); // e.g. https://xxxx.supabase.co
+  const supabaseUrl = requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
   const supabaseAnonKey = requiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
-  // NOTE: Do NOT construct new URL() from the anon key.
-  // Pass strings directly to Supabase helpers.
+  // Route-handlers/server-components: use next/headers cookies
+  const cookieStore = nextCookies();
+
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name: string) {
