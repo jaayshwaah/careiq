@@ -1,58 +1,18 @@
-// src/lib/supabase-server.ts
-// Safe placeholder to avoid build-time crashes when env vars are missing.
-// Replace with real Supabase server client when ready.
-type MockResult<T = unknown> = { data: T | null; error: null };
+import { createClient } from "@supabase/supabase-js";
 
-function mockTable() {
-  return {
-    select: async (): Promise<MockResult<any[]>> => ({ data: [], error: null }),
-    insert: (_: any) => ({
-      select: () => ({
-        single: async (): Promise<MockResult<any>> => ({ data: null, error: null }),
-      }),
-    }),
-    update: (_: any) => ({
-      eq: (_c: string, _v: any) => ({
-        single: async (): Promise<MockResult<any>> => ({ data: null, error: null }),
-      }),
-    }),
-    delete: () => ({
-      eq: (_c: string, _v: any) => ({
-        single: async (): Promise<MockResult<any>> => ({ data: null, error: null }),
-      }),
-    }),
-    eq: (_c: string, _v: any) => ({
-      select: async (): Promise<MockResult<any[]>> => ({ data: [], error: null }),
-    }),
-    order: (_c: string, _o?: any) => ({
-      select: async (): Promise<MockResult<any[]>> => ({ data: [], error: null }),
-    }),
-  };
-}
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export function createClientServer() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set");
+if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
 
-  if (!url || !key) {
-    // Minimal mock client
-    return {
-      from: (_table: string) => mockTable(),
-      auth: {
-        getUser: async (): Promise<MockResult<{ id: string }>> => ({ data: { id: 'mock-user' }, error: null }),
-        getSession: async (): Promise<MockResult<{ access_token: string }>> => ({ data: { access_token: 'mock' }, error: null }),
-      },
-    } as any;
-  }
+/**
+ * Server-side Supabase client (Service Role).
+ * Only import in server code (API routes, server actions, cron jobs).
+ */
+export const supabaseAdmin = createClient(url, serviceRoleKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
-  // If you want real Supabase later, uncomment and add @supabase/ssr:
-  // const { createServerClient } = await import('@supabase/ssr');
-  // return createServerClient(url, key, { cookies: () => undefined as any });
-  return {
-    from: (_table: string) => mockTable(),
-    auth: {
-      getUser: async (): Promise<MockResult<{ id: string }>> => ({ data: { id: 'mock-user' }, error: null }),
-      getSession: async (): Promise<MockResult<{ access_token: string }>> => ({ data: { access_token: 'mock' }, error: null }),
-    },
-  } as any;
-}
+// Also export default so either import style works.
+export default supabaseAdmin;
