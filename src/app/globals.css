@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* ---------- CSS Variables (light first) ---------- */
 :root {
@@ -82,28 +80,16 @@ html, body {
 .btn-solid:hover { filter: brightness(0.95); }
 
 /* ---------- Scrollbars (Chromium/WebKit) ---------- */
-* {
-  scrollbar-width: thin;             /* Firefox */
-  scrollbar-color: var(--panel-border) transparent;
-}
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
+* { scrollbar-width: thin; scrollbar-color: var(--panel-border) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
   background-color: var(--panel-border);
   border-radius: 999px;
   border: 3px solid transparent;
   background-clip: content-box;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar-track { background: transparent; }
 
 /* ---------- Links ---------- */
-a {
-  color: var(--brand);
-}
-a:hover {
-  text-decoration: underline;
-}
+a { color: var(--brand); }
+a:hover { text-decoration: underline; }
