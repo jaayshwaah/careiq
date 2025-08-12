@@ -47,13 +47,14 @@ export default function NewChatClient() {
       const ok = res.ok;
       const data = ok ? await res.json() : null;
 
-      const assistant: Message = ok && data?.message
-        ? data.message
-        : {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: "I had trouble generating a reply just now. Try again?",
-          };
+      const assistant: Message =
+        ok && data?.message
+          ? data.message
+          : {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: "I had trouble generating a reply just now. Try again?",
+            };
 
       setMessages((m) =>
         m.map((msg) => (msg.id === pendingAssist.id ? assistant : msg))
@@ -79,82 +80,82 @@ export default function NewChatClient() {
 
   return (
     <div className="w-full min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
-      {/* Show header & suggestions ONLY before the first message */}
-      {!hasMessages && (
+      {/* ======= PRE-CHAT LAYOUT (centered composer) ======= */}
+      {!hasMessages ? (
         <>
           <HeaderBanner />
           <div className="mx-auto w-full max-w-3xl px-4">
             <Suggestions targetId="composer-input" />
           </div>
-        </>
-      )}
 
-      {/* Messages area */}
-      <div className="mx-auto w-full max-w-3xl flex-1 px-4">
-        <div className={`pt-2 ${hasMessages ? "pb-36" : "pb-10"} space-y-4`}>
-          {hasMessages && (
-            <div className="space-y-4">
-              {messages.map((m) => {
-                if (m.role === "user") {
-                  // Right-aligned, green bubble, size to content
+          {/* Center the composer vertically in the remaining space */}
+          <div className="mx-auto w-full max-w-3xl px-4 flex-1 flex items-center">
+            <div className="w-full">
+              <Composer id="composer-input" onSend={handleSend} positioning="flow" />
+            </div>
+          </div>
+        </>
+      ) : (
+        /* ======= ACTIVE CHAT LAYOUT ======= */
+        <>
+          {/* Messages area (adds bottom padding so fixed composer doesn't cover content) */}
+          <div className="mx-auto w-full max-w-3xl flex-1 px-4">
+            <div className="pt-2 pb-36 space-y-4">
+              <div className="space-y-4">
+                {messages.map((m) => {
+                  if (m.role === "user") {
+                    // Right-aligned, green bubble, size to content
+                    return (
+                      <div key={m.id} className="flex justify-end">
+                        <div
+                          className="inline-block rounded-2xl px-3 py-2"
+                          style={{
+                            maxWidth: "80%",
+                            background: "rgba(16,163,127,0.12)", // soft green tint
+                            border: "1px solid rgba(16,163,127,0.35)",
+                            color: "var(--text)",
+                          }}
+                        >
+                          <div className="text-sm whitespace-pre-wrap leading-6">
+                            {m.content}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Assistant: not a bubble — clean block like ChatGPT
                   return (
-                    <div key={m.id} className="flex justify-end">
-                      <div
-                        className="inline-block rounded-2xl px-3 py-2"
-                        style={{
-                          maxWidth: "80%",
-                          background: "rgba(16,163,127,0.12)", // soft green tint
-                          border: "1px solid rgba(16,163,127,0.35)",
-                          color: "var(--text)",
-                        }}
-                      >
-                        <div className="text-sm whitespace-pre-wrap leading-6">
+                    <div key={m.id} className="flex justify-start">
+                      <div className="w-full" style={{ maxWidth: "90%" }}>
+                        <div
+                          className="text-sm whitespace-pre-wrap leading-7"
+                          style={{ color: "var(--text)", opacity: m.pending ? 0.85 : 1 }}
+                        >
                           {m.content}
                         </div>
                       </div>
                     </div>
                   );
-                }
-
-                // Assistant: not a bubble — clean block like ChatGPT
-                return (
-                  <div key={m.id} className="flex justify-start">
-                    <div className="w-full" style={{ maxWidth: "90%" }}>
-                      <div
-                        className="text-sm whitespace-pre-wrap leading-7"
-                        style={{ color: "var(--text)", opacity: m.pending ? 0.85 : 1 }}
-                      >
-                        {m.content}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={endRef} />
+                })}
+                <div ref={endRef} />
+              </div>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Composer */}
-      {hasMessages ? (
-        // AFTER first message: fixed bar at viewport bottom
-        <div
-          className="fixed bottom-0 left-0 right-0"
-          style={{
-            background: "var(--bg)",
-            borderTop: "1px solid var(--border)",
-          }}
-        >
-          <div className="mx-auto max-w-3xl px-4 py-4">
-            <Composer id="composer-input" onSend={handleSend} positioning="static" />
           </div>
-        </div>
-      ) : (
-        // BEFORE first message: composer in normal flow (NOT sticky)
-        <div className="mx-auto w-full max-w-3xl px-4 pb-10">
-          <Composer id="composer-input" onSend={handleSend} positioning="flow" />
-        </div>
+
+          {/* Fixed bottom composer */}
+          <div
+            className="fixed bottom-0 left-0 right-0"
+            style={{
+              background: "var(--bg)",
+              borderTop: "1px solid var(--border)",
+            }}
+          >
+            <div className="mx-auto max-w-3xl px-4 py-4">
+              <Composer id="composer-input" onSend={handleSend} positioning="static" />
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
