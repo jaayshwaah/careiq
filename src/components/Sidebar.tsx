@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, PanelsTopLeft, Settings, User, LogOut } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     load();
 
-    // Realtime on inserts (optional)
     const channel = supabase
       .channel("realtime:chats")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "chats" }, () => load())
@@ -115,7 +114,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <Link
                         href={`/chat/${c.id}`}
                         className={cn(
-                          "group flex items-center gap-2 rounded-xl px-2 py-2 text-sm hover:bg-black/5 dark:hover:bg:white/5 transition",
+                          "group flex items-center gap-2 rounded-xl px-2 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition",
                           isActive && "bg-black/5 dark:bg-white/5"
                         )}
                       >
