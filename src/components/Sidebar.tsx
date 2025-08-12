@@ -34,38 +34,19 @@ export default function Sidebar({
   return (
     <>
       <div className={`flex h-full flex-col ${collapsed ? "items-center" : ""}`}>
-        {/* Header: Logo + Collapse/Expand icon */}
+        {/* Header: Collapse/Expand + Logo */}
         <div
           className={`flex items-center ${
-            collapsed ? "justify-center" : "justify-between"
-          } border-b border-white/10 p-4 w-full`}
+            collapsed ? "justify-center gap-2" : "justify-between"
+          } border-b border-white/10 p-3 w-full`}
         >
-          <Link
-            href="/"
-            className={`flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 ${
-              collapsed ? "justify-center" : ""
-            }`}
-            aria-label="Go to Home"
-          >
-            {/* Placeholder logo — swap with your SVG */}
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-white text-black font-bold">
-              CQ
-            </div>
-            {!collapsed && (
-              <span className="select-none text-sm font-semibold tracking-tight">CareIQ</span>
-            )}
-          </Link>
-
-          {/* Toggle button (replaces old New Chat spot) */}
           <button
             onClick={onToggleSidebar}
-            className={`rounded-full ${
-              collapsed ? "absolute right-2 top-2" : ""
-            } bg-white/10 p-2 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20`}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="rounded-lg bg-white/10 p-2 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20"
+            title={collapsed ? "Expand (⌘B)" : "Collapse (⌘B)"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {/* Simple chevron icon */}
+            {/* Chevron mimics ChatGPT behavior */}
             <svg
               width="14"
               height="14"
@@ -78,9 +59,22 @@ export default function Sidebar({
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
+
+          {!collapsed && (
+            <Link
+              href="/"
+              className="ml-2 flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
+              aria-label="Go to Home"
+            >
+              <div className="grid h-8 w-8 place-items-center rounded-xl bg-white text-black font-bold">
+                CQ
+              </div>
+              <span className="select-none text-sm font-semibold tracking-tight">CareIQ</span>
+            </Link>
+          )}
         </div>
 
-        {/* New Chat row with icon */}
+        {/* New Chat (icon-only when collapsed) */}
         <div className={`w-full border-b border-white/10 ${collapsed ? "px-2 py-3" : "px-3 py-3"}`}>
           <button
             onClick={onNewChat}
@@ -108,7 +102,7 @@ export default function Sidebar({
         )}
 
         {/* Chat list */}
-        <div className={`flex-1 overflow-y-auto ${collapsed ? "w-full px-2 pb-2" : "w-full px-2 pb-2"}`}>
+        <div className={`flex-1 overflow-y-auto w-full px-2 pb-2`}>
           {filtered.map((c) =>
             collapsed ? (
               <CollapsedChatDot
@@ -133,10 +127,10 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Footer: Account row opens Settings */}
+        {/* Footer: Account row opens Settings (icon-only when collapsed) */}
         <button
           onClick={() => setSettingsOpen(true)}
-          className={`group flex w-full items-center gap-3 border-t border-white/10 p-4 text-left hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 ${
+          className={`group flex w-full items-center gap-3 border-t border-white/10 p-3 text-left hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 ${
             collapsed ? "justify-center" : ""
           }`}
           aria-label="Open settings"
@@ -239,7 +233,11 @@ function CollapsedChatDot({
   onClick: () => void;
 }) {
   return (
-    <button onClick={onClick} title={title} className={`mb-2 flex w-full items-center justify-center`}>
+    <button
+      onClick={onClick}
+      title={title}
+      className="mb-2 flex w-full items-center justify-center"
+    >
       <div
         className={`h-7 w-7 rounded-lg ${
           active ? "bg-white" : "bg-white/10"
@@ -283,7 +281,7 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black font-bold">
             CQ
           </div>
-          <div className="text-sm font-semibold">Settings</div>
+        <div className="text-sm font-semibold">Settings</div>
           <button
             onClick={onClose}
             className="ml-auto rounded-md px-2 py-1 text-xs text-white/60 hover:bg-white/10 hover:text-white"
