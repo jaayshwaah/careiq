@@ -7,7 +7,7 @@ import { Env } from "@/lib/env";
  * Lightweight health check.
  * - Confirms required envs are present
  * - Verifies we can instantiate a Supabase client
- * - Attempts a trivial query; treats RLS/401 as "reachable" (still healthy)
+ * - Attempts a trivial query; treats RLS/401 as "reachable"
  */
 export async function GET() {
   try {
@@ -24,20 +24,18 @@ export async function GET() {
       .select("id", { count: "exact", head: true })
       .limit(1);
 
-    const supabaseReachable = !error || !!error; // if we got here, client is usable
-    // If you prefer stricter success signal, set supabaseReachable = !error
+    const supabaseReachable = true; // if we got here without throwing, client is usable
+    // If you prefer stricter: const supabaseReachable = !error;
 
     return NextResponse.json({
       ok: true,
       env: { hasUrl, hasAnon },
       supabaseReachable,
+      note: error ? "Supabase reachable; RLS may block select (expected in some setups)." : undefined,
     });
   } catch (err: any) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: err?.message ?? "Unknown error",
-      },
+      { ok: false, error: err?.message ?? "Unknown error" },
       { status: 500 }
     );
   }
