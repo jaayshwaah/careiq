@@ -14,9 +14,37 @@ type Message = {
   error?: boolean;
 };
 
+function useSidebarOffset() {
+  const [left, setLeft] = React.useState(0);
+
+  React.useEffect(() => {
+    const aside = document.querySelector("aside");
+    if (!aside) return;
+
+    const el = aside as HTMLElement;
+    const update = () => setLeft(el.getBoundingClientRect().width);
+
+    update(); // initial
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+
+    // Also update on window resize for safety
+    const onResize = () => update();
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  return left;
+}
+
 export default function NewChatClient() {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const endRef = React.useRef<HTMLDivElement | null>(null);
+  const leftOffset = useSidebarOffset();
 
   const scrollToEnd = React.useCallback(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -80,7 +108,7 @@ export default function NewChatClient() {
 
   return (
     <div className="w-full min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
-      {/* ======= PRE-CHAT LAYOUT (centered composer) ======= */}
+      {/* ======= PRE-CHAT LAYOUT ======= */}
       {!hasMessages ? (
         <>
           <HeaderBanner />
@@ -88,17 +116,15 @@ export default function NewChatClient() {
             <Suggestions targetId="composer-input" />
           </div>
 
-          {/* Center the composer vertically in the remaining space */}
-          <div className="mx-auto w-full max-w-3xl px-4 flex-1 flex items-center">
-            <div className="w-full">
-              <Composer id="composer-input" onSend={handleSend} positioning="flow" />
-            </div>
+          {/* Composer sits just below suggestions (normal flow, not bottom) */}
+          <div className="mx-auto w-full max-w-3xl px-4 mt-4 mb-16">
+            <Composer id="composer-input" onSend={handleSend} positioning="flow" />
           </div>
         </>
       ) : (
         /* ======= ACTIVE CHAT LAYOUT ======= */
         <>
-          {/* Messages area (adds bottom padding so fixed composer doesn't cover content) */}
+          {/* Messages area with bottom padding so the fixed composer doesn’t overlap */}
           <div className="mx-auto w-full max-w-3xl flex-1 px-4">
             <div className="pt-2 pb-36 space-y-4">
               <div className="space-y-4">
@@ -143,15 +169,20 @@ export default function NewChatClient() {
             </div>
           </div>
 
-          {/* Fixed bottom composer */}
+          {/* Fixed bottom composer, aligned to content area (not under sidebar) */}
           <div
-            className="fixed bottom-0 left-0 right-0"
+            className="fixed bottom-0"
             style={{
-              background: "var(--bg)",
-              borderTop: "1px solid var(--border)",
+              left: leftOffset,           // offset by current sidebar width
+              right: 0,                   // extend to the right edge
+              background: "transparent",  // no footer stripe
+              pointerEvents: "none",      // clicks only on inner content
             }}
           >
-            <div className="mx-auto max-w-3xl px-4 py-4">
+            <div
+              className="mx-auto max-w-3xl px-4 py-4"
+              style={{ pointerEvents: "auto" }}
+            >
               <Composer id="composer-input" onSend={handleSend} positioning="static" />
             </div>
           </div>
