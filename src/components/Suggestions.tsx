@@ -53,7 +53,8 @@ export default function Suggestions({ targetId = "composer-input", count = 4 }: 
     const el = document.getElementById(targetId) as HTMLTextAreaElement | null;
     if (el) {
       el.value = text;
-      el.dispatchEvent(new Event("input", { bubbles: true })); // trigger autoresize
+      // trigger React onChange/auto-resize
+      el.dispatchEvent(new Event("input", { bubbles: true }));
       el.focus();
       el.setSelectionRange(el.value.length, el.value.length);
     }
@@ -62,37 +63,26 @@ export default function Suggestions({ targetId = "composer-input", count = 4 }: 
   return (
     <div className="w-full">
       <div className="mx-auto max-w-2xl px-4 pb-4">
-        {/* Smaller, uniform bubbles in a 2x2 grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {/* Compact, uniform chips in a 2x2 grid */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {items.map((s, i) => (
             <button
               key={i}
               onClick={() => handleClick(s)}
               title="Click to prefill the message"
-              className="w-full rounded-xl text-xs sm:text-sm px-3 py-2 border transition-all"
-              style={{
-                background: "var(--panel-2)",
-                borderColor: "var(--border)",
-                color: "var(--text)",
-                boxShadow:
-                  "0 1px 0 rgba(255,255,255,.45), 0 .5px 1px rgba(0,0,0,.06)",
-              }}
-              // Subtle hover/active states using CSS variables
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "var(--panel)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "var(--panel-2)";
-              }}
-              onMouseDown={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.transform =
-                  "translateY(1px)";
-              }}
-              onMouseUp={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.transform = "";
-              }}
+              className={[
+                "w-full rounded-xl border px-3 py-2 text-left text-xs transition",
+                "sm:text-sm",
+                // Light (default)
+                "bg-black/[0.05] border-black/10 text-gray-900",
+                "hover:bg-black/[0.08] focus:outline-none focus:ring-2 focus:ring-black/10",
+                // Dark
+                "dark:bg-white/10 dark:border-white/10 dark:text-white",
+                "dark:hover:bg-white/15 dark:focus:ring-white/20",
+                // Subtle inner highlight like native chips
+                "shadow-[0_1px_0_rgba(255,255,255,.45),_0_.5px_1px_rgba(0,0,0,.06)]",
+              ].join(" ")}
+              aria-label={`Use suggestion: ${s}`}
             >
               {s}
             </button>

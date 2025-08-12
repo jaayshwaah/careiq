@@ -6,24 +6,39 @@ import Suggestions from "@/components/Suggestions";
 import Composer from "@/components/Composer";
 
 type Role = "user" | "assistant";
-type Message = { id: string; role: Role; content: string; pending?: boolean; error?: boolean };
+type Message = {
+  id: string;
+  role: Role;
+  content: string;
+  pending?: boolean;
+  error?: boolean;
+};
 
 function useSidebarOffset() {
   const [left, setLeft] = React.useState(0);
+
   React.useEffect(() => {
     const aside = document.querySelector("aside") as HTMLElement | null;
     if (!aside) return;
-    const update = () => setLeft(aside.getBoundingClientRect().width);
+
+    const update = () => {
+      const w = aside.getBoundingClientRect().width;
+      setLeft(Math.max(0, Math.floor(w)));
+    };
+
     update();
     const ro = new ResizeObserver(update);
     ro.observe(aside);
+
     const onResize = () => update();
     window.addEventListener("resize", onResize);
+
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", onResize);
     };
   }, []);
+
   return left;
 }
 
@@ -56,7 +71,7 @@ export default function NewChatClient() {
     }
 
     const data = await res.json();
-    const id = data?.conversation?.id as string | undefined;
+    const id = (data?.conversation?.id as string | undefined) ?? (data?.id as string | undefined);
     if (!id) throw new Error("Conversation was created but no id was returned");
     setChatId(id);
     return id;
@@ -85,10 +100,13 @@ export default function NewChatClient() {
       let assistant: Message;
       if (res.ok) {
         const data = await res.json();
-        // API returns { ok, message } with fields like { id, role, content, ... }
         const apiMsg = data?.message;
         assistant = apiMsg
-          ? { id: apiMsg.id, role: (apiMsg.role as Role) ?? "assistant", content: apiMsg.content ?? "" }
+          ? {
+              id: apiMsg.id ?? crypto.randomUUID(),
+              role: (apiMsg.role as Role) ?? "assistant",
+              content: apiMsg.content ?? "",
+            }
           : { id: crypto.randomUUID(), role: "assistant", content: "No reply returned." };
       } else {
         const err = await tryJson(res);
@@ -132,51 +150,32 @@ export default function NewChatClient() {
         </>
       ) : (
         <>
-          <div className="mx-auto w-full max-w-3xl flex-1 px-4">
-            <div className="pt-2 pb-36 space-y-4">
-              <div className="space-y-4">
-                {messages.map((m) => {
-                  if (m.role === "user") {
-                    return (
-                      <div key={m.id} className="flex justify-end">
-                        <div
-                          className="inline-block rounded-2xl px-3 py-2"
-                          style={{
-                            maxWidth: "80%",
-                            background: "rgba(16,163,127,0.12)",
-                            border: "1px solid rgba(16,163,127,0.35)",
-                            color: "var(--text)",
-                          }}
-                        >
-                          <div className="text-sm whitespace-pre-wrap leading-6">{m.content}</div>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={m.id} className="flex justify-start">
-                      <div className="w-full" style={{ maxWidth: "90%" }}>
-                        <div
-                          className="text-sm whitespace-pre-wrap leading-7"
-                          style={{ color: "var(--text)", opacity: m.pending ? 0.85 : 1 }}
-                        >
-                          {m.content}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div ref={endRef} />
-              </div>
+          {/* Messages */}
+          <div
+            className="mx-auto w-full max-w-3xl flex-1 px-4 md:px-6"
+            aria-live="polite"
+            aria-relevant="additions"
+          >
+            <div className="pt-3 pb-36 space-y-4">
+              {messages.map((m) => (
+                <MessageBubble key={m.id} m={m} />
+              ))}
+              <div ref={endRef} />
             </div>
           </div>
 
           {/* Fixed, content-aligned composer (stays out from under the sidebar) */}
           <div
             className="fixed bottom-0"
-            style={{ left: leftOffset, right: 0, background: "transparent", pointerEvents: "none" }}
+            style={{
+              left: leftOffset,
+              right: 0,
+              background: "transparent",
+              pointerEvents: "none",
+              paddingBottom: "max(0px, env(safe-area-inset-bottom))",
+            }}
           >
-            <div className="mx-auto max-w-3xl px-4 py-4" style={{ pointerEvents: "auto" }}>
+            <div className="mx-auto max-w-3xl px-4 py-4 md:px-6" style={{ pointerEvents: "auto" }}>
               <Composer id="composer-input" onSend={handleSend} positioning="static" />
             </div>
           </div>
@@ -185,6 +184,52 @@ export default function NewChatClient() {
     </div>
   );
 }
+
+/* ---------- Presentational subcomponents ---------- */
+
+function MessageBubble({ m }: { m: Message }) {
+  const isUser = m.role === "user";
+
+  // Match ChatWindow bubble styles (light-first, dark ready)
+  const bubble =
+    isUser
+      ? "bg-black text-white dark:bg-white dark:text-black"
+      : "bg-black/[0.05] text-gray-900 dark:bg-white/10 dark:text-white";
+
+  const meta =
+    isUser
+      ? "text-white/70 dark:text-black/60"
+      : m.pending
+      ? "text-gray-500 dark:text-white/50"
+      : "text-gray-600 dark:text-white/60";
+
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div className={`max-w-[78%] rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-soft ${bubble}`}>
+          <div className="whitespace-pre-wrap">{m.content}</div>
+          <div className={`mt-1 text-[11px] ${meta}`}>You</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex justify-start">
+      <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-soft ${bubble}`}>
+        <div
+          className="whitespace-pre-wrap"
+          style={{ opacity: m.pending ? 0.88 : 1 }}
+        >
+          {m.content}
+        </div>
+        <div className={`mt-1 text-[11px] ${meta}`}>{m.pending ? "Thinking…" : "Assistant"}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Utils ---------- */
 
 async function tryJson(r: Response) {
   try {

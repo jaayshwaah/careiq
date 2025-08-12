@@ -15,6 +15,7 @@ import { useTheme } from "@/components/ThemeProvider";
  * - Grouped sections (Today / Yesterday / Previous 7 days / Older)
  * - Hover actions (rename/delete)
  * - Settings footer includes Theme selector
+ * - A11y: keyboard navigation, Enter/Space to activate, F2 to rename
  */
 export default function Sidebar({
   chats,
@@ -185,7 +186,7 @@ export default function Sidebar({
                   "w-full rounded-xl pl-9 pr-3 py-2 text-sm outline-none ring-1 ring-inset",
                   "bg-white placeholder:text-gray-400 text-gray-900 ring-black/10",
                   "focus:ring-2 focus:ring-black/20",
-                  "dark:bg-white/5 dark:text-white dark:placeholder:text-white/40 dark:ring-white/10 dark:focus:ring-white/20",
+                  "dark:bg:white/5 dark:text-white dark:placeholder:text-white/40 dark:ring-white/10 dark:focus:ring-white/20",
                 ].join(" ")}
               />
             </div>
@@ -297,19 +298,40 @@ function ChatRow({
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(chat.title || "New chat");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const rowRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
 
+  // Keyboard: Enter/Space to select; F2 to rename when focused
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (editing) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect();
+    }
+    if (e.key === "F2") {
+      e.preventDefault();
+      setEditing(true);
+    }
+  }
+
   return (
     <div
+      ref={rowRef}
+      tabIndex={0}
+      role="button"
+      aria-label={chat.title || "New chat"}
+      aria-selected={active}
       className={[
-        "group flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm",
-        "hover:bg-black/[0.04] dark:hover:bg-white/5",
-        active ? "bg-black/[0.06] dark:bg-white/10" : ""
+        "group flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm outline-none",
+        "hover:bg-black/[0.04] dark:hover:bg:white/5",
+        active ? "bg-black/[0.06] dark:bg-white/10" : "",
+        "focus:ring-2 focus:ring-black/10 dark:focus:ring-white/20"
       ].join(" ")}
       onClick={() => !editing && onSelect()}
+      onKeyDown={onKeyDown}
     >
       <div className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-black/[0.06] text-gray-700 dark:bg-white/10 dark:text-white">
         <ChatBubbleIcon />
@@ -318,7 +340,7 @@ function ChatRow({
       {editing ? (
         <input
           ref={inputRef}
-          className="w-full rounded bg-black/[0.06] px-2 py-1 outline-none text-gray-900 dark:bg-white/10 dark:text-white"
+          className="w-full rounded bg-black/[0.06] px-2 py-1 outline-none text-gray-900 focus:ring-2 focus:ring-black/10 dark:bg-white/10 dark:text-white dark:focus:ring-white/20"
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onBlur={() => {
@@ -380,12 +402,21 @@ function CollapsedChatDot({
   active: boolean;
   onClick: () => void;
 }) {
+  function onKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClick();
+    }
+  }
+
   return (
     <button
       onClick={onClick}
+      onKeyDown={onKeyDown}
       title={title}
-      className="mb-2 flex w-full items-center justify-center"
+      className="mb-2 flex w-full items-center justify-center focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/20"
       aria-label={title}
+      aria-pressed={active}
     >
       <div
         className={`h-7 w-7 rounded-lg grid place-items-center text-xs
@@ -481,7 +512,7 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
 
           <div className="rounded-xl border p-3 border-black/10 dark:border-white/10">
             <div className="mb-1 text-xs uppercase tracking-wide text-gray-500 dark:text-white/50">App</div>
-            <div className="flex items-center justify-between text-gray-900 dark:text-white">
+            <div className="flex items-center justify-between text-gray-900 dark:text:white">
               <span>Version</span>
               <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs text-gray-700 dark:bg-white/10 dark:text-white/80">v0.1</span>
             </div>

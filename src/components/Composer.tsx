@@ -9,7 +9,7 @@ type Props = {
   placeholder?: string;
   maxHeightPx?: number; // limit the auto-resize
   onSend?: (text: string) => void | Promise<void>;
-  /** "flow" (default) renders in normal layout; "static" is used inside the fixed wrapper after first msg */
+  /** "flow" (default) renders in normal layout; "static" can be used inside a fixed wrapper; "sticky-edge" reserved for future sticky use */
   positioning?: Positioning;
 };
 
@@ -49,7 +49,14 @@ export default function Composer({
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     // Submit on Enter, newline with Shift+Enter (ChatGPT-like)
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (
+      e.key === "Enter" &&
+      !e.shiftKey &&
+      !(e as any).isComposing &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey
+    ) {
       e.preventDefault();
       void submit();
     }
@@ -72,10 +79,12 @@ export default function Composer({
     }
   }
 
-  // NOTE: we intentionally do NOT use sticky here anymore.
-  // "flow" and "sticky-edge" both render as normal flow; "static" is for the fixed-bottom wrapper.
-  const wrapperClass = positioning === "static" ? "" : "";
-  const wrapperStyle: React.CSSProperties = { background: "var(--bg)" };
+  // Wrapper behavior: we keep this neutral so you can place it in sticky/absolute containers elsewhere.
+  // "flow" and "sticky-edge" render the same here; "static" avoids extra padding/margins if you embed it in your own fixed/sticky wrapper.
+  const wrapperClass =
+    positioning === "static"
+      ? ""
+      : ""; // reserved for future variants without breaking layout
 
   return (
     <form
@@ -84,12 +93,10 @@ export default function Composer({
         e.preventDefault();
         void submit();
       }}
-      style={wrapperStyle}
+      style={{ background: "var(--bg)" }}
     >
-      <div
-        className="rounded-2xl border p-1.5"
-        style={{ background: "var(--panel)", borderColor: "var(--border)" }}
-      >
+      {/* Panel container: light-first, dark via .dark */}
+      <div className="panel p-1.5">
         <div className="flex items-end gap-2">
           <textarea
             id={id}
@@ -99,7 +106,7 @@ export default function Composer({
             onChange={handleInput}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="input resize-none flex-1"
+            className="input flex-1 resize-none"
             style={{
               background: "transparent",
               border: "none",
@@ -108,14 +115,15 @@ export default function Composer({
               paddingTop: 8,
               paddingBottom: 8,
             }}
+            aria-label="Message input"
           />
 
           <button
             type="submit"
-            className="btn btn-primary rounded-full p-0 disabled:opacity-60"
+            className="btn-solid rounded-full p-0 disabled:opacity-60 focus:ring-2"
             style={{
-              width: 38,
-              height: 38,
+              width: 40,
+              height: 40,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -124,7 +132,7 @@ export default function Composer({
             aria-label="Send message"
             disabled={disabled}
           >
-            <IconSend className="w-4.5 h-4.5" />
+            <IconSend className="h-[18px] w-[18px]" />
           </button>
         </div>
       </div>
