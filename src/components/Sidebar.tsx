@@ -57,7 +57,14 @@ const IconUser = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-type Chat = { id: string; title: string; };
+type Chat = {
+  id: string;
+  title: string;
+  /** Optional timestamps for recency sorting, if your data has them */
+  updatedAt?: string;       // ISO string
+  lastMessageAt?: string;   // ISO string
+};
+
 type User = { name?: string; avatarUrl?: string; };
 
 type Props = {
@@ -65,6 +72,26 @@ type Props = {
   collapsedByDefault?: boolean;
   user?: User;
 };
+
+/** Helpers: pick most-recent N chats if timestamps exist */
+const RECENT_COUNT = 6;
+function parseTime(c: Chat): number {
+  const s = c.updatedAt ?? c.lastMessageAt ?? "";
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? t : NaN;
+}
+function getRecentChats(chats: Chat[], n = RECENT_COUNT): Chat[] {
+  const copy = [...chats];
+  // Sort desc by available timestamp; if none, keep original order
+  copy.sort((a, b) => {
+    const ta = parseTime(a), tb = parseTime(b);
+    if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+    if (Number.isNaN(ta)) return 1;
+    if (Number.isNaN(tb)) return -1;
+    return tb - ta;
+  });
+  return copy.slice(0, n);
+}
 
 export default function Sidebar({ chats = [], collapsedByDefault, user }: Props) {
   const pathname = usePathname();
@@ -77,11 +104,11 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
     return collapsedByDefault ?? isHome; // default collapse on home
   });
 
-  // Inline search (expanded mode)
-  const [showSearch, setShowSearch] = React.useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = React.useState<string>("");
+  // Expanded inline search
+  const [showSearch, setShowSearch] = React.useState(false);
+  const [searchTerm, setSearchTerm] = React.useState("");
 
-  // Modal search (collapsed mode or when requested)
+  // Modal search (for collapsed rail)
   const [showSearchModal, setShowSearchModal] = React.useState(false);
   const [searchModalTerm, setSearchModalTerm] = React.useState("");
 
@@ -93,7 +120,7 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // Clicking anywhere on a collapsed sidebar expands it (except on the action buttons)
+  // Clicking anywhere on a collapsed sidebar expands it (except on action buttons)
   const handleSidebarClick = () => {
     if (collapsed) setCollapsed(false);
   };
@@ -130,7 +157,7 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
     setSearchModalTerm("");
   };
 
-  // Filter helpers
+  // Filtering
   const filteredChatsExpanded =
     searchTerm.trim().length === 0
       ? chats
@@ -141,6 +168,9 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
       ? chats
       : chats.filter((c) => c.title.toLowerCase().includes(searchModalTerm.toLowerCase()));
 
+  // “Recent” list for modal when query is empty
+  const recentChats = React.useMemo(() => getRecentChats(chats, RECENT_COUNT), [chats]);
+
   // Avatar initials
   const initials =
     user?.name
@@ -149,7 +179,7 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
       .slice(0, 2)
       .join("") || "U";
 
-  // Focus the modal input when opened
+  // Focus modal input
   const modalInputRef = React.useRef<HTMLInputElement | null>(null);
   React.useEffect(() => {
     if (showSearchModal) {
@@ -158,7 +188,7 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
     }
   }, [showSearchModal]);
 
-  // Close modal on ESC
+  // ESC closes modal
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setShowSearchModal(false);
@@ -182,22 +212,22 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
         onClick={handleSidebarClick}
       >
         {collapsed ? (
-          // Collapsed Rail (icon-only)
+          // Collapsed rail (icon-only)
           <div className="flex h-full flex-col items-center justify-between py-3">
-            {/* Top stack */}
+            {/* Top icons */}
             <div className="flex flex-col items-center gap-3">
-              {/* CareIQ icon -> home */}
+              {/* Home */}
               <Link
                 href="/"
                 className="rounded-xl p-2 hover:bg-[var(--panel-2)] transition"
                 title="Home"
                 aria-label="Home"
-                onClick={(e) => e.stopPropagation()} // don't expand
+                onClick={(e) => e.stopPropagation()}
               >
                 <IconLogo className="w-6 h-6" />
               </Link>
 
-              {/* New Chat -> create immediately */}
+              {/* New Chat */}
               <button
                 className="rounded-xl p-2 hover:bg-[var(--panel-2)] transition"
                 title="New Chat"
@@ -210,7 +240,7 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
                 <IconPlus className="w-5 h-5" />
               </button>
 
-              {/* Search -> open modal */}
+              {/* Search -> modal */}
               <button
                 className="rounded-xl p-2 hover:bg-[var(--panel-2)] transition"
                 title="Search chats"
@@ -255,7 +285,7 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
             </Link>
           </div>
         ) : (
-          // Expanded Sidebar
+          // Expanded sidebar
           <>
             {/* Header */}
             <div
@@ -406,32 +436,47 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
                 onChange={(e) => setSearchModalTerm(e.target.value)}
               />
             </div>
-            <div className="max-h-[50vh] overflow-y-auto p-2">
-              {filteredChatsModal.length === 0 ? (
-                <div className="text-xs px-2 py-3" style={{ color: "var(--muted)" }}>
-                  No matching chats.
-                </div>
-              ) : (
-                <ul className="space-y-1">
-                  {filteredChatsModal.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--panel-2)] transition"
-                        onClick={() => {
-                          setShowSearchModal(false);
-                          router.push(`/chat/${c.id}`);
-                        }}
-                      >
-                        <div className="text-sm" style={{ color: "var(--text)" }}>{c.title}</div>
-                        <div className="text-[11px]" style={{ color: "var(--text-dim)" }}>
-                          {c.id}
-                        </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+
+            <div className="max-h-[50vh] overflow-y-auto">
+              {/* Section label */}
+              <div className="px-3 pt-2 pb-1 text-[11px] uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+                {searchModalTerm.trim().length ? "Results" : "Recent chats"}
+              </div>
+
+              <div className="p-2">
+                {(() => {
+                  const list = searchModalTerm.trim().length ? filteredChatsModal : recentChats;
+                  if (list.length === 0) {
+                    return (
+                      <div className="text-xs px-2 py-3" style={{ color: "var(--muted)" }}>
+                        {searchModalTerm.trim().length ? "No matching chats." : "No chats yet."}
+                      </div>
+                    );
+                  }
+                  return (
+                    <ul className="space-y-1">
+                      {list.map((c) => (
+                        <li key={c.id}>
+                          <button
+                            className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--panel-2)] transition"
+                            onClick={() => {
+                              setShowSearchModal(false);
+                              router.push(`/chat/${c.id}`);
+                            }}
+                          >
+                            <div className="text-sm" style={{ color: "var(--text)" }}>{c.title}</div>
+                            <div className="text-[11px]" style={{ color: "var(--text-dim)" }}>
+                              {c.id}
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                })()}
+              </div>
             </div>
+
             <div className="p-2 flex justify-end gap-2 border-t" style={{ borderColor: "var(--border)" }}>
               <button className="btn btn-ghost px-3 py-1.5" onClick={() => setShowSearchModal(false)}>
                 Close
