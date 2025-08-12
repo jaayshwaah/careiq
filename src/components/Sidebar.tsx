@@ -21,7 +21,7 @@ export default function Sidebar({
   onNewChat: () => void;
   onSelectChat: (id: string) => void;
   onRenameChat: (id: string, title: string) => void;
- a onDeleteChat: (id: string) => void;
+  onDeleteChat: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -35,10 +35,16 @@ export default function Sidebar({
     <>
       <div className={`flex h-full flex-col ${collapsed ? "items-center" : ""}`}>
         {/* Header: Logo + Collapse/Expand icon */}
-        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} border-b border-white/10 p-4 w-full`}>
+        <div
+          className={`flex items-center ${
+            collapsed ? "justify-center" : "justify-between"
+          } border-b border-white/10 p-4 w-full`}
+        >
           <Link
             href="/"
-            className={`flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 ${collapsed ? "justify-center" : ""}`}
+            className={`flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 ${
+              collapsed ? "justify-center" : ""
+            }`}
             aria-label="Go to Home"
           >
             {/* Placeholder logo — swap with your SVG */}
@@ -53,7 +59,9 @@ export default function Sidebar({
           {/* Toggle button (replaces old New Chat spot) */}
           <button
             onClick={onToggleSidebar}
-            className={`rounded-full ${collapsed ? "absolute right-2 top-2" : ""} bg-white/10 p-2 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20`}
+            className={`rounded-full ${
+              collapsed ? "absolute right-2 top-2" : ""
+            } bg-white/10 p-2 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20`}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
@@ -76,7 +84,9 @@ export default function Sidebar({
         <div className={`w-full border-b border-white/10 ${collapsed ? "px-2 py-3" : "px-3 py-3"}`}>
           <button
             onClick={onNewChat}
-            className={`flex w-full items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20 ${collapsed ? "justify-center" : ""}`}
+            className={`flex w-full items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20 ${
+              collapsed ? "justify-center" : ""
+            }`}
             title="New Chat"
             aria-label="New Chat"
           >
@@ -126,7 +136,9 @@ export default function Sidebar({
         {/* Footer: Account row opens Settings */}
         <button
           onClick={() => setSettingsOpen(true)}
-          className={`group flex w-full items-center gap-3 border-t border-white/10 p-4 text-left hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 ${collapsed ? "justify-center" : ""}`}
+          className={`group flex w-full items-center gap-3 border-t border-white/10 p-4 text-left hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 ${
+            collapsed ? "justify-center" : ""
+          }`}
           aria-label="Open settings"
           title="Settings"
         >
@@ -227,13 +239,11 @@ function CollapsedChatDot({
   onClick: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
-      title={title}
-      className={`mb-2 flex w-full items-center justify-center`}
-    >
+    <button onClick={onClick} title={title} className={`mb-2 flex w-full items-center justify-center`}>
       <div
-        className={`h-7 w-7 rounded-lg ${active ? "bg-white" : "bg-white/10"} text-black grid place-items-center text-xs`}
+        className={`h-7 w-7 rounded-lg ${
+          active ? "bg-white" : "bg-white/10"
+        } text-black grid place-items-center text-xs`}
       >
         💬
       </div>
