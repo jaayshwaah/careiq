@@ -60,9 +60,8 @@ const IconUser = (props: React.SVGProps<SVGSVGElement>) => (
 type Chat = {
   id: string;
   title: string;
-  /** Optional timestamps for recency sorting, if your data has them */
-  updatedAt?: string;       // ISO string
-  lastMessageAt?: string;   // ISO string
+  updatedAt?: string;
+  lastMessageAt?: string;
 };
 
 type User = { name?: string; avatarUrl?: string; };
@@ -82,7 +81,6 @@ function parseTime(c: Chat): number {
 }
 function getRecentChats(chats: Chat[], n = RECENT_COUNT): Chat[] {
   const copy = [...chats];
-  // Sort desc by available timestamp; if none, keep original order
   copy.sort((a, b) => {
     const ta = parseTime(a), tb = parseTime(b);
     if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
@@ -101,7 +99,7 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
   const [collapsed, setCollapsed] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return collapsedByDefault ?? false;
     const isHome = window.location.pathname === "/";
-    return collapsedByDefault ?? isHome; // default collapse on home
+    return collapsedByDefault ?? isHome;
   });
 
   // Expanded inline search
@@ -203,7 +201,7 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
         className="h-screen sticky top-0 flex flex-col border-r"
         style={{
           borderColor: "var(--border)",
-          width: collapsed ? 60 : 300, // slimmer when collapsed
+          width: collapsed ? 60 : 300,
           transition: "width .28s cubic-bezier(.2,.8,.2,1), background .3s",
           background: "linear-gradient(180deg, rgba(255,255,255,0.68), rgba(255,255,255,0.6))",
           backdropFilter: "saturate(180%) blur(14px)",
@@ -427,6 +425,7 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
             aria-modal="true"
             aria-label="Search chats"
           >
+            {/* Search bar */}
             <div className="p-3 border-b" style={{ borderColor: "var(--border)" }}>
               <input
                 ref={modalInputRef}
@@ -437,8 +436,23 @@ export default function Sidebar({ chats = [], collapsedByDefault, user }: Props)
               />
             </div>
 
+            {/* NEW: New Chat button inside modal */}
+            <div className="p-2 border-b" style={{ borderColor: "var(--border)" }}>
+              <button
+                className="btn btn-primary w-full"
+                onClick={() => {
+                  setShowSearchModal(false);
+                  void handleNewChat();
+                }}
+                title="Start a new chat"
+              >
+                <IconPlus className="w-4 h-4" />
+                <span>New Chat</span>
+              </button>
+            </div>
+
+            {/* Results / Recent */}
             <div className="max-h-[50vh] overflow-y-auto">
-              {/* Section label */}
               <div className="px-3 pt-2 pb-1 text-[11px] uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
                 {searchModalTerm.trim().length ? "Results" : "Recent chats"}
               </div>
