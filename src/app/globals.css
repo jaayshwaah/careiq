@@ -1,98 +1,78 @@
-/* src/app/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ---------- CSS Variables (light first) ---------- */
+/* System font stack with SF first for Apple polish */
 :root {
-  --bg: #ffffff;
-  --bg-soft: rgba(0,0,0,0.04);
-  --panel: #ffffff;
-  --panel-border: rgba(0,0,0,0.1);
-  --text: #0b0b0b;
-  --text-muted: #6b7280; /* gray-500 */
-  --ring: rgba(0,0,0,0.12);
-  --accent: #0b0b0b; /* black accents for light */
-  --brand: #10A37F;
-  --brand-ring: rgba(16,163,127,0.35);
+  --radius: 0.75rem;
 }
 
-.dark {
-  --bg: #0b0b0b;
-  --bg-soft: rgba(255,255,255,0.06);
-  --panel: #0b0b0b;
-  --panel-border: rgba(255,255,255,0.1);
-  --text: #ffffff;
-  --text-muted: rgba(255,255,255,0.6);
-  --ring: rgba(255,255,255,0.2);
-  --accent: #ffffff;
-  --brand: #10A37F;
-  --brand-ring: rgba(16,163,127,0.35);
-}
+* { min-width: 0; }
 
-/* ---------- Base ---------- */
 html, body {
   height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-::selection {
-  background: var(--brand);
-  color: #fff;
+body {
+  @apply bg-canvas text-ink antialiased;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji",
+    "Segoe UI Emoji";
 }
 
-/* ---------- Panels & borders ---------- */
-.panel {
-  @apply rounded-2xl border shadow-soft;
-  background: var(--panel);
-  border-color: var(--panel-border);
+/* Subtle background gradient */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1200px 700px at -10% -10%, hsl(212 100% 97%) 0%, transparent 45%),
+    radial-gradient(1000px 600px at 110% -10%, hsl(260 100% 98%) 0%, transparent 40%),
+    radial-gradient(900px 600px at 50% 120%, hsl(180 100% 97%) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: -2;
 }
 
-/* ---------- Inputs ---------- */
-.input {
-  @apply w-full rounded-xl text-sm outline-none ring-1 ring-inset px-3 py-2 transition placeholder:text-gray-400;
-  @apply ring-black/10 focus:ring-2 focus:ring-black/20;
-  background: #fff;
-  color: #111827; /* gray-900 */
-}
-.dark .input {
-  background: rgba(255,255,255,0.06);
-  color: #fff;
-  @apply placeholder:text-white/40 ring-white/10 focus:ring-2 focus:ring-white/20;
+.dark body {
+  @apply bg-canvas-dark text-ink-dark;
 }
 
-/* ---------- Buttons ---------- */
-.btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm transition focus:outline-none;
+.dark body::before {
+  background:
+    radial-gradient(1000px 600px at -10% -10%, hsl(222 35% 18% / .8) 0%, transparent 50%),
+    radial-gradient(900px 600px at 110% -10%, hsl(270 35% 18% / .7) 0%, transparent 45%),
+    radial-gradient(900px 600px at 50% 120%, hsl(200 35% 18% / .7) 0%, transparent 45%);
 }
-.btn-ghost {
-  @apply btn;
-  background: var(--bg-soft);
-}
-.btn-ghost:hover { filter: brightness(0.98); }
-.dark .btn-ghost:hover { filter: brightness(1.15); }
 
-.btn-solid {
-  @apply btn text-white;
-  background: var(--accent);
+/* Frosted glass card */
+.glass {
+  @apply bg-glass backdrop-blur-md border border-border shadow-soft rounded-2xl;
 }
-.btn-solid:hover { filter: brightness(0.95); }
 
-/* ---------- Scrollbars (Chromium/WebKit) ---------- */
-* { scrollbar-width: thin; scrollbar-color: var(--panel-border) transparent; }
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb {
-  background-color: var(--panel-border);
-  border-radius: 999px;
-  border: 3px solid transparent;
-  background-clip: content-box;
+.dark .glass {
+  @apply bg-white/5 backdrop-blur-md border-border-dark shadow-softdark;
 }
-::-webkit-scrollbar-track { background: transparent; }
 
-/* ---------- Links ---------- */
-a { color: var(--brand); }
-a:hover { text-decoration: underline; }
+/* Scrollbars minimal */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(220 10% 70%) transparent;
+}
+*::-webkit-scrollbar { height: 8px; width: 8px; }
+*::-webkit-scrollbar-thumb { background: hsl(220 10% 70%); border-radius: 999px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Chat bubbles */
+.message {
+  @apply rounded-2xl px-4 py-3 leading-relaxed shadow;
+}
+.message.assistant {
+  @apply bg-white/70 dark:bg-white/10 border border-border dark:border-border-dark;
+}
+.message.user {
+  @apply bg-accent-soft border border-accent/30;
+}
+
+kbd {
+  @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-xs font-medium border border-border bg-white/70 dark:bg-white/10 dark:border-border-dark;
+}

@@ -1,6 +1,7 @@
-import NewChatClient from "@/components/NewChatClient";
+"use client";
 
-export default function HomePage() {
-  // Server Component: only renders a Client wrapper (safe)
-  return <NewChatClient />;
+import Chat from "@/components/Chat";
+
+export default function Page() {
+  return <Chat />;
 }

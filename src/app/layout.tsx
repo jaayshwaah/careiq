@@ -5,23 +5,15 @@ import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "CareIQ Chat",
-  description: "ChatGPT-style UI with Apple-like polish",
+  description: "Apple-polished ChatGPT-style UI",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // You can fetch real chats on the server and pass them to AppShell via props.
-  // Leaving empty by default.
-  const initialChats: any[] = [];
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
-        <ThemeProvider defaultTheme="light">
-          <AppShell initialChats={initialChats}>{children}</AppShell>
+      <body className="min-h-screen">
+        <ThemeProvider defaultTheme="light" attribute="class" enableSystem>
+          <AppShell>{children}</AppShell>
         </ThemeProvider>
       </body>
     </html>
