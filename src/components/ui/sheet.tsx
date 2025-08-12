@@ -1,14 +1,13 @@
 "use client";
-
 import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 
-const Sheet = SheetPrimitive.Root;
-const SheetTrigger = SheetPrimitive.Trigger;
-const SheetClose = SheetPrimitive.Close;
+export const Sheet = SheetPrimitive.Root;
+export const SheetTrigger = SheetPrimitive.Trigger;
+export const SheetClose = SheetPrimitive.Close;
 
-function SheetContent({
+export function SheetContent({
   className,
   children,
   ...props
@@ -29,12 +28,9 @@ function SheetContent({
   );
 }
 
-function SheetHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export function SheetHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={cn("mb-4", className)} {...props} />;
 }
-
-function SheetTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+export function SheetTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return <h2 className={cn("text-lg font-semibold", className)} {...props} />;
 }
-
-export { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose };

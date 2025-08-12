@@ -2,16 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* System font stack with SF first for Apple polish */
-:root {
-  --radius: 0.75rem;
-}
-
+:root { --radius: 0.75rem; }
 * { min-width: 0; }
-
-html, body {
-  height: 100%;
-}
+html, body { height: 100%; }
 
 body {
   @apply bg-canvas text-ink antialiased;
@@ -20,7 +13,7 @@ body {
     "Segoe UI Emoji";
 }
 
-/* Subtle background gradient */
+/* Background wash */
 body::before {
   content: "";
   position: fixed;
@@ -32,11 +25,7 @@ body::before {
   pointer-events: none;
   z-index: -2;
 }
-
-.dark body {
-  @apply bg-canvas-dark text-ink-dark;
-}
-
+.dark body { @apply bg-canvas-dark text-ink-dark; }
 .dark body::before {
   background:
     radial-gradient(1000px 600px at -10% -10%, hsl(222 35% 18% / .8) 0%, transparent 50%),
@@ -44,35 +33,19 @@ body::before {
     radial-gradient(900px 600px at 50% 120%, hsl(200 35% 18% / .7) 0%, transparent 45%);
 }
 
-/* Frosted glass card */
-.glass {
-  @apply bg-glass backdrop-blur-md border border-border shadow-soft rounded-2xl;
-}
+/* Glass */
+.glass { @apply bg-glass backdrop-blur-md border border-border shadow-soft rounded-2xl; }
+.dark .glass { @apply bg-white/5 backdrop-blur-md border-border-dark shadow-softdark; }
 
-.dark .glass {
-  @apply bg-white/5 backdrop-blur-md border-border-dark shadow-softdark;
-}
-
-/* Scrollbars minimal */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(220 10% 70%) transparent;
-}
+/* Scrollbars */
+* { scrollbar-width: thin; scrollbar-color: hsl(220 10% 70%) transparent; }
 *::-webkit-scrollbar { height: 8px; width: 8px; }
 *::-webkit-scrollbar-thumb { background: hsl(220 10% 70%); border-radius: 999px; }
 *::-webkit-scrollbar-track { background: transparent; }
 
-/* Chat bubbles */
-.message {
-  @apply rounded-2xl px-4 py-3 leading-relaxed shadow;
-}
-.message.assistant {
-  @apply bg-white/70 dark:bg-white/10 border border-border dark:border-border-dark;
-}
-.message.user {
-  @apply bg-accent-soft border border-accent/30;
-}
+/* Messages */
+.message { @apply rounded-2xl px-4 py-3 leading-relaxed shadow; }
+.message.assistant { @apply bg-white/70 dark:bg-white/10 border border-border dark:border-border-dark; }
+.message.user { @apply bg-accent-soft border border-accent/30; }
 
-kbd {
-  @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-xs font-medium border border-border bg-white/70 dark:bg-white/10 dark:border-border-dark;
-}
+kbd { @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-xs font-medium border border-border bg-white/70 dark:bg-white/10 dark:border-border-dark; }

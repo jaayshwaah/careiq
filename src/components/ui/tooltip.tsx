@@ -1,19 +1,15 @@
 "use client";
-
 import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
-const TooltipProvider = TooltipPrimitive.Provider;
+export const TooltipProvider = TooltipPrimitive.Provider;
+export const TooltipTrigger = TooltipPrimitive.Trigger;
 
-function Tooltip({
-  ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Root>) {
+export function Tooltip(props: React.ComponentProps<typeof TooltipPrimitive.Root>) {
   return <TooltipPrimitive.Root delayDuration={200} {...props} />;
 }
 
-const TooltipTrigger = TooltipPrimitive.Trigger;
-
-function TooltipContent({
+export function TooltipContent({
   className,
   sideOffset = 6,
   ...props
@@ -26,5 +22,3 @@ function TooltipContent({
     />
   );
 }
-
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };

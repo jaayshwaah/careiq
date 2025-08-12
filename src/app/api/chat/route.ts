@@ -1,63 +1,143 @@
-// src/app/api/chat/route.ts
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-import { NextResponse } from 'next/server';
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+// Optional OpenRouter streaming (falls back to mock if no key)
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 
 export async function POST(req: Request) {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const messages: ChatMessage[] = Array.isArray(body?.messages) ? body.messages : [];
-
-    if (!messages.length) {
-      return NextResponse.json({ error: 'No messages provided' }, { status: 400 });
-    }
-
-    const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-
-    // If no key, run in mock mode so UI still works
-    if (!OPENROUTER_API_KEY) {
-      const lastUser = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
-      return NextResponse.json({
-        reply:
-          `👋 (Mock) CareIQ here. You said:\n\n“${lastUser}”\n\n` +
-          `Add OPENROUTER_API_KEY to use real model responses.`,
-        provider: "mock",
-      });
-    }
-
-    // Call OpenRouter
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'http://localhost:3000',
-        'X-Title': 'CareIQ',
-      },
-      body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || 'openrouter/auto',
-        messages,
-        temperature: 0.2,
-      }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return NextResponse.json({ error: `Upstream error: ${res.status} ${text}` }, { status: 500 });
-    }
-
-    const data = await res.json();
-
-    const reply =
-      data?.choices?.[0]?.message?.content ??
-      "No content returned from model.";
-
-    return NextResponse.json({ reply, provider: "openrouter" });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Unexpected error';
-    return NextResponse.json({ error: msg }, { status: 500 });
+  const { chatId, content } = await req.json();
+  if (!chatId || !content) {
+    return NextResponse.json({ ok: false, error: "chatId and content required" }, { status: 400 });
   }
+
+  // 1) Insert user message
+  const { error: userErr } = await supabase
+    .from("messages")
+    .insert({ chat_id: chatId, role: "user", content });
+
+  if (userErr) {
+    return NextResponse.json({ ok: false, error: userErr.message }, { status: 500 });
+  }
+
+  // 2) Create streaming response (but we also persist to Supabase as we go)
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+
+      // Helper to persist assistant chunks (simple append semantics)
+      async function appendAssistant(text: string, isFinal = false) {
+        // Upsert temp "streaming" row by storing entire accumulated content.
+        // Simpler approach: insert new message for final only.
+        if (isFinal) {
+          await supabase.from("messages").insert({
+            chat_id: chatId,
+            role: "assistant",
+            content: text,
+          });
+        }
+      }
+
+      try {
+        // If we have an OpenRouter key, stream from it; else mock stream
+        if (OPENROUTER_API_KEY) {
+          // Build prompt from recent messages
+          const { data: history } = await supabase
+            .from("messages")
+            .select("role,content")
+            .eq("chat_id", chatId)
+            .order("created_at", { ascending: true })
+            .limit(30);
+
+          const messages = (history || []).map((m) => ({
+            role: m.role,
+            content: m.content,
+          }));
+
+          // Stream from OpenRouter (text event stream)
+          const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            },
+            body: JSON.stringify({
+              model: "meta-llama/llama-3.1-8b-instruct",
+              messages,
+              stream: true,
+            }),
+          });
+
+          if (!res.ok || !res.body) {
+            throw new Error(`OpenRouter error: ${res.status}`);
+          }
+
+          const reader = res.body.getReader();
+          let full = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = new TextDecoder().decode(value);
+            // Forward raw stream to client as text (you can switch to SSE if you prefer)
+            controller.enqueue(encoder.encode(chunk));
+
+            // Parse minimal delta tokens for persistence (best-effort)
+            const lines = chunk.split("\n").filter(Boolean);
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const json = line.slice(6);
+                if (json === "[DONE]") continue;
+                try {
+                  const obj = JSON.parse(json);
+                  const delta = obj?.choices?.[0]?.delta?.content ?? "";
+                  if (delta) full += delta;
+                } catch {
+                  /* ignore parse errors */
+                }
+              }
+            }
+          }
+
+          // Final insert of full assistant message
+          await appendAssistant(full, true);
+          controller.close();
+          return;
+        } else {
+          // Mock streaming (no external key needed)
+          const mock = [
+            "Sure — I’ve connected your chats to Supabase.",
+            " Messages now stream in with Apple-polished styling.",
+            " You can switch conversations from the left sidebar anytime.",
+          ];
+          let full = "";
+          for (const part of mock) {
+            full += part;
+            controller.enqueue(encoder.encode(part));
+            await new Promise((r) => setTimeout(r, 120));
+          }
+          await appendAssistant(full, true);
+          controller.close();
+          return;
+        }
+      } catch (err: any) {
+        const msg = `\n\n[Error] ${err?.message || "Something went wrong."}`;
+        controller.enqueue(encoder.encode(msg));
+        await appendAssistant(msg, true);
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Transfer-Encoding": "chunked",
+    },
+  });
 }

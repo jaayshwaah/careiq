@@ -1,26 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, PanelsTopLeft, Settings, User, LogOut } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { supabase } from "@/lib/supabaseClient";
+import type { ChatRow } from "@/types/db";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Image from "next/image";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { usePathname, useRouter } from "next/navigation";
 
 type SidebarProps = {
   collapsed: boolean;
@@ -29,43 +21,61 @@ type SidebarProps = {
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [chats, setChats] = useState<ChatRow[]>([]);
+  const pathname = usePathname();
+  const router = useRouter();
 
   const width = collapsed ? "w-[76px]" : "w-[280px]";
   const labelCls = collapsed ? "opacity-0 pointer-events-none" : "opacity-100";
   const newBtnCls = collapsed ? "justify-center" : "justify-start";
 
-  // Placeholder chats for the UI (replace with real data when wired)
-  const chats = useMemo(
-    () => [
-      { id: "1", title: "Market analysis for Q4" },
-      { id: "2", title: "Draft email to nursing staff" },
-      { id: "3", title: "Summarize policy handbook" },
-    ],
-    []
-  );
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      const { data, error } = await supabase
+        .from("chats")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!mounted) return;
+      if (error) console.error(error);
+      setChats(data || []);
+    }
+
+    load();
+
+    // Realtime on inserts (optional)
+    const channel = supabase
+      .channel("realtime:chats")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chats" }, () => load())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chats" }, () => load())
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "chats" }, () => load())
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  async function handleNewChat() {
+    const resp = await fetch("/api/chats", { method: "POST" });
+    const created = await resp.json();
+    router.push(`/chat/${created.id}`);
+  }
+
+  const activeId = pathname?.startsWith("/chat/") ? pathname.split("/").pop() : "";
 
   return (
-    <aside
-      className={cn(
-        "relative h-svh shrink-0 transition-[width] duration-300 ease-ios",
-        width
-      )}
-    >
+    <aside className={cn("relative h-svh shrink-0 transition-[width] duration-300 ease-ios", width)}>
       <div className="sticky top-0 h-svh p-3">
-        {/* Glass container */}
         <div className="glass flex h-full flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-2 p-2">
             <Link href="/" className="flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5 transition">
               <div className="relative h-7 w-7 overflow-hidden rounded-xl shadow-insetglass">
-                {/* Placeholder logo — replace /logo.svg later */}
-                <Image
-                  src="/logo.svg"
-                  alt="CareIQ"
-                  fill
-                  sizes="28px"
-                  priority
-                />
+                <Image src="/logo.svg" alt="CareIQ" fill sizes="28px" priority />
               </div>
               <span className={cn("text-sm font-semibold", labelCls)}>CareIQ</span>
             </Link>
@@ -74,13 +84,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="rounded-xl"
-                      onClick={onToggle}
-                      aria-label="Toggle sidebar"
-                    >
+                    <Button size="icon" variant="ghost" className="rounded-xl" onClick={onToggle} aria-label="Toggle sidebar">
                       <PanelsTopLeft className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
@@ -90,19 +94,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </div>
           </div>
 
-          {/* New chat button */}
+          {/* New chat */}
           <div className="px-2">
-            <Button
-              className={cn(
-                "w-full rounded-2xl shadow hover:shadow-md transition-shadow",
-                newBtnCls
-              )}
-              asChild
-            >
-              <Link href="#" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                <span className={cn("text-sm font-medium", labelCls)}>New chat</span>
-              </Link>
+            <Button className={cn("w-full rounded-2xl shadow hover:shadow-md transition-shadow", newBtnCls)} onClick={handleNewChat}>
+              <Plus className="h-4 w-4" />
+              <span className={cn("text-sm font-medium", labelCls)}>New chat</span>
             </Button>
           </div>
 
@@ -112,26 +108,30 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <div className="flex-1 px-1">
             <ScrollArea className="h-full pr-2">
               <ul className="space-y-1">
-                {chats.map((c) => (
-                  <li key={c.id}>
-                    <Link
-                      href="#"
-                      className={cn(
-                        "group flex items-center gap-2 rounded-xl px-2 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition"
-                      )}
-                    >
-                      <div className="h-6 w-6 rounded-lg bg-black/5 dark:bg-white/10" />
-                      <span className={cn("truncate", labelCls)}>{c.title}</span>
-                    </Link>
-                  </li>
-                ))}
+                {chats.map((c) => {
+                  const isActive = c.id === activeId;
+                  return (
+                    <li key={c.id}>
+                      <Link
+                        href={`/chat/${c.id}`}
+                        className={cn(
+                          "group flex items-center gap-2 rounded-xl px-2 py-2 text-sm hover:bg-black/5 dark:hover:bg:white/5 transition",
+                          isActive && "bg-black/5 dark:bg-white/5"
+                        )}
+                      >
+                        <div className="h-6 w-6 rounded-lg bg-black/5 dark:bg-white/10" />
+                        <span className={cn("truncate", labelCls)}>{c.title || "New chat"}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             </ScrollArea>
           </div>
 
           <Separator className="my-3" />
 
-          {/* Account / Settings at bottom */}
+          {/* Account bottom */}
           <div className="px-2 pb-2">
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
@@ -142,7 +142,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <div className="text-xs text-ink-subtle">Free plan</div>
               </div>
 
-              {/* Settings opens a sheet (drawer) */}
               <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-xl" aria-label="Settings">
@@ -156,15 +155,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <div className="mt-4 space-y-6">
                     <div className="space-y-2">
                       <div className="text-sm font-medium">Appearance</div>
-                      <div className="text-xs text-ink-subtle">
-                        Use your system theme from the browser’s appearance menu.
-                      </div>
+                      <div className="text-xs text-ink-subtle">Uses your system light/dark theme.</div>
                     </div>
                     <Separator />
                     <div className="space-y-2">
                       <div className="text-sm font-medium">Account</div>
                       <Button variant="secondary" className="w-full justify-start gap-2 rounded-xl">
-                        <User className="h-4 w-4" />
                         Manage account (placeholder)
                       </Button>
                       <Button variant="ghost" className="w-full justify-start gap-2 rounded-xl text-red-600 hover:text-red-700">
