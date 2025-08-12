@@ -3,17 +3,18 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Chat } from "@/types";
+import { useTheme } from "@/components/ThemeProvider";
 
 /**
  * Sidebar
+ * - Light mode default; supports Dark/System via Settings
  * - Desktop: collapsible rail (w-16) ↔ full (w-72)
- * - Mobile: slide-over drawer with backdrop (uses the same collapsed prop; collapsed=false = open)
- * - Cmd/Ctrl+B toggles collapse
+ * - Mobile: slide-over drawer with backdrop
+ * - Cmd/Ctrl+B to toggle
  * - Search chats
  * - Grouped sections (Today / Yesterday / Previous 7 days / Older)
- * - Hover actions: Rename / Delete
- * - Footer account row opens Settings
- * - Accessible: keyboard, aria labels, focus rings
+ * - Hover actions (rename/delete)
+ * - Settings footer includes Theme selector
  */
 export default function Sidebar({
   chats,
@@ -80,7 +81,7 @@ export default function Sidebar({
     <>
       {/* Mobile Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity md:hidden ${
+        className={`fixed inset-0 z-40 bg-black/40 dark:bg-black/50 backdrop-blur-sm transition-opacity md:hidden ${
           showMobileBackdrop ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={onToggleSidebar}
@@ -90,9 +91,14 @@ export default function Sidebar({
       {/* Sidebar Panel */}
       <aside
         className={[
-          // Base box
-          "relative z-50 flex h-full flex-col border-r border-white/10 bg-[#0b0b0b]/95",
-          "supports-[backdrop-filter]:bg-[#0b0b0b]/80 supports-[backdrop-filter]:backdrop-blur",
+          // Base box (light by default)
+          "relative z-50 flex h-full flex-col border-r bg-white",
+          "border-black/10",
+          // Dark override
+          "dark:bg-[#0b0b0b] dark:border-white/10",
+          // Subtle translucency when supported
+          "supports-[backdrop-filter]:bg-white/90 supports-[backdrop-filter]:backdrop-blur",
+          "dark:supports-[backdrop-filter]:bg-[#0b0b0b]/80",
           // Widths
           collapsed ? "w-16" : "w-72",
           // Mobile slide-over
@@ -107,7 +113,7 @@ export default function Sidebar({
         <div
           className={`flex items-center ${
             collapsed ? "justify-center gap-2" : "justify-between"
-          } border-b border-white/10 p-3`}
+          } border-b p-3 border-black/10 dark:border-white/10`}
         >
           <IconButton
             onClick={onToggleSidebar}
@@ -120,13 +126,13 @@ export default function Sidebar({
           {!collapsed && (
             <Link
               href="/"
-              className="ml-2 flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
+              className="ml-2 flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-black/[0.04] focus:outline-none focus:ring-2 focus:ring-black/10 dark:hover:bg-white/5 dark:focus:ring-white/20"
               aria-label="Go to Home"
             >
-              <div className="grid h-8 w-8 place-items-center rounded-xl bg-white text-black font-bold">
+              <div className="grid h-8 w-8 place-items-center rounded-xl bg-black text-white font-bold dark:bg-white dark:text-black">
                 CQ
               </div>
-              <span className="select-none text-sm font-semibold tracking-tight">
+              <span className="select-none text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
                 CareIQ
               </span>
             </Link>
@@ -143,19 +149,20 @@ export default function Sidebar({
         </div>
 
         {/* New Chat */}
-        <div className={`w-full border-b border-white/10 ${collapsed ? "px-2 py-3" : "px-3 py-3"}`}>
+        <div className={`w-full border-b ${collapsed ? "px-2 py-3" : "px-3 py-3"} border-black/10 dark:border-white/10`}>
           <button
             onClick={onNewChat}
             className={[
-              "flex w-full items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm",
-              "hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20",
+              "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm",
+              "bg-black/[0.05] hover:bg-black/[0.08] focus:outline-none focus:ring-2 focus:ring-black/10",
+              "dark:bg-white/10 dark:hover:bg-white/15 dark:focus:ring-white/20",
               collapsed ? "justify-center" : ""
             ].join(" ")}
             title="New Chat"
             aria-label="Start a new chat"
           >
             <PlusIcon />
-            {!collapsed && <span className="font-medium">New Chat</span>}
+            {!collapsed && <span className="font-medium text-gray-900 dark:text-white">New Chat</span>}
           </button>
         </div>
 
@@ -166,7 +173,7 @@ export default function Sidebar({
               Search chats
             </label>
             <div className="relative">
-              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500 dark:text-white">
                 <SearchIcon />
               </div>
               <input
@@ -174,7 +181,12 @@ export default function Sidebar({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search chats"
-                className="w-full rounded-xl bg-white/5 pl-9 pr-3 py-2 text-sm outline-none ring-1 ring-inset ring-white/10 placeholder:text-white/40 focus:ring-2 focus:ring-white/20"
+                className={[
+                  "w-full rounded-xl pl-9 pr-3 py-2 text-sm outline-none ring-1 ring-inset",
+                  "bg-white placeholder:text-gray-400 text-gray-900 ring-black/10",
+                  "focus:ring-2 focus:ring-black/20",
+                  "dark:bg-white/5 dark:text-white dark:placeholder:text-white/40 dark:ring-white/10 dark:focus:ring-white/20",
+                ].join(" ")}
               />
             </div>
           </div>
@@ -183,7 +195,7 @@ export default function Sidebar({
         {/* Chat list */}
         <div className="flex-1 overflow-y-auto px-2 pb-2">
           {filtered.length === 0 && !collapsed && (
-            <div className="p-3 text-center text-xs text-white/50">No chats</div>
+            <div className="p-3 text-center text-xs text-gray-500 dark:text-white/50">No chats</div>
           )}
 
           {collapsed ? (
@@ -223,23 +235,25 @@ export default function Sidebar({
         <button
           onClick={() => setSettingsOpen(true)}
           className={[
-            "group flex w-full items-center gap-3 border-t border-white/10 p-3 text-left",
-            "hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20",
+            "group flex w-full items-center gap-3 border-t p-3 text-left",
+            "hover:bg-black/[0.04] focus:outline-none focus:ring-2 focus:ring-black/10",
+            "border-black/10",
+            "dark:hover:bg-white/5 dark:focus:ring-white/20 dark:border-white/10",
             collapsed ? "justify-center" : ""
           ].join(" ")}
           aria-label="Open settings"
           title="Settings"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-black font-semibold">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-white font-semibold dark:bg-white dark:text-black">
             CK
           </div>
           {!collapsed && (
             <>
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold">CareIQ Guest</div>
-                <div className="truncate text-xs text-white/50">guest@careiq.local</div>
+                <div className="truncate text-sm font-semibold text-gray-900 dark:text-white">CareIQ Guest</div>
+                <div className="truncate text-xs text-gray-500 dark:text-white/50">guest@careiq.local</div>
               </div>
-              <span className="ml-auto inline-flex items-center gap-1 text-xs text-white/50 group-hover:text-white/70">
+              <span className="ml-auto inline-flex items-center gap-1 text-xs text-gray-500 group-hover:text-gray-700 dark:text-white/50 dark:group-hover:text-white/70">
                 <SettingsIcon />
                 Settings
               </span>
@@ -248,7 +262,7 @@ export default function Sidebar({
         </button>
       </aside>
 
-      {/* Settings modal */}
+      {/* Settings modal (with Theme selector) */}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
@@ -259,7 +273,7 @@ export default function Sidebar({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="px-2 pb-1 pt-2 text-[10px] uppercase tracking-wider text-white/40">
+      <div className="px-2 pb-1 pt-2 text-[10px] uppercase tracking-wider text-gray-500 dark:text-white/40">
         {title}
       </div>
       <div className="space-y-1">{children}</div>
@@ -292,19 +306,19 @@ function ChatRow({
     <div
       className={[
         "group flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm",
-        "hover:bg-white/5",
-        active ? "bg-white/10" : ""
+        "hover:bg-black/[0.04] dark:hover:bg-white/5",
+        active ? "bg-black/[0.06] dark:bg-white/10" : ""
       ].join(" ")}
       onClick={() => !editing && onSelect()}
     >
-      <div className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/10">
+      <div className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-black/[0.06] text-gray-700 dark:bg-white/10 dark:text-white">
         <ChatBubbleIcon />
       </div>
 
       {editing ? (
         <input
           ref={inputRef}
-          className="w-full rounded bg-white/10 px-2 py-1 outline-none"
+          className="w-full rounded bg-black/[0.06] px-2 py-1 outline-none text-gray-900 dark:bg-white/10 dark:text-white"
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onBlur={() => {
@@ -325,7 +339,9 @@ function ChatRow({
           }}
         />
       ) : (
-        <div className="min-w-0 flex-1 truncate">{chat.title || "New chat"}</div>
+        <div className="min-w-0 flex-1 truncate text-gray-900 dark:text-white">
+          {chat.title || "New chat"}
+        </div>
       )}
 
       {/* Hover actions */}
@@ -372,9 +388,10 @@ function CollapsedChatDot({
       aria-label={title}
     >
       <div
-        className={`h-7 w-7 rounded-lg ${
-          active ? "bg-white text-black" : "bg-white/10 text-white"
-        } grid place-items-center text-xs`}
+        className={`h-7 w-7 rounded-lg grid place-items-center text-xs
+        ${active
+          ? "bg-black text-white dark:bg-white dark:text-black"
+          : "bg-black/[0.06] text-gray-700 dark:bg-white/10 dark:text-white"}`}
       >
         <ChatBubbleIcon />
       </div>
@@ -382,7 +399,11 @@ function CollapsedChatDot({
   );
 }
 
+/* ---------- Settings Modal with Theme selector ---------- */
+
 function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { theme, resolved, setTheme } = useTheme();
+
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -400,41 +421,69 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] bg-black/40 dark:bg-black/60 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Settings"
     >
       <div
-        className="mx-auto mt-24 w-[92%] max-w-md rounded-2xl border border-white/10 bg-[#0b0b0b] p-4 shadow-2xl"
+        className="mx-auto mt-24 w-[92%] max-w-md rounded-2xl border p-4 shadow-2xl bg-white border-black/10 dark:bg-[#0b0b0b] dark:border-white/10"
         onClick={stop}
       >
         <div className="mb-3 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black font-bold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-black text-white font-bold dark:bg-white dark:text-black">
             CQ
           </div>
-          <div className="text-sm font-semibold">Settings</div>
+          <div className="text-sm font-semibold text-gray-900 dark:text-white">Settings</div>
           <button
             onClick={onClose}
-            className="ml-auto rounded-md px-2 py-1 text-xs text-white/60 hover:bg-white/10 hover:text-white"
+            className="ml-auto rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-black/[0.04] hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/10 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white dark:focus:ring-white/20"
           >
             Close
           </button>
         </div>
 
         <div className="space-y-3 text-sm">
-          <div className="rounded-xl border border-white/10 p-3">
-            <div className="mb-1 text-xs uppercase tracking-wide text-white/50">Account</div>
-            <div className="font-medium">CareIQ Guest</div>
-            <div className="text-white/60">guest@careiq.local</div>
+          <div className="rounded-xl border p-3 border-black/10 dark:border-white/10">
+            <div className="mb-1 text-xs uppercase tracking-wide text-gray-500 dark:text-white/50">Account</div>
+            <div className="font-medium text-gray-900 dark:text-white">CareIQ Guest</div>
+            <div className="text-gray-600 dark:text-white/60">guest@careiq.local</div>
           </div>
 
-          <div className="rounded-xl border border-white/10 p-3">
-            <div className="mb-1 text-xs uppercase tracking-wide text-white/50">App</div>
-            <div className="flex items-center justify-between">
+          {/* Theme */}
+          <div className="rounded-xl border p-3 border-black/10 dark:border-white/10">
+            <div className="mb-2 text-xs uppercase tracking-wide text-gray-500 dark:text-white/50">Appearance</div>
+            <fieldset className="space-y-2">
+              <ThemeOption
+                id="theme-light"
+                label="Light"
+                description="Bright background with dark text"
+                checked={theme === "light"}
+                onChange={() => setTheme("light")}
+              />
+              <ThemeOption
+                id="theme-dark"
+                label="Dark"
+                description="Dim background with light text"
+                checked={theme === "dark"}
+                onChange={() => setTheme("dark")}
+              />
+              <ThemeOption
+                id="theme-system"
+                label="System"
+                description={`Follows your OS preference (currently ${resolved})`}
+                checked={theme === "system"}
+                onChange={() => setTheme("system")}
+              />
+            </fieldset>
+          </div>
+
+          <div className="rounded-xl border p-3 border-black/10 dark:border-white/10">
+            <div className="mb-1 text-xs uppercase tracking-wide text-gray-500 dark:text-white/50">App</div>
+            <div className="flex items-center justify-between text-gray-900 dark:text-white">
               <span>Version</span>
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs">v0.1</span>
+              <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs text-gray-700 dark:bg-white/10 dark:text-white/80">v0.1</span>
             </div>
           </div>
         </div>
@@ -442,13 +491,52 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
         <div className="mt-4 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-white/90"
+            className="rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-black/20 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:focus:ring-white/20"
           >
             Done
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function ThemeOption({
+  id,
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className={[
+        "flex cursor-pointer items-start gap-3 rounded-lg border p-3",
+        checked
+          ? "border-black/30 bg-black/[0.04] dark:border-white/30 dark:bg-white/10"
+          : "border-black/10 hover:bg-black/[0.03] dark:border-white/10 dark:hover:bg-white/5",
+      ].join(" ")}
+    >
+      <input
+        id={id}
+        type="radio"
+        name="theme"
+        className="mt-0.5"
+        checked={checked}
+        onChange={onChange}
+      />
+      <div>
+        <div className="font-medium text-gray-900 dark:text-white">{label}</div>
+        <div className="text-xs text-gray-600 dark:text-white/60">{description}</div>
+      </div>
+    </label>
   );
 }
 
@@ -470,7 +558,7 @@ function IconButton({
       onClick={onClick}
       aria-label={label}
       title={title || label}
-      className="rounded-lg bg-white/10 p-2 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20"
+      className="rounded-lg p-2 bg-black/[0.05] hover:bg-black/[0.08] focus:outline-none focus:ring-2 focus:ring-black/10 dark:bg-white/10 dark:hover:bg-white/15 dark:focus:ring-white/20"
     >
       {children}
     </button>
@@ -492,7 +580,7 @@ function IconGhostButton({
     <button
       aria-label={ariaLabel}
       title={title || ariaLabel}
-      className="rounded-md p-1 text-white/70 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/20"
+      className="rounded-md p-1 text-gray-700 hover:bg-black/[0.06] hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/10 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white dark:focus:ring-white/20"
       onClick={onClick}
     >
       {children}
@@ -584,7 +672,6 @@ function CloseIcon() {
 /* ---------- Grouping logic ---------- */
 
 function groupChatsByDate(items: Chat[]) {
-  // If no timestamps, single group labeled "Recent"
   const hasTime = items.some((c: any) => c.updated_at || c.created_at);
   if (!hasTime) {
     return [{ key: "recent", label: "Recent", items }];
@@ -597,10 +684,9 @@ function groupChatsByDate(items: Chat[]) {
   const yestStart = todayStart - 24 * 60 * 60 * 1000;
   const weekStart = todayStart - 7 * 24 * 60 * 60 * 1000;
 
-  const buckets: Record<
-    "today" | "yesterday" | "week" | "older",
-    Chat[]
-  > = { today: [], yesterday: [], week: [], older: [] };
+  const buckets: Record<"today" | "yesterday" | "week" | "older", Chat[]> = {
+    today: [], yesterday: [], week: [], older: []
+  };
 
   items.forEach((c: any) => {
     const t =

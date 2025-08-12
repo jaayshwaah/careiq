@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import Sidebar from "@/components/Sidebar";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "CareIQ Chat",
@@ -13,21 +13,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const exampleChats = [
-    // Replace with fetched chats server-side if needed
-    // { id: "123", title: "Welcome to CareIQ" },
-  ];
+  // You can fetch real chats on the server and pass them to AppShell via props.
+  // Leaving empty by default.
+  const initialChats: any[] = [];
 
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider defaultTheme="light">
-          <div className="min-h-screen grid" style={{ gridTemplateColumns: "auto 1fr" }}>
-            <Sidebar chats={exampleChats} />
-            <main className="min-h-screen" style={{ background: "var(--bg)" }}>
-              {children}
-            </main>
-          </div>
+          <AppShell initialChats={initialChats}>{children}</AppShell>
         </ThemeProvider>
       </body>
     </html>
