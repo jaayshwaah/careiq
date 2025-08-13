@@ -1,62 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-:root { --radius: 0.75rem; }
-* { min-width: 0; }
-html, body { height: 100%; }
-
-body {
-  @apply bg-canvas text-ink antialiased;
-  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji",
-    "Segoe UI Emoji";
-}
-
-/* Background wash */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(1200px 700px at -10% -10%, hsl(212 100% 97%) 0%, transparent 45%),
-    radial-gradient(1000px 600px at 110% -10%, hsl(260 100% 98%) 0%, transparent 40%),
-    radial-gradient(900px 600px at 50% 120%, hsl(180 100% 97%) 0%, transparent 40%);
-  pointer-events: none;
-  z-index: -2;
-}
-.dark body { @apply bg-canvas-dark text-ink-dark; }
-.dark body::before {
-  background:
-    radial-gradient(1000px 600px at -10% -10%, hsl(222 35% 18% / .8) 0%, transparent 50%),
-    radial-gradient(900px 600px at 110% -10%, hsl(270 35% 18% / .7) 0%, transparent 45%),
-    radial-gradient(900px 600px at 50% 120%, hsl(200 35% 18% / .7) 0%, transparent 45%);
-}
-
-/* Glass */
-.glass { @apply bg-glass backdrop-blur-md border border-border shadow-soft rounded-2xl; }
-.dark .glass { @apply bg-white/5 backdrop-blur-md border-border-dark shadow-softdark; }
-
-/* Scrollbars */
-* { scrollbar-width: thin; scrollbar-color: hsl(220 10% 70%) transparent; }
-*::-webkit-scrollbar { height: 8px; width: 8px; }
-*::-webkit-scrollbar-thumb { background: hsl(220 10% 70%); border-radius: 999px; }
-*::-webkit-scrollbar-track { background: transparent; }
-
-/* Messages */
-.message { @apply rounded-2xl px-4 py-3 leading-relaxed shadow; }
-.message.assistant { @apply bg-white/70 dark:bg-white/10 border border-border dark:border-border-dark; }
-.message.user { @apply bg-accent-soft border border-accent/30; }
-
-kbd { @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-xs font-medium border border-border bg-white/70 dark:bg-white/10 dark:border-border-dark; }
-
-/* === New Improvements === */
-
-/* Composer: clearer outline / shade */
-.composer {
-  @apply rounded-2xl border border-black/10 bg-white/80 shadow-soft backdrop-blur-md
-         dark:border-white/15 dark:bg-white/5 dark:shadow-softdark;
-}
+/* === New Improvements (REPLACE everything below this line) === */
 
 /* Suggestion tiles */
 .suggestion-tile {
@@ -64,213 +6,123 @@ kbd { @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded-md te
          hover:bg-white/90 active:scale-[0.99]
          dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10 transition;
 }
-/* Liquid Glass Composer (macOS/iOS style) */
-.composer {
-  position: relative;
-  border-radius: 1.5rem;
-  padding: 0.75rem 1rem;
 
-  /* Glass effect */
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+/* Liquid Glass Composer — consolidated, higher specificity */
+.composer { position: relative; }
 
-  /* Subtle border with light refraction */
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow:
-    inset 0 0 0.5px rgba(255, 255, 255, 0.6),
-    0 4px 20px rgba(0, 0, 0, 0.05);
-
-  /* Smooth transitions for hover/focus */
-  transition: all 0.25s ease;
-}
-
-.composer:focus-within {
-  background: rgba(255, 255, 255, 0.55);
-  border-color: rgba(255, 255, 255, 0.8);
-  box-shadow:
-    inset 0 0 0.75px rgba(255, 255, 255, 0.8),
-    0 6px 25px rgba(0, 0, 0, 0.08);
-}
-
-/* Dark mode variant */
-.dark .composer {
-  background: rgba(25, 25, 25, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    inset 0 0 0.5px rgba(255, 255, 255, 0.08),
-    0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.dark .composer:focus-within {
-  background: rgba(25, 25, 25, 0.55);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow:
-    inset 0 0 0.75px rgba(255, 255, 255, 0.12),
-    0 6px 25px rgba(0, 0, 0, 0.4);
-}
-/* ============================
-   LIQUID GLASS COMPOSER v2
-   - Stronger outline
-   - Subtle refraction border
-   - Tactile send button
-   ============================ */
-
-/* Container — spacing handled by layout classes where used */
-.composer {
-  position: relative;
-}
-
-/* The glass core wrapper */
+/* Strong, frosted shell */
 .composer .composer-inner {
   position: relative;
   display: flex;
   align-items: flex-end;
   gap: 0.5rem;
-
-  /* Rounded glass body */
   border-radius: 1.25rem;
   padding: 0.5rem 0.5rem 0.5rem 0.75rem;
 
   /* Liquid glass */
-  background: rgba(255, 255, 255, 0.42);
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  background: rgba(255, 255, 255, 0.48);
+  backdrop-filter: blur(24px) saturate(185%);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
 
-  /* Depth + subtle inner glow */
+  /* Crisp outline + depth */
+  border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow:
-    inset 0 0 0.75px rgba(255, 255, 255, 0.8),
-    0 8px 28px rgba(0, 0, 0, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.05);
-
-  /* Stronger outer edge via gradient border (pseudo) */
-  border: 1px solid rgba(255, 255, 255, 0.55);
+    inset 0 0 1px rgba(255,255,255,0.9),
+    0 10px 30px rgba(0,0,0,0.10),
+    0 2px 8px rgba(0,0,0,0.06);
 }
 
-/* Light refraction ring (subtle gradient stroke) */
+/* Refraction rim */
 .composer .composer-inner::before {
   content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  padding: 1px; /* gradient stroke thickness */
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.2)) border-box,
-    radial-gradient(120% 100% at 0% 0%, rgba(255,255,255,0.6), rgba(255,255,255,0)) border-box;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box, 
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
+    linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.35)) border-box;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  padding: 1px; /* stroke thickness */
 }
 
-/* Fine surface noise for realism */
+/* Fine surface noise */
 .composer .composer-inner::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0.25;
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  opacity: .18;
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
   background-size: 200px 200px;
 }
 
-/* Focused state — brighten and add ring */
+/* Focus brightness + ring */
 .composer:focus-within .composer-inner {
-  background: rgba(255, 255, 255, 0.58);
-  border-color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.62);
+  border-color: rgba(255, 255, 255, 1);
   box-shadow:
-    inset 0 0 1px rgba(255, 255, 255, 0.95),
-    0 10px 30px rgba(0, 0, 0, 0.12),
-    0 0 0 3px rgba(64, 132, 255, 0.20); /* soft focus ring */
+    inset 0 0 1px rgba(255,255,255,1),
+    0 12px 34px rgba(0,0,0,0.14),
+    0 0 0 3px rgba(64,132,255,0.20);
 }
 
-/* Dark mode */
+/* Dark mode variant */
 .dark .composer .composer-inner {
-  background: rgba(20, 20, 20, 0.42);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(20,20,20,0.46);
+  border-color: rgba(255,255,255,0.28);
   box-shadow:
-    inset 0 0 0.75px rgba(255, 255, 255, 0.08),
-    0 10px 32px rgba(0, 0, 0, 0.55),
-    0 2px 6px rgba(0, 0, 0, 0.35);
-}
-.dark .composer .composer-inner::before {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06)) border-box,
-    radial-gradient(120% 100% at 0% 0%, rgba(255,255,255,0.12), rgba(255,255,255,0)) border-box;
+    inset 0 0 1px rgba(255,255,255,0.12),
+    0 14px 40px rgba(0,0,0,0.75),
+    0 2px 10px rgba(0,0,0,0.45);
 }
 .dark .composer:focus-within .composer-inner {
-  background: rgba(20, 20, 20, 0.58);
-  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(20,20,20,0.62);
+  border-color: rgba(255,255,255,0.4);
   box-shadow:
-    inset 0 0 1px rgba(255, 255, 255, 0.14),
-    0 12px 36px rgba(0, 0, 0, 0.75),
-    0 0 0 3px rgba(64, 132, 255, 0.25);
+    inset 0 0 1px rgba(255,255,255,0.14),
+    0 16px 44px rgba(0,0,0,0.85),
+    0 0 0 3px rgba(64,132,255,0.25);
 }
 
-/* Input styles (iMessage-like, but inside the shared glass) */
+/* iMessage‑like textarea (inside glass) */
 .composer-input {
-  width: 100%;
-  min-height: 56px;
-  max-height: 40vh;
-  resize: vertical;
-  border: 0 !important;
-  background: transparent !important;
-  outline: none !important;
-  box-shadow: none !important;
-  padding: 0.625rem 0.75rem;
-  font-size: 0.95rem;
-  line-height: 1.45;
+  width: 100%; min-height: 56px; max-height: 40vh; resize: vertical;
+  border: 0 !important; background: transparent !important; outline: none !important; box-shadow: none !important;
+  padding: 0.625rem 0.75rem; font-size: 0.95rem; line-height: 1.45;
 }
-.composer-input::placeholder { opacity: 0.6; }
+.composer-input::placeholder { opacity: .55; }
 
-/* Send button — tactile pill */
+/* Tactile Send button (overrides shadcn defaults) */
 .btn-send {
-  height: 40px;
-  width: 40px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  height: 40px !important; width: 40px !important; border-radius: 999px !important;
+  display: inline-flex; align-items: center; justify-content: center;
 
-  /* Glassy capsule with accent tint */
-  background: radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,0.9), rgba(255,255,255,0.5)) padding-box,
-              linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6)) border-box;
-  border: 1px solid rgba(0,0,0,0.06);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  /* Glassy capsule */
+  background: radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,0.95), rgba(255,255,255,0.55)) padding-box,
+              linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.6)) border-box !important;
+  border: 1px solid rgba(0,0,0,0.06) !important;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: #111 !important;
 
-  /* Depth */
   box-shadow:
     0 2px 0 rgba(0,0,0,0.03),
-    0 8px 22px rgba(0,0,0,0.12);
-  transition: transform .14s ease, box-shadow .14s ease, background .14s ease;
+    0 10px 26px rgba(0,0,0,0.16);
+  transition: transform .14s ease, box-shadow .14s ease;
 }
-.btn-send:disabled {
-  opacity: .5;
-  cursor: not-allowed;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.02);
+.btn-send:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 3px 0 rgba(0,0,0,0.04), 0 14px 30px rgba(0,0,0,0.2); }
+.btn-send:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-send svg { width: 18px; height: 18px; }
+
+/* Accent (enabled state): subtle blue tint when input has text */
+.composer:has(.composer-input:not(:placeholder-shown)) .btn-send,
+.composer:has(.composer-input:focus) .btn-send {
+  background:
+    radial-gradient(140% 140% at 30% 15%, rgba(113,173,255,0.95), rgba(113,173,255,0.55)) padding-box,
+    linear-gradient(180deg, rgba(113,173,255,0.95), rgba(113,173,255,0.6)) border-box !important;
+  color: #0b1a2e !important;
 }
-.btn-send:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow:
-    0 3px 0 rgba(0,0,0,0.04),
-    0 12px 28px rgba(0,0,0,0.16);
-}
-.dark .btn-send {
-  background: radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,0.12), rgba(255,255,255,0.04)) padding-box,
-              linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06)) border-box;
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow:
-    0 2px 0 rgba(255,255,255,0.02),
-    0 8px 24px rgba(0,0,0,0.55);
-}
-.dark .btn-send:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow:
-    0 3px 0 rgba(255,255,255,0.03),
-    0 12px 30px rgba(0,0,0,0.7);
+.dark .composer:has(.composer-input:not(:placeholder-shown)) .btn-send,
+.dark .composer:has(.composer-input:focus) .btn-send {
+  background:
+    radial-gradient(140% 140% at 30% 15%, rgba(113,173,255,0.22), rgba(113,173,255,0.10)) padding-box,
+    linear-gradient(180deg, rgba(113,173,255,0.18), rgba(113,173,255,0.10)) border-box !important;
+  color: #dce9ff !important;
 }

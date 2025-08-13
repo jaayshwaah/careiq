@@ -7,19 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Msg = { id: string; chat_id: string; role: "user" | "assistant"; content: string; created_at: string };
 
-const HEADLINES = [
-  "How can I help today?",
-  "What are we building?",
-  "Ask me anything.",
-  "Ready when you are.",
-];
-
-const SUGGESTIONS = [
-  "Summarize this article",
-  "Brainstorm feature ideas",
-  "Draft an email reply",
-  "Explain a concept simply",
-];
+const HEADLINES = ["How can I help today?", "What are we building?", "Ask me anything.", "Ready when you are."];
+const SUGGESTIONS = ["Summarize this article", "Brainstorm feature ideas", "Draft an email reply", "Explain a concept simply"];
 
 export default function Chat({ chatId }: { chatId: string }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -28,7 +17,7 @@ export default function Chat({ chatId }: { chatId: string }) {
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const t = setInterval(() => setHeadlineIdx((i) => (i + 1) % HEADLINES.length), 2500);
+    const t = setInterval(() => setHeadlineIdx((i) => (i + 1) % HEADLINES.length), 2400);
     return () => clearInterval(t);
   }, []);
 
@@ -37,18 +26,13 @@ export default function Chat({ chatId }: { chatId: string }) {
     (async () => {
       try {
         const res = await fetch(`/api/chats?id=${chatId}`, { cache: "no-store" });
-        if (!res.ok) throw new Error("Failed to load messages");
         const json = await res.json();
         const dbMsgs: Msg[] = json?.messages ?? [];
         if (mounted) {
           setMsgs(dbMsgs);
-          requestAnimationFrame(() =>
-            listRef.current?.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "end" })
-          );
+          requestAnimationFrame(() => listRef.current?.lastElementChild?.scrollIntoView({ behavior: "smooth" }));
         }
-      } catch {
-        // soft-fail
-      }
+      } catch {}
     })();
     return () => {
       mounted = false;
@@ -69,39 +53,24 @@ export default function Chat({ chatId }: { chatId: string }) {
       created_at: new Date().toISOString(),
     };
     setMsgs((m) => [...m, optimistic]);
-    requestAnimationFrame(() =>
-      listRef.current?.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "end" })
-    );
+    requestAnimationFrame(() => listRef.current?.lastElementChild?.scrollIntoView({ behavior: "smooth" }));
 
-    await fetch("/api/chat", {
-      method: "POST",
-      body: JSON.stringify({ chatId, content: text }),
-    });
+    await fetch("/api/chat", { method: "POST", body: JSON.stringify({ chatId, content: text }) });
   };
 
-  function useSuggestion(text: string) {
-    setInput(text);
-  }
-
-  const showEmptyState = msgs.length === 0;
+  const showEmpty = msgs.length === 0;
 
   return (
     <div className="flex h-[calc(100vh-32px)] flex-col gap-4">
-      {/* Transcript / Empty state */}
       <div className="glass flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto p-4 sm:p-6">
           <div ref={listRef} className="mx-auto flex max-w-2xl flex-col gap-3">
-            {showEmptyState ? (
+            {showEmpty ? (
               <div className="mb-2 mt-2 text-center">
                 <div className="text-2xl font-semibold tracking-tight animate-fadeUp">{HEADLINES[headlineIdx]}</div>
                 <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {SUGGESTIONS.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => useSuggestion(s)}
-                      className="suggestion-tile"
-                      type="button"
-                    >
+                    <button key={s} onClick={() => setInput(s)} className="suggestion-tile" type="button">
                       {s}
                     </button>
                   ))}
@@ -118,7 +87,7 @@ export default function Chat({ chatId }: { chatId: string }) {
         </div>
       </div>
 
-      {/* Liquid‑glass composer */}
+      {/* Composer */}
       <form onSubmit={onSend} className="composer mx-auto w-full max-w-2xl">
         <div className="composer-inner">
           <Textarea
@@ -127,13 +96,7 @@ export default function Chat({ chatId }: { chatId: string }) {
             placeholder="Message CareIQ…"
             className="composer-input"
           />
-
-          <Button
-            type="submit"
-            disabled={!input.trim()}
-            className="btn-send"
-            aria-label="Send message"
-          >
+          <Button type="submit" disabled={!input.trim()} className="btn-send" aria-label="Send message">
             <SendHorizonal className="h-4 w-4" />
           </Button>
         </div>
