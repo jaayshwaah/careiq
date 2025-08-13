@@ -2,34 +2,37 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 
 export default function Page() {
   const router = useRouter();
 
   useEffect(() => {
     (async () => {
-      // Grab latest chat; if none, create one
-      const { data: chats, error } = await supabase
-        .from("chats")
-        .select("id")
-        .order("created_at", { ascending: false })
-        .limit(1);
+      try {
+        // Try to get the latest chat from the server
+        const listResp = await fetch("/api/chats", { cache: "no-store" });
+        if (listResp.ok) {
+          const json = await listResp.json();
+          const latestId: string | undefined = json?.data?.[0]?.id;
+          if (latestId) {
+            router.replace(`/chat/${latestId}`);
+            return;
+          }
+        }
 
-      if (error) {
-        console.error(error);
-        // Just create a new chat as a fallback
+        // If none, create one
+        const createResp = await fetch("/api/chats", { method: "POST" });
+        if (createResp.ok) {
+          const created = await createResp.json();
+          router.replace(`/chat/${created.id}`);
+          return;
+        }
+
+        // Final fallback -> stay here (error boundary will catch if needed)
+        console.error("Failed to resolve chat route", { listRespStatus: listResp.status, createRespStatus: createResp.status });
+      } catch (err) {
+        console.error("Home redirect error:", err);
       }
-
-      let chatId = chats?.[0]?.id as string | undefined;
-
-      if (!chatId) {
-        const resp = await fetch("/api/chats", { method: "POST" });
-        const created = await resp.json();
-        chatId = created.id;
-      }
-
-      router.replace(`/chat/${chatId}`);
     })();
   }, [router]);
 

@@ -5,14 +5,15 @@ import { useEffect, useState } from "react";
 import { Plus, PanelsTopLeft, Settings, User, LogOut } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabaseClient";
-import type { ChatRow } from "@/types/db";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+
+type ChatRow = { id: string; title: string | null; created_at: string };
 
 type SidebarProps = {
   collapsed: boolean;
@@ -22,6 +23,7 @@ type SidebarProps = {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [chats, setChats] = useState<ChatRow[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -33,28 +35,39 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     let mounted = true;
 
     async function load() {
-      const { data, error } = await supabase
-        .from("chats")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!mounted) return;
-      if (error) console.error(error);
-      setChats(data || []);
+      try {
+        const { data, error } = await supabase.from("chats").select("*").order("created_at", { ascending: false });
+        if (!mounted) return;
+        if (error) {
+          setLoadError(error.message);
+          return;
+        }
+        setLoadError(null);
+        setChats(data || []);
+      } catch (err: any) {
+        if (!mounted) return;
+        setLoadError(err?.message || "Failed to load chats");
+        // Don’t throw — we keep the sidebar rendered.
+      }
     }
 
     load();
 
-    const channel = supabase
-      .channel("realtime:chats")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chats" }, () => load())
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chats" }, () => load())
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "chats" }, () => load())
-      .subscribe();
+    // Realtime channel is best-effort; if supabase init throws, we skip it
+    let unsub: (() => void) | null = null;
+    try {
+      const channel = (supabase as any)
+        .channel?.("realtime:chats")
+        ?.on("postgres_changes", { event: "*", schema: "public", table: "chats" }, load)
+        ?.subscribe();
+      unsub = channel ? () => supabase.removeChannel(channel) : null;
+    } catch {
+      // ignore realtime errors
+    }
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      try { unsub?.(); } catch {}
     };
   }, []);
 
@@ -106,25 +119,31 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           {/* Chats list */}
           <div className="flex-1 px-1">
             <ScrollArea className="h-full pr-2">
-              <ul className="space-y-1">
-                {chats.map((c) => {
-                  const isActive = c.id === activeId;
-                  return (
-                    <li key={c.id}>
-                      <Link
-                        href={`/chat/${c.id}`}
-                        className={cn(
-                          "group flex items-center gap-2 rounded-xl px-2 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition",
-                          isActive && "bg-black/5 dark:bg-white/5"
-                        )}
-                      >
-                        <div className="h-6 w-6 rounded-lg bg-black/5 dark:bg-white/10" />
-                        <span className={cn("truncate", labelCls)}>{c.title || "New chat"}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+              {loadError ? (
+                <div className={cn("text-xs text-ink-subtle px-2 py-1", !collapsed && "text-left")}>
+                  Unable to load chats.
+                </div>
+              ) : (
+                <ul className="space-y-1">
+                  {chats.map((c) => {
+                    const isActive = c.id === activeId;
+                    return (
+                      <li key={c.id}>
+                        <Link
+                          href={`/chat/${c.id}`}
+                          className={cn(
+                            "group flex items-center gap-2 rounded-xl px-2 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition",
+                            isActive && "bg-black/5 dark:bg-white/5"
+                          )}
+                        >
+                          <div className="h-6 w-6 rounded-lg bg-black/5 dark:bg-white/10" />
+                          <span className={cn("truncate", labelCls)}>{c.title || "New chat"}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </ScrollArea>
           </div>
 
