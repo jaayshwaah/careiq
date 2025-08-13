@@ -2,12 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createClientServer } from "@/lib/supabase-server";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 
@@ -17,7 +12,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "chatId and content required" }, { status: 400 });
   }
 
-  // Insert user message
+  // Lazily create the Supabase client at request time (prevents build-time URL errors)
+  const supabase = createClientServer();
+
+  // 1) Insert user message
   const { error: userErr } = await supabase
     .from("messages")
     .insert({ chat_id: chatId, role: "user", content });
@@ -26,6 +24,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: userErr.message }, { status: 500 });
   }
 
+  // 2) Stream assistant reply (OpenRouter if key present; otherwise mock)
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
@@ -55,7 +54,7 @@ export async function POST(req: Request) {
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-              "HTTP-Referer": "https://careiq",     // optional metadata
+              "HTTP-Referer": "https://careiq",
               "X-Title": "CareIQ Chat"
             },
             body: JSON.stringify({

@@ -2,15 +2,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createClientServer } from "@/lib/supabase-server";
 
 export async function POST() {
+  const supabase = createClientServer();
   const title = "New chat";
+
   const { data, error } = await supabase
     .from("chats")
     .insert({ title })
@@ -24,6 +21,7 @@ export async function POST() {
 }
 
 export async function GET() {
+  const supabase = createClientServer();
   const { data, error } = await supabase
     .from("chats")
     .select("*")
