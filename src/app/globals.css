@@ -49,3 +49,18 @@ body::before {
 .message.user { @apply bg-accent-soft border border-accent/30; }
 
 kbd { @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-xs font-medium border border-border bg-white/70 dark:bg-white/10 dark:border-border-dark; }
+
+/* === New Improvements === */
+
+/* Composer: clearer outline / shade */
+.composer {
+  @apply rounded-2xl border border-black/10 bg-white/80 shadow-soft backdrop-blur-md
+         dark:border-white/15 dark:bg-white/5 dark:shadow-softdark;
+}
+
+/* Suggestion tiles */
+.suggestion-tile {
+  @apply rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-sm text-ink
+         hover:bg-white/90 active:scale-[0.99]
+         dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10 transition;
+}

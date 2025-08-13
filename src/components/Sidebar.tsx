@@ -29,22 +29,17 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const isCollapsed = collapsed;
   const width = isCollapsed ? "w-[84px]" : "w-[300px]";
-  const showLabels = !isCollapsed;
+  const activeId = pathname?.startsWith("/chat/") ? pathname.split("/").pop() : "";
 
   useEffect(() => {
     let mounted = true;
 
     async function load() {
       try {
-        const { data, error } = await supabase
-          .from("chats")
-          .select("*")
-          .order("created_at", { ascending: false });
-
+        const { data, error } = await supabase.from("chats").select("*").order("created_at", { ascending: false });
         if (!mounted) return;
-        if (error) {
-          setLoadError(error.message);
-        } else {
+        if (error) setLoadError(error.message);
+        else {
           setLoadError(null);
           setChats(data || []);
         }
@@ -56,7 +51,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     load();
 
-    // Realtime best-effort
+    // Optional realtime
     let unsub: (() => void) | null = null;
     try {
       const channel = (supabase as any)
@@ -67,7 +62,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     } catch {}
     return () => {
       mounted = false;
-      try { unsub?.(); } catch {}
+      try {
+        unsub?.();
+      } catch {}
     };
   }, []);
 
@@ -77,13 +74,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     router.push(`/chat/${created.id}`);
   }
 
-  const activeId = pathname?.startsWith("/chat/") ? pathname.split("/").pop() : "";
-
   return (
     <aside className={cn("relative h-svh shrink-0 transition-[width] duration-300 ease-ios", width)}>
       <div className="sticky top-0 h-svh p-3">
         <div className="glass flex h-full flex-col overflow-hidden">
-          {/* Header / Toggle */}
+          {/* Top block: logo + toggle (no overlap) */}
           <div className={cn("flex items-center gap-2 p-2", isCollapsed ? "justify-center" : "")}>
             <Link
               href="/"
@@ -91,41 +86,53 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 "flex items-center gap-2 rounded-xl px-2 py-1 transition hover:bg-black/5 dark:hover:bg-white/5",
                 isCollapsed ? "justify-center" : ""
               )}
+              aria-label="Home"
             >
               <div className="relative h-9 w-9 overflow-hidden rounded-xl shadow-insetglass">
                 <Image src="/logo.svg" alt="CareIQ" fill sizes="36px" priority />
               </div>
-              {showLabels && <span className="text-sm font-semibold">CareIQ</span>}
+              {!isCollapsed && <span className="text-sm font-semibold">CareIQ</span>}
             </Link>
 
-            <div className={cn("ml-auto", isCollapsed && "hidden")}>
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="ghost" className="rounded-xl" onClick={onToggle} aria-label="Toggle sidebar">
-                      <PanelsTopLeft className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Toggle sidebar</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-
-            {/* When collapsed, show the toggle centered below logo */}
-            {isCollapsed && (
-              <div className="absolute left-0 right-0 -bottom-2 flex justify-center">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-xl"
-                  onClick={onToggle}
-                  aria-label="Expand sidebar"
-                >
-                  <PanelsTopLeft className="h-5 w-5" />
-                </Button>
+            {!isCollapsed && (
+              <div className="ml-auto">
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="ghost" className="rounded-xl" onClick={onToggle} aria-label="Collapse sidebar">
+                        <PanelsTopLeft className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Collapse</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             )}
           </div>
+
+          {/* When collapsed, render a dedicated, non-overlapping toggle row */}
+          {isCollapsed && (
+            <div className="px-2 pb-2">
+              <div className="flex justify-center">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="rounded-xl"
+                        onClick={onToggle}
+                        aria-label="Expand sidebar"
+                      >
+                        <PanelsTopLeft className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Expand</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </div>
+          )}
 
           {/* New chat */}
           <div className={cn("px-2", isCollapsed && "px-0")}>
@@ -139,6 +146,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         variant="default"
                         className="h-12 w-12 rounded-2xl shadow hover:shadow-md"
                         onClick={handleNewChat}
+                        aria-label="New chat"
                       >
                         <Plus className="h-5 w-5" />
                       </Button>
@@ -165,9 +173,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   Unable to load chats.
                 </div>
               ) : isCollapsed ? (
-                /* Collapsed: show a clean icon stack (no shrinking) */
                 <ul className="flex flex-col items-center gap-2">
-                  {chats.slice(0, 12).map((c) => {
+                  {chats.slice(0, 16).map((c) => {
                     const isActive = c.id === activeId;
                     return (
                       <li key={c.id}>
@@ -180,8 +187,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                   "flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition",
                                   isActive && "bg-black/5 dark:bg-white/5"
                                 )}
+                                aria-label={c.title || "Chat"}
                               >
-                                {/* decorative square */}
                                 <div className="h-5 w-5 rounded-md bg-black/20 dark:bg-white/20" />
                               </Link>
                             </TooltipTrigger>
@@ -195,7 +202,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   })}
                 </ul>
               ) : (
-                /* Expanded: full list with titles */
                 <ul className="space-y-1">
                   {chats.map((c) => {
                     const isActive = c.id === activeId;
