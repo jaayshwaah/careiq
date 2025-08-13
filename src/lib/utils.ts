@@ -5,9 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/**
- * timeAgo: "5m", "2h", "3d", "now"
- */
+/** timeAgo: "now", "45s", "12m", "3h", "5d", "2w", "3mo", "1y" */
 export function timeAgo(input: string | number | Date): string {
   const d = new Date(input);
   const diff = Math.max(0, Date.now() - d.getTime());

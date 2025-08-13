@@ -1,23 +1,16 @@
-// src/lib/supabase-browser.ts
+// Browser Supabase client (singleton)
 import { createClient } from "@supabase/supabase-js";
+import { getSupabaseEnvBrowser } from "./env";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+let client: ReturnType<typeof createClient> | null = null;
 
-/**
- * Single browser client instance for client components.
- * Guards against missing envs in development.
- */
-if (!supabaseUrl || !supabaseAnonKey) {
-  // Avoid crashing the browser; surface a readable error in console.
-  // Your UI should still handle "not signed in" states gracefully.
-  // eslint-disable-next-line no-console
-  console.error(
-    "Supabase envs missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
-  );
+export function getBrowserSupabase() {
+  if (client) return client;
+  const { url, anon } = getSupabaseEnvBrowser();
+  client = createClient(url, anon, { auth: { persistSession: true } });
+  return client;
 }
 
-export const supabaseBrowser =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : undefined;
+// For legacy imports expecting `supabase` default
+const supabase = getBrowserSupabase();
+export default supabase;

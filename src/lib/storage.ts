@@ -1,32 +1,17 @@
-import type { Chat, Message } from "@/types";
+// Storage helpers that never create a server client at import time.
+import { createClientServer } from "../supabase-server";
+import supabaseBrowser from "../supabase-browser";
 
-const KEY = "careiq.chats.v1";
-
-export const Storage = {
-  getChats(): Chat[] {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = window.localStorage.getItem(KEY);
-      return raw ? (JSON.parse(raw) as Chat[]) : [];
-    } catch {
-      return [];
-    }
-  },
-  saveChats(chats: Chat[]) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(KEY, JSON.stringify(chats));
-  },
-};
-
-export function createEmptyChat(): Chat {
-  return {
-    id: crypto.randomUUID(),
-    title: "",
-    createdAt: Date.now(),
-    messages: [],
-  };
+/** Server-side public URL (no auth) */
+export async function getPublicUrlServer(bucket: string, path: string) {
+  const supabase = createClientServer();
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
 }
 
-export function addMessage(chats: Chat[], chatId: string, msg: Message): Chat[] {
-  return chats.map((c) => (c.id === chatId ? { ...c, messages: [...c.messages, msg] } : c));
+/** Browser-side public URL (uses public client) */
+export function getPublicUrlBrowser(bucket: string, path: string) {
+  const supabase = supabaseBrowser;
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
 }

@@ -1,34 +1,40 @@
-// src/lib/env.ts
-/**
- * Centralized, safe access to environment variables.
- * - Validates presence for required vars
- * - Trims accidental wrapping quotes
- */
+// Centralized, typed env access with safe fallbacks.
+// Use ONLY public vars in the browser; server can read either.
 
-function getEnv(name: string, { required = false }: { required?: boolean } = {}) {
-  let v = process.env[name];
-  if (typeof v === "string") {
-    // Trim accidental quotes from .env files: KEY="value" -> value
-    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-      v = v.slice(1, -1);
-    }
-    v = v.trim();
+function pick(...keys: string[]): string | undefined {
+  for (const k of keys) {
+    const v = process.env[k];
+    if (v && String(v).trim().length) return String(v).trim();
   }
-
-  if (required && !v) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  return v;
+  return undefined;
 }
 
-export const Env = {
-  // Supabase (required)
-  SUPABASE_URL: getEnv("NEXT_PUBLIC_SUPABASE_URL", { required: true })!,
-  SUPABASE_ANON_KEY: getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", { required: true })!,
+export function getSupabaseEnvServer() {
+  const url = pick("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL");
+  const anon = pick("NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY");
+  if (!url || !/^https?:\/\//i.test(url)) {
+    throw new Error(
+      "Supabase URL missing/invalid. Set NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL)."
+    );
+  }
+  if (!anon) {
+    throw new Error(
+      "Supabase anon key missing. Set NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY)."
+    );
+  }
+  return { url, anon };
+}
 
-  // Optional – server-only (never expose to client)
-  SUPABASE_SERVICE_ROLE_KEY: getEnv("SUPABASE_SERVICE_ROLE_KEY") || undefined,
+export function getSupabaseEnvBrowser() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !/^https?:\/\//i.test(url)) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
+  }
+  if (!anon) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  }
+  return { url, anon };
+}
 
-  // Optional public site URL for emails/links
-  PUBLIC_SITE_URL: getEnv("NEXT_PUBLIC_SITE_URL") || undefined,
-};
+export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
