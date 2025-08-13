@@ -9,29 +9,22 @@ export default function Page() {
   useEffect(() => {
     (async () => {
       try {
-        // Try to get the latest chat from the server
-        const listResp = await fetch("/api/chats", { cache: "no-store" });
-        if (listResp.ok) {
-          const json = await listResp.json();
-          const latestId: string | undefined = json?.data?.[0]?.id;
-          if (latestId) {
-            router.replace(`/chat/${latestId}`);
-            return;
-          }
+        // Try to load newest chat
+        const res = await fetch("/api/chats", { cache: "no-store" });
+        let latestId: string | undefined = undefined;
+        if (res.ok) {
+          const json = await res.json();
+          latestId = json?.data?.[0]?.id;
         }
-
-        // If none, create one
-        const createResp = await fetch("/api/chats", { method: "POST" });
-        if (createResp.ok) {
-          const created = await createResp.json();
-          router.replace(`/chat/${created.id}`);
-          return;
+        if (!latestId) {
+          const created = await fetch("/api/chats", { method: "POST" });
+          const json = await created.json();
+          latestId = json?.id;
         }
-
-        // Final fallback -> stay here (error boundary will catch if needed)
-        console.error("Failed to resolve chat route", { listRespStatus: listResp.status, createRespStatus: createResp.status });
-      } catch (err) {
-        console.error("Home redirect error:", err);
+        if (latestId) router.replace(`/chat/${latestId}`);
+      } catch (e) {
+        // If all else fails, land on /chat which will try again
+        router.replace("/chat");
       }
     })();
   }, [router]);
