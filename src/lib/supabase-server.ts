@@ -1,39 +1,27 @@
-// src/lib/supabase-server.ts
-import { cookies as nextCookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+// Server-side Supabase client without @supabase/ssr.
+// Works in Next.js 15 with React 19, Node runtime.
 
-function requiredEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) {
-    // Throwing a clear error helps if envs are missing on Vercel
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  return v;
-}
+import { createClient } from "@supabase/supabase-js";
+
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 /**
- * Server-side Supabase client for API routes and server components.
- * Exported name matches your imports in API routes.
+ * Create a fresh server-side Supabase client.
+ * We don't persist sessions or read cookies here; this app uses anon reads/writes.
+ * If you later add RLS-authenticated endpoints, we can extend this to bind cookies/headers.
  */
-export function createClientServer() {
-  const supabaseUrl = requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
-  const supabaseAnonKey = requiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-
-  // Route-handlers/server-components: use next/headers cookies
-  const cookieStore = nextCookies();
-
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-      set(name: string, value: string, options: any) {
-        // next/headers cookies are mutable in route handlers
-        cookieStore.set({ name, value, ...options });
-      },
-      remove(name: string, options: any) {
-        cookieStore.set({ name, value: "", ...options, maxAge: 0 });
+export function getSupabaseServerClient() {
+  return createClient(url, anon, {
+    auth: { persistSession: false },
+    global: {
+      headers: {
+        "X-Client-Info": "careiq-nextjs",
       },
     },
   });
 }
+
+// Convenience export if you prefer a singleton per import site.
+// For serverless/edge handlers, creating on-demand is fine.
+export const supabaseServer = getSupabaseServerClient();
