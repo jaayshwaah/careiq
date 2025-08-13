@@ -109,3 +109,168 @@ kbd { @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded-md te
     inset 0 0 0.75px rgba(255, 255, 255, 0.12),
     0 6px 25px rgba(0, 0, 0, 0.4);
 }
+/* ============================
+   LIQUID GLASS COMPOSER v2
+   - Stronger outline
+   - Subtle refraction border
+   - Tactile send button
+   ============================ */
+
+/* Container — spacing handled by layout classes where used */
+.composer {
+  position: relative;
+}
+
+/* The glass core wrapper */
+.composer .composer-inner {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+
+  /* Rounded glass body */
+  border-radius: 1.25rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+
+  /* Liquid glass */
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+
+  /* Depth + subtle inner glow */
+  box-shadow:
+    inset 0 0 0.75px rgba(255, 255, 255, 0.8),
+    0 8px 28px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.05);
+
+  /* Stronger outer edge via gradient border (pseudo) */
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+/* Light refraction ring (subtle gradient stroke) */
+.composer .composer-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px; /* gradient stroke thickness */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.2)) border-box,
+    radial-gradient(120% 100% at 0% 0%, rgba(255,255,255,0.6), rgba(255,255,255,0)) border-box;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box, 
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+}
+
+/* Fine surface noise for realism */
+.composer .composer-inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.25;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* Focused state — brighten and add ring */
+.composer:focus-within .composer-inner {
+  background: rgba(255, 255, 255, 0.58);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow:
+    inset 0 0 1px rgba(255, 255, 255, 0.95),
+    0 10px 30px rgba(0, 0, 0, 0.12),
+    0 0 0 3px rgba(64, 132, 255, 0.20); /* soft focus ring */
+}
+
+/* Dark mode */
+.dark .composer .composer-inner {
+  background: rgba(20, 20, 20, 0.42);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 0 0.75px rgba(255, 255, 255, 0.08),
+    0 10px 32px rgba(0, 0, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.dark .composer .composer-inner::before {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06)) border-box,
+    radial-gradient(120% 100% at 0% 0%, rgba(255,255,255,0.12), rgba(255,255,255,0)) border-box;
+}
+.dark .composer:focus-within .composer-inner {
+  background: rgba(20, 20, 20, 0.58);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 0 1px rgba(255, 255, 255, 0.14),
+    0 12px 36px rgba(0, 0, 0, 0.75),
+    0 0 0 3px rgba(64, 132, 255, 0.25);
+}
+
+/* Input styles (iMessage-like, but inside the shared glass) */
+.composer-input {
+  width: 100%;
+  min-height: 56px;
+  max-height: 40vh;
+  resize: vertical;
+  border: 0 !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+.composer-input::placeholder { opacity: 0.6; }
+
+/* Send button — tactile pill */
+.btn-send {
+  height: 40px;
+  width: 40px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Glassy capsule with accent tint */
+  background: radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,0.9), rgba(255,255,255,0.5)) padding-box,
+              linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6)) border-box;
+  border: 1px solid rgba(0,0,0,0.06);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  /* Depth */
+  box-shadow:
+    0 2px 0 rgba(0,0,0,0.03),
+    0 8px 22px rgba(0,0,0,0.12);
+  transition: transform .14s ease, box-shadow .14s ease, background .14s ease;
+}
+.btn-send:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.02);
+}
+.btn-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 3px 0 rgba(0,0,0,0.04),
+    0 12px 28px rgba(0,0,0,0.16);
+}
+.dark .btn-send {
+  background: radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,0.12), rgba(255,255,255,0.04)) padding-box,
+              linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06)) border-box;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    0 2px 0 rgba(255,255,255,0.02),
+    0 8px 24px rgba(0,0,0,0.55);
+}
+.dark .btn-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 3px 0 rgba(255,255,255,0.03),
+    0 12px 30px rgba(0,0,0,0.7);
+}

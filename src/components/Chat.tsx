@@ -27,13 +27,11 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [headlineIdx, setHeadlineIdx] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Rotate headline every 2.5s
   useEffect(() => {
     const t = setInterval(() => setHeadlineIdx((i) => (i + 1) % HEADLINES.length), 2500);
     return () => clearInterval(t);
   }, []);
 
-  // Load messages via API (server pulls from Supabase)
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -44,16 +42,17 @@ export default function Chat({ chatId }: { chatId: string }) {
         const dbMsgs: Msg[] = json?.messages ?? [];
         if (mounted) {
           setMsgs(dbMsgs);
-          scrollToBottom();
+          requestAnimationFrame(() =>
+            listRef.current?.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "end" })
+          );
         }
       } catch {
-        // soft-fail; empty state will render
+        // soft-fail
       }
     })();
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId]);
 
   const onSend = async (e: React.FormEvent) => {
@@ -70,19 +69,15 @@ export default function Chat({ chatId }: { chatId: string }) {
       created_at: new Date().toISOString(),
     };
     setMsgs((m) => [...m, optimistic]);
-    scrollToBottom();
+    requestAnimationFrame(() =>
+      listRef.current?.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "end" })
+    );
 
     await fetch("/api/chat", {
       method: "POST",
       body: JSON.stringify({ chatId, content: text }),
     });
   };
-
-  function scrollToBottom() {
-    requestAnimationFrame(() => {
-      listRef.current?.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "end" });
-    });
-  }
 
   function useSuggestion(text: string) {
     setInput(text);
@@ -123,18 +118,23 @@ export default function Chat({ chatId }: { chatId: string }) {
         </div>
       </div>
 
-      {/* Composer with stronger outline */}
+      {/* Liquid‑glass composer */}
       <form onSubmit={onSend} className="composer mx-auto w-full max-w-2xl">
-        <div className="flex items-end gap-2 p-2 sm:p-3">
+        <div className="composer-inner">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Message CareIQ…"
-            className="min-h-[56px] max-h-[40vh] resize-y rounded-xl bg-transparent focus-visible:ring-0"
+            className="composer-input"
           />
-          <Button type="submit" className="rounded-xl px-3" disabled={!input.trim()}>
+
+          <Button
+            type="submit"
+            disabled={!input.trim()}
+            className="btn-send"
+            aria-label="Send message"
+          >
             <SendHorizonal className="h-4 w-4" />
-            <span className="sr-only">Send</span>
           </Button>
         </div>
       </form>
