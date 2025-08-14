@@ -5,17 +5,11 @@ import { useRouter } from "next/navigation";
 import Composer from "@/components/Composer";
 
 /** One-time headline (random per visit/refresh). */
-function StaticHeading({
-  phrases,
-}: {
-  phrases: string[];
-}) {
+function StaticHeading({ phrases }: { phrases: string[] }) {
   const [idx, setIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    // Choose a stable random index per visit after mount (avoids SSR window/crypto issues)
     try {
-      // Prefer cryptographic randomness when available
       const arr = new Uint32Array(1);
       crypto.getRandomValues(arr);
       setIdx(arr[0] % phrases.length);
@@ -32,7 +26,6 @@ function StaticHeading({
         aria-atomic="true"
         suppressHydrationWarning
       >
-        {/* Render a non-breaking space until we pick a phrase on the client to avoid SSR mismatch */}
         {idx === null ? "\u00A0" : phrases[idx]}
       </h1>
     </div>
@@ -43,12 +36,15 @@ function StaticHeading({
  * Home page chat:
  * - Creates a new chat on first send
  * - Redirects to /chat/[id]?q=<initial message> so Chat.tsx auto-sends it
- * - Big static (per-visit) headline + glowing suggestion area + large composer
+ * - Big static (per-visit) headline + glowing suggestions + large composer
  */
 export default function HomePage() {
   const router = useRouter();
   const [input, setInput] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // TODO: wire this to your auth user later
+  const userName = "Jay";
 
   const suggestions = useMemo(
     () => ["Summarize this", "Draft an email", "Explain a topic", "Create a plan"],
@@ -57,6 +53,7 @@ export default function HomePage() {
 
   const headlinePhrases = useMemo(
     () => [
+      `Good to see you, ${userName}.`,
       "Ask me anything",
       "Summarize this",
       "Draft an email",
@@ -64,34 +61,39 @@ export default function HomePage() {
       "Explain a topic",
       "Create a plan",
     ],
-    []
+    [userName]
   );
 
-  const handleSend = async (text: string) => {
-    const content = text.trim();
+  async function handleSend(text: string) {
+    const content = (text ?? input).trim();
     if (!content || creating) return;
+
+    setCreating(true);
     try {
-      setCreating(true);
-      // Create a chat
+      // 1) Create a chat
       const res = await fetch("/api/chats", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to create chat");
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || "Failed to create chat");
+      }
       const created = await res.json();
       const id = created?.id;
       if (!id) throw new Error("No chat id returned");
 
-      // Redirect and pass the initial message as ?q= so Chat.tsx will auto-send it
-      const url = `/chat/${encodeURIComponent(id)}?q=${encodeURIComponent(content)}`;
-      router.push(url);
-    } finally {
+      // 2) Go to chat and pass first message via ?q= so Chat.tsx auto-sends
+      router.push(`/chat/${encodeURIComponent(id)}?q=${encodeURIComponent(content)}`);
+    } catch (err) {
+      console.error("[homepage send] ", err);
+      // optional: toast here
       setCreating(false);
     }
-  };
+  }
 
   return (
     <div className="flex min-h-svh flex-col">
       <main className="flex-1 grid place-content-center px-6 py-10">
         <div className="mx-auto w-full max-w-2xl">
-          {/* Static per-visit headline (raised and above composer) */}
+          {/* Headline (random per visit; includes greeting) */}
           <StaticHeading phrases={headlinePhrases} />
 
           {/* Large composer */}
