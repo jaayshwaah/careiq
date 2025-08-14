@@ -34,16 +34,19 @@ export default function Composer({
   const [inner, setInner] = React.useState("");
   const [sending, setSending] = React.useState(false);
 
+  // Use controlled value if provided, otherwise internal
   const text = typeof value === "string" ? value : inner;
   const setText = (v: string) => {
-    if (typeof value === "string") onChange?.(v);
-    else setInner(v);
+    if (typeof value === "string") {
+      onChange?.(v);
+    } else {
+      setInner(v);
+    }
   };
 
-  // Auto-resize up to 50vh
-  const textareaRef = useAutoResize<HTMLTextAreaElement>({
-    maxPx: Math.floor(window.innerHeight * 0.5),
-  });
+  // Auto-resize the textarea up to ~50vh.
+  // IMPORTANT: do NOT reference `window` here (render time). The hook computes viewport safely on mount.
+  const textareaRef = useAutoResize<HTMLTextAreaElement>();
 
   const doSend = async () => {
     const content = text.trim();
@@ -51,7 +54,8 @@ export default function Composer({
     try {
       setSending(true);
       await onSend(content);
-      setText("");
+      setText(""); // clear after successful send
+      // Restore height after clearing
       requestAnimationFrame(() => {
         const el = textareaRef.current;
         if (el) {
@@ -112,6 +116,7 @@ export default function Composer({
               "rounded-xl px-2 py-2 sm:px-3 sm:py-2",
               "text-sm sm:text-[15px]"
             )}
+            // Safety max-height fallback in case JS is disabled momentarily
             style={{ maxHeight: "50vh" }}
           />
           <div className="px-2 sm:px-3 pb-1 pt-0.5 text-[11px] text-ink-subtle">
