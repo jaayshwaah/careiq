@@ -14,9 +14,11 @@ type ChatMessage = {
 function ActionIcon({
   label,
   onClick,
+  children,
 }: {
   label: string;
   onClick?: () => void;
+  children: React.ReactNode;
 }) {
   return (
     <button
@@ -26,7 +28,7 @@ function ActionIcon({
       aria-label={label}
       className="h-7 w-7 grid place-content-center rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700"
     >
-      {/* The icon is passed via children when used */}
+      {children}
     </button>
   );
 }
@@ -44,7 +46,7 @@ export default function MessageList({ messages }: { messages: ChatMessage[] }) {
     <div className="flex flex-col gap-6">
       {messages.map((m) => {
         if (m.role === "user") {
-          // Right-aligned, pill bubble (soft violet) — like your screenshot
+          // Right-aligned, pill bubble
           return (
             <div key={m.id} className="flex justify-end">
               <div
@@ -59,7 +61,7 @@ export default function MessageList({ messages }: { messages: ChatMessage[] }) {
           );
         }
 
-        // Assistant — left aligned plain text with small action bar below
+        // Assistant — left aligned streaming text with small action bar
         return (
           <div key={m.id} className="flex">
             <div className="min-w-0">

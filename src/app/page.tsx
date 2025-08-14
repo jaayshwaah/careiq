@@ -49,12 +49,13 @@ function StaticHeading({ phrases }: { phrases: string[] }) {
  * Chat on the home page:
  * - No redirects; stays on `/`
  * - Hero (headline + suggestions) before first message
- * - After first message: ChatGPT-style thread with sticky composer + scrollable list
+ * - After first message: ChatGPT-style thread with sticky composer + streaming reply
  */
 export default function HomePage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [sending, setSending] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   // TODO: wire this to your auth user later
   const userName = "Josh";
@@ -79,17 +80,32 @@ export default function HomePage() {
 
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  // Scroll to bottom when new messages append
-  useEffect(() => {
+  // Smooth scroll to bottom (used after every chunk)
+  const scrollToBottom = () => {
     const el = listRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  };
+
+  // Ensure we land at the bottom when a new message arrives
+  useEffect(() => {
+    scrollToBottom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length]);
 
+  /** Stop streaming mid-reply */
+  const handleStop = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsStreaming(false);
+  };
+
+  /** Send a message and stream assistant reply */
   async function handleSend(text?: string) {
     const content = (text ?? input).trim();
-    if (!content || sending) return;
+    if (!content || isStreaming) return;
 
+    // User message
     const userMsg: ChatMessage = {
       id: uid("user"),
       role: "user",
@@ -97,8 +113,22 @@ export default function HomePage() {
       createdAt: new Date().toISOString(),
     };
 
-    setSending(true);
-    setMessages((prev) => [...prev, userMsg]);
+    // Placeholder assistant message (will stream into this)
+    const asstId = uid("asst");
+    const assistantMsg: ChatMessage = {
+      id: asstId,
+      role: "assistant",
+      content: "",
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setInput("");
+
+    // Start streaming
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setIsStreaming(true);
 
     try {
       const res = await fetch("/api/complete", {
@@ -107,37 +137,54 @@ export default function HomePage() {
         body: JSON.stringify({
           messages: [...messages, userMsg].map(({ role, content }) => ({ role, content })),
         }),
+        signal: controller.signal,
       });
 
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`${res.status} ${res.statusText} ${text}`);
+      if (!res.ok || !res.body) {
+        // Fall back to a non-stream “sorry” message
+        const fallback =
+          "I hit an error generating the reply. If you’re using OpenRouter, check your API key/credits.";
+        setMessages((prev) =>
+          prev.map((m) => (m.id === asstId ? { ...m, content: fallback } : m))
+        );
+        setIsStreaming(false);
+        abortRef.current = null;
+        return;
       }
 
-      const data = (await res.json()) as {
-        message: { id: string; role: ChatRole; content: string; createdAt: string };
-      };
+      // Read streamed text and append to assistant message
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let acc = "";
 
-      const assistantMsg: ChatMessage = {
-        id: data.message.id || uid("asst"),
-        role: "assistant",
-        content: data.message.content || "Sorry — the model returned no text.",
-        createdAt: data.message.createdAt || new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-    } catch {
-      const fallback: ChatMessage = {
-        id: uid("asst"),
-        role: "assistant",
-        content:
-          "I hit an error generating the reply. If you’re using OpenRouter, check your API key/credits. (There’s a mock reply when the key is missing.)",
-        createdAt: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, fallback]);
+      while (!done) {
+        const { value, done: d } = await reader.read();
+        done = d;
+        if (value) {
+          acc += decoder.decode(value, { stream: true });
+          // Update the last assistant message content
+          const chunk = acc;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === asstId ? { ...m, content: chunk } : m))
+          );
+          // Keep the view pinned to bottom while typing
+          scrollToBottom();
+        }
+      }
+    } catch (err) {
+      if ((err as any)?.name !== "AbortError") {
+        const msg =
+          "There was a network error while streaming the reply. Please try again.";
+        setMessages((prev) =>
+          prev.map((m) => (m.id === asstId ? { ...m, content: msg } : m))
+        );
+      }
     } finally {
-      setSending(false);
-      setInput("");
+      setIsStreaming(false);
+      abortRef.current = null;
+      // one last nudge to bottom
+      requestAnimationFrame(scrollToBottom);
     }
   }
 
@@ -156,7 +203,9 @@ export default function HomePage() {
               value={input}
               onChange={setInput}
               onSend={() => handleSend()}
-              disabled={sending}
+              disabled={isStreaming}
+              isStreaming={isStreaming}
+              onStop={handleStop}
               placeholder="Message CareIQ..."
               size="lg"
               className="shadow-soft"
@@ -178,7 +227,7 @@ export default function HomePage() {
                     key={t}
                     onClick={() => handleSend(t)}
                     className="rounded-2xl bg-white/60 px-3 py-1.5 text-sm hover:bg-white/80 transition-colors"
-                    disabled={sending}
+                    disabled={isStreaming}
                   >
                     {t}
                   </button>
@@ -190,14 +239,13 @@ export default function HomePage() {
       ) : (
         // CHAT VIEW: after first message
         <>
-          {/* Center column with proper scroll behavior */}
           <main className="flex-1 flex flex-col">
             <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col min-h-0 px-4">
               <div
                 ref={listRef}
                 className="flex-1 overflow-y-auto overscroll-contain pt-6 pb-32"
                 aria-live="polite"
-                aria-busy={sending ? "true" : "false"}
+                aria-busy={isStreaming ? "true" : "false"}
               >
                 <MessageList messages={messages} />
               </div>
@@ -211,7 +259,9 @@ export default function HomePage() {
                 value={input}
                 onChange={setInput}
                 onSend={() => handleSend()}
-                disabled={sending}
+                disabled={isStreaming}
+                isStreaming={isStreaming}
+                onStop={handleStop}
                 placeholder="Message CareIQ..."
               />
               <p className="mt-2 text-[11px] text-neutral-400 text-center">
