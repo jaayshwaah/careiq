@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SendHorizonal } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import Composer from "@/components/Composer";
 
 type Msg = {
   id: string;
@@ -18,26 +16,55 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [input, setInput] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
-  const isMac =
-    typeof navigator !== "undefined" &&
-    /Mac|iPhone|iPad|Macintosh/.test(
-      (navigator as any).userAgentData?.platform || navigator.platform || ""
-    );
+  // Scroll helpers
+  function scrollToBottom(behavior: ScrollBehavior = "smooth") {
+    if (!listRef.current) return;
+    listRef.current.scrollTo({
+      top: listRef.current.scrollHeight,
+      behavior,
+    });
+  }
 
+  // Initial load (supports either /api/messages/[chatId] or legacy /api/chats?id=)
   useEffect(() => {
     let mounted = true;
     async function load() {
       try {
-        const res = await fetch(`/api/chats?id=${chatId}`, { cache: "no-store" });
-        if (!res.ok) throw new Error("messages list via /api/chats not available");
-        const json = await res.json();
-        const dbMsgs: Msg[] = json?.messages ?? [];
-        if (mounted) {
-          setMsgs(dbMsgs);
-          scrollToBottom();
+        // Prefer the dedicated messages route if available
+        const res = await fetch(`/api/messages/${encodeURIComponent(chatId)}`, {
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const json = await res.json().catch(() => ({}));
+          // Support both { ok, messages: [...] } and raw array returns
+          const got: Msg[] = Array.isArray(json)
+            ? (json as Msg[])
+            : (json?.messages as Msg[]) ?? [];
+          if (mounted) {
+            setMsgs(got);
+            // Jump immediately on first paint
+            requestAnimationFrame(() => scrollToBottom("auto"));
+          }
+          return;
         }
       } catch {
-        // ignore
+        // fall through to legacy path
+      }
+
+      // Legacy fallback: /api/chats?id=...
+      try {
+        const res2 = await fetch(`/api/chats?id=${encodeURIComponent(chatId)}`, {
+          cache: "no-store",
+        });
+        if (!res2.ok) throw new Error("messages list via /api/chats not available");
+        const json2 = await res2.json().catch(() => ({}));
+        const dbMsgs: Msg[] = json2?.messages ?? [];
+        if (mounted) {
+          setMsgs(dbMsgs);
+          requestAnimationFrame(() => scrollToBottom("auto"));
+        }
+      } catch {
+        // ignore for now (empty chat)
       }
     }
     load();
@@ -46,122 +73,77 @@ export default function Chat({ chatId }: { chatId: string }) {
     };
   }, [chatId]);
 
-  function scrollToBottom() {
-    listRef.current?.scrollTo({
-      top: listRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }
+  // Keep the viewport pinned to the bottom as messages append
+  useEffect(() => {
+    // Smooth scroll on subsequent updates
+    scrollToBottom("smooth");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [msgs.length]);
 
-  async function onSend(e: React.FormEvent) {
-    e.preventDefault();
-    const content = input.trim();
-    if (!content) return;
+  // Sending logic with optimistic insert
+  const handleSend = async (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
 
-    setMsgs((m) => [
-      ...m,
-      {
-        id: crypto.randomUUID(),
-        chat_id: chatId,
-        role: "user",
-        content,
-        created_at: new Date().toISOString(),
-      },
-    ]);
+    // Optimistic local user message
+    const optimistic: Msg = {
+      id: crypto.randomUUID(),
+      chat_id: chatId,
+      role: "user",
+      content: trimmed,
+      created_at: new Date().toISOString(),
+    };
+    setMsgs((m) => [...m, optimistic]);
     setInput("");
-    scrollToBottom();
 
     try {
       const res = await fetch(`/api/messages/${encodeURIComponent(chatId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content: trimmed }),
       });
+
       if (!res.ok) throw new Error("send failed");
-      const msg = await res.json();
-      setMsgs((m) => [...m, msg]);
-      scrollToBottom();
+      const assistantMsg: Msg = await res.json();
+
+      // Append assistant response returned by the server
+      setMsgs((m) => [...m, assistantMsg]);
     } catch {
-      // Optionally show a toast
+      // Optionally: append a local error bubble or toast
+      // setMsgs((m) => [...m, { ...optimistic, role: "assistant", content: "Sorry, I couldn’t send that." } as Msg]);
     }
-  }
+  };
 
-  const sendHint = isMac ? (
-    <span className="text-xs text-gray-600 dark:text-white/50">
-      Press <kbd>Return</kbd> to send • <kbd>Shift</kbd>+<kbd>Return</kbd> for newline
-    </span>
-  ) : (
-    <span className="text-xs text-gray-600 dark:text-white/50">
-      Press <kbd>Enter</kbd> to send • <kbd>Shift</kbd>+<kbd>Enter</kbd> for newline
-    </span>
-  );
-
-  const EmptyComposer = (
-    <form
-      onSubmit={onSend}
-      className="glass ring-1 ring-black/10 dark:ring-white/10 rounded-2xl p-3 shadow-soft focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition"
-    >
-      <div className="flex items-end gap-2">
-        <Textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Message CareIQ…"
-          className="min-h-[68px] max-h-[40vh] resize-y rounded-xl border-0 bg-transparent focus-visible:ring-0"
-          onKeyDown={(e) => {
-            if (
-              e.key === "Enter" &&
-              !e.shiftKey &&
-              !e.ctrlKey &&
-              !e.metaKey &&
-              !e.altKey
-            ) {
-              e.preventDefault();
-              (e.currentTarget as HTMLTextAreaElement).form?.requestSubmit();
-            }
-          }}
-        />
-        <Button
-          type="submit"
-          className="rounded-xl px-3 ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft hover:shadow-md"
-          disabled={!input.trim()}
-          title="Send"
-          aria-label="Send message"
-        >
-          <SendHorizonal className="h-4 w-4" />
-          <span className="sr-only">Send</span>
-        </Button>
-      </div>
-      <div className="mt-1 flex items-center justify-between px-1">
-        {sendHint}
-        <div className="text-[11px] text-ink-subtle" aria-hidden>
-          {new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </div>
-      </div>
-    </form>
+  // Suggested prompts for empty state (unchanged)
+  const suggestions = useMemo(
+    () => ["Summarize this", "Draft an email", "Explain a topic", "Create a plan"],
+    []
   );
 
   return (
     <div className="flex h-full flex-col">
-      {/* List */}
+      {/* Messages list */}
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 pb-24 pt-6 md:px-6">
         {msgs.length === 0 ? (
           <div className="grid place-content-center mx-auto w-full max-w-2xl px-6">
-            {EmptyComposer}
+            {/* Center composer when the chat is empty */}
+            <Composer
+              value={input}
+              onChange={setInput}
+              onSend={handleSend}
+              placeholder="Message CareIQ…"
+              className="shadow-soft"
+            />
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:gap-3">
-              {["Summarize this", "Draft an email", "Explain a topic", "Create a plan"].map(
-                (t) => (
-                  <button
-                    key={t}
-                    onClick={() => setInput(t)}
-                    className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15"
-                  >
-                    {t}
-                  </button>
-                )
-              )}
+              {suggestions.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setInput(t)}
+                  className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15"
+                >
+                  {t}
+                </button>
+              ))}
             </div>
           </div>
         ) : (
@@ -196,44 +178,22 @@ export default function Chat({ chatId }: { chatId: string }) {
         )}
       </div>
 
-      {/* Bottom composer only after first message */}
+      {/* Bottom composer once there are messages */}
       {msgs.length > 0 && (
-        <form
-          onSubmit={onSend}
-          className="glass ring-1 ring-black/10 dark:ring-white/10 focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition mx-auto w-full max-w-2xl p-2 sm:p-3 rounded-2xl sticky bottom-2 inset-x-4"
-        >
-          <div className="flex items-end gap-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Message CareIQ…"
-              className="min-h[52px] min-h-[52px] max-h-[40vh] resize-y rounded-xl border-0 bg-transparent focus-visible:ring-0"
-              onKeyDown={(e) => {
-                if (
-                  e.key === "Enter" &&
-                  !e.shiftKey &&
-                  !e.ctrlKey &&
-                  !e.metaKey &&
-                  !e.altKey
-                ) {
-                  e.preventDefault();
-                  (e.currentTarget as HTMLTextAreaElement).form?.requestSubmit();
-                }
-              }}
-            />
-            <Button
-              type="submit"
-              className="rounded-xl px-3 ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft hover:shadow-md"
-              disabled={!input.trim()}
-              title="Send"
-              aria-label="Send message"
-            >
-              <SendHorizonal className="h-4 w-4" />
-              <span className="sr-only">Send</span>
-            </Button>
+        <div className="mx-auto w-full max-w-2xl sticky bottom-2 inset-x-4">
+          <Composer
+            value={input}
+            onChange={setInput}
+            onSend={handleSend}
+            placeholder="Message CareIQ…"
+            className="focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition"
+          />
+          <div className="mt-2 text-center text-xs text-ink-subtle">
+            Press <kbd className="px-1 py-0.5 rounded border border-black/20 dark:border-white/20">Enter</kbd> to send •{" "}
+            <kbd className="px-1 py-0.5 rounded border border-black/20 dark:border-white/20">Shift</kbd>+
+            <kbd className="px-1 py-0.5 rounded border border-black/20 dark:border-white/20">Enter</kbd> for newline
           </div>
-          <div className="mt-2 text-center text-xs text-ink-subtle">{sendHint}</div>
-        </form>
+        </div>
       )}
     </div>
   );

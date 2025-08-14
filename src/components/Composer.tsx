@@ -1,145 +1,143 @@
 "use client";
 
-import React from "react";
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { useAutoResize } from "@/hooks/useAutoResize";
+import { Button } from "@/components/ui/button";
+import { Paperclip, ArrowUpCircle } from "lucide-react";
 
-type Positioning = "flow" | "sticky-edge" | "static";
-
-type Props = {
-  id?: string;
+type ComposerProps = {
   placeholder?: string;
-  maxHeightPx?: number; // limit the auto-resize
-  onSend?: (text: string) => void | Promise<void>;
-  /** "flow" (default) renders in normal layout; "static" can be used when you wrap this in a fixed wrapper; "sticky-edge" reserved for future sticky use */
-  positioning?: Positioning;
+  disabled?: boolean;
+  /**
+   * Called when the user presses Enter (without Shift) or clicks Send.
+   * Return a Promise if you want the component to show a temporary sending state.
+   */
+  onSend: (text: string) => void | Promise<void>;
+  /**
+   * Optional: controlled value. If not provided, internal state is used.
+   */
+  value?: string;
+  onChange?: (text: string) => void;
+  /**
+   * Optional: attach handler (if you support uploads)
+   */
+  onAttachClick?: () => void;
+  className?: string;
 };
 
-const IconSend = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
-    <path d="M22 2 11 13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M22 2 15 22 11 13 2 9l20-7Z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 export default function Composer({
-  id,
-  placeholder = "Message CareIQ",
-  maxHeightPx = 160,
+  placeholder = "Type your message…",
+  disabled,
   onSend,
-  positioning = "flow",
-}: Props) {
-  const ref = React.useRef<HTMLTextAreaElement>(null);
-  const [value, setValue] = React.useState("");
-  const [disabled, setDisabled] = React.useState(false);
+  value,
+  onChange,
+  onAttachClick,
+  className,
+}: ComposerProps) {
+  const [inner, setInner] = React.useState("");
+  const [sending, setSending] = React.useState(false);
 
-  function autoresize() {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "auto";
-    const max = maxHeightPx;
-    const next = Math.min(el.scrollHeight, max);
-    el.style.height = next + "px";
-  }
-
-  function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setValue(e.target.value);
-    requestAnimationFrame(() => autoresize());
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey && !(e as any).isComposing && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      e.preventDefault();
-      void submit();
+  // Use controlled value if provided, otherwise internal
+  const text = typeof value === "string" ? value : inner;
+  const setText = (v: string) => {
+    if (typeof value === "string") {
+      onChange?.(v);
+    } else {
+      setInner(v);
     }
-  }
+  };
 
-  async function submit() {
-    const text = value.trim();
-    if (!text) return;
-    setDisabled(true);
+  // Auto-resize the textarea up to 50vh (adjustable)
+  const textareaRef = useAutoResize<HTMLTextAreaElement>({
+    maxPx: Math.floor(window.innerHeight * 0.5),
+  });
+
+  const doSend = async () => {
+    const content = text.trim();
+    if (!content || disabled) return;
     try {
-      if (onSend) {
-        await onSend(text);
-      } else {
-        window.dispatchEvent(new CustomEvent("composer:send", { detail: { text } }));
-      }
+      setSending(true);
+      await onSend(content);
+      setText(""); // clear after successful send
+      // Restore height after clearing
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (el) {
+          el.style.height = "auto";
+          el.style.overflowY = "hidden";
+        }
+      });
     } finally {
-      setValue("");
-      setDisabled(false);
-      requestAnimationFrame(() => autoresize());
+      setSending(false);
     }
-  }
+  };
 
-  // Wrapper behavior: we keep this neutral so you can place it in sticky/absolute containers elsewhere.
-  // "flow" and "sticky-edge" render the same here; "static" avoids margins if you embed it in your own fixed/sticky wrapper.
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter to send, Shift+Enter for newline
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void doSend();
+    }
+  };
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        void submit();
-      }}
-      style={{ background: "var(--bg)" }}
+    <div
+      className={cn(
+        "w-full rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/70 dark:bg-white/10 shadow-soft",
+        "px-2 py-2 sm:px-3 sm:py-2",
+        className
+      )}
     >
-      {/* Panel container (liquid glass) */}
-      <div className="glass ring-1 ring-black/10 dark:ring-white/10 rounded-2xl p-2 shadow-soft focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition">
-        <div className="flex items-end gap-2">
-          <textarea
-            id={id}
-            ref={ref}
-            rows={1}
-            value={value}
-            onChange={handleInput}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            className="max-h-40 min-h-[52px] w-full resize-y rounded-xl bg-transparent px-3 py-3 text-[15px] leading-relaxed placeholder:text-ink-subtle focus:outline-none disabled:opacity-60"
-            disabled={disabled}
-            aria-label="Message input"
-          />
-          <button
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft hover:shadow-md focus:outline-none"
-            onClick={() => void submit()}
-            style={{
-              height: "40px",
-              width: "40px",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            title="Send"
-            aria-label="Send message"
-            disabled={disabled}
-          >
-            <IconSend className="h-[18px] w-[18px]" />
-          </button>
-        </div>
+      <div className="flex items-end gap-2">
+        {/* Attach (optional) */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onAttachClick}
+          disabled={disabled || sending}
+          className="shrink-0 rounded-xl hover:bg-black/10 dark:hover:bg-white/10"
+          aria-label="Attach file"
+          title="Attach file"
+        >
+          <Paperclip className="h-5 w-5" />
+        </Button>
 
-        {/* OS‑aware hint + subtle clock (to match ChatWindow) */}
-        <div className="mt-1 flex items-center justify-between px-1">
-          <ComposerHint />
-          <div className="text-[11px] text-ink-subtle" aria-hidden>
-            {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        <div className="flex-1 min-w-0">
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder={placeholder}
+            rows={1}
+            spellCheck
+            disabled={disabled}
+            className={cn(
+              "w-full resize-none overflow-hidden bg-transparent outline-none",
+              "rounded-xl px-2 py-2 sm:px-3 sm:py-2",
+              "text-sm sm:text-[15px]"
+            )}
+            // Safety max-height fallback in case JS is disabled momentarily
+            style={{ maxHeight: "50vh" }}
+          />
+          <div className="px-2 sm:px-3 pb-1 pt-0.5 text-[11px] text-ink-subtle">
+            Press <kbd className="px-1 py-0.5 rounded border border-black/20 dark:border-white/20">Shift</kbd>+<kbd className="px-1 py-0.5 rounded border border-black/20 dark:border-white/20">Enter</kbd> for newline
           </div>
         </div>
-      </div>
-    </form>
-  );
-}
 
-function ComposerHint() {
-  if (typeof navigator === "undefined") return null;
-  const p = (navigator as any).userAgentData?.platform || navigator.platform || "";
-  const isMac = /Mac|iPhone|iPad|Macintosh/.test(p);
-  return (
-    <span className="text-xs text-gray-600 dark:text-white/50">
-      {isMac ? (
-        <>
-          Press <kbd>Return</kbd> to send • <kbd>Shift</kbd>+<kbd>Return</kbd> for newline
-        </>
-      ) : (
-        <>
-          Press <kbd>Enter</kbd> to send • <kbd>Shift</kbd>+<kbd>Enter</kbd> for newline
-        </>
-      )}
-    </span>
+        <Button
+          type="button"
+          onClick={doSend}
+          disabled={disabled || sending || !text.trim()}
+          className="shrink-0 rounded-xl"
+          aria-label="Send message"
+          title="Send message"
+        >
+          <ArrowUpCircle className="h-5 w-5" />
+        </Button>
+      </div>
+    </div>
   );
 }
