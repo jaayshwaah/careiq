@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Composer from "@/components/Composer";
+import MessageList from "@/components/MessageList";
 
 /** Types */
 type ChatRole = "system" | "user" | "assistant";
@@ -45,10 +46,10 @@ function StaticHeading({ phrases }: { phrases: string[] }) {
 }
 
 /**
- * Home page chat:
- * - Stays on the same page (no redirect)
- * - Hero header + suggestions before the first message
- * - After first message: standard chat view with sticky composer (ChatGPT style)
+ * Chat on the home page:
+ * - No redirects; stays on `/`
+ * - Hero (headline + suggestions) before first message
+ * - After first message: ChatGPT-style thread with sticky composer
  */
 export default function HomePage() {
   const [input, setInput] = useState("");
@@ -80,10 +81,11 @@ export default function HomePage() {
 
   // Scroll to bottom when new messages append
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages.length]);
 
-  /** Send a message and append assistant reply (no redirect) */
   async function handleSend(text?: string) {
     const content = (text ?? input).trim();
     if (!content || sending) return;
@@ -129,11 +131,10 @@ export default function HomePage() {
         id: uid("asst"),
         role: "assistant",
         content:
-          "I hit an error generating the reply. If you’re using OpenRouter, check your API key/credits. (You’ll still get a mock reply if there’s no key.)",
+          "I hit an error generating the reply. If you’re using OpenRouter, check your API key/credits. (There’s a mock reply when the key is missing.)",
         createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, fallback]);
-      // console.error("[complete]", err);
     } finally {
       setSending(false);
       setInput("");
@@ -143,8 +144,8 @@ export default function HomePage() {
   const showHero = messages.length === 0;
 
   return (
-    <div className="flex min-h-svh flex-col">
-      {/* Before first message: centered hero */}
+    <div className="h-[100dvh] w-full flex flex-col">
+      {/* HERO: before first message */}
       {showHero ? (
         <main className="flex-1 grid place-content-center px-6 py-10">
           <div className="mx-auto w-full max-w-2xl">
@@ -187,15 +188,24 @@ export default function HomePage() {
           </div>
         </main>
       ) : (
-        // After first message: chat view + sticky composer at bottom
+        // CHAT VIEW: after first message
         <>
-          <main className="flex-1">
-            <div className="mx-auto w-full max-w-3xl px-4">
-              <div ref={listRef} className="pt-6 pb-28 overflow-y-auto min-h-[60vh]">
+          {/* Make the center column a flex container with min-h-0 so the list can scroll */}
+          <main className="flex-1 flex flex-col">
+            <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col min-h-0 px-4">
+              {/* Scroll container */}
+              <div
+                ref={listRef}
+                className="flex-1 overflow-y-auto pt-6 pb-28"
+                aria-live="polite"
+                aria-busy={sending ? "true" : "false"}
+              >
                 <MessageList messages={messages} />
               </div>
             </div>
           </main>
+
+          {/* Sticky composer (like ChatGPT) */}
           <div className="sticky bottom-0 w-full border-t border-neutral-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
             <div className="mx-auto max-w-3xl px-4 py-3">
               <Composer
@@ -205,33 +215,13 @@ export default function HomePage() {
                 disabled={sending}
                 placeholder="Message CareIQ..."
               />
+              <p className="mt-2 text-[11px] text-neutral-400 text-center">
+                CareIQ can make mistakes. Check important info.
+              </p>
             </div>
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-/** Simple message list (inline for convenience; you can move to a separate file if you prefer) */
-function MessageList({ messages }: { messages: ChatMessage[] }) {
-  return (
-    <div className="flex flex-col gap-4">
-      {messages.map((m) => (
-        <div key={m.id} className="flex">
-          <div className="max-w-full rounded-2xl px-4 py-3 border border-neutral-200 bg-white">
-            <div className="text-xs font-medium text-neutral-500 mb-1">
-              {m.role === "user" ? "You" : m.role === "assistant" ? "CareIQ" : "System"}
-            </div>
-            <div className="prose prose-neutral">
-              <p className="whitespace-pre-wrap">{m.content}</p>
-            </div>
-            <div className="mt-1 text-[11px] text-neutral-400">
-              {new Date(m.createdAt).toLocaleString()}
-            </div>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
