@@ -29,6 +29,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader as DialogHeaderBase,
+  DialogTitle as DialogTitleBase,
+} from "@/components/ui/dialog";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -52,7 +58,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const isCollapsed = collapsed;
   const width = isCollapsed ? "w-[76px]" : "w-[300px]";
   const showLabels = !isCollapsed;
-  const shortcutLabel = isMac ? "⌘K" : "Ctrl+K";
+  const shortcutSearch = isMac ? "⌘K" : "Ctrl+K";
+  const shortcutNewChat = isMac ? "⌘N" : "Ctrl+N";
 
   // gradient palette for "New chat" chip-style button (randomized on mount)
   const newChatPalette = useMemo<[string, string]>(() => {
@@ -106,25 +113,35 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     };
   }, []);
 
-  // Cmd/Ctrl+K opens search and focuses input
+  // Global hotkeys:
+  //  - ⌘/Ctrl+K => open Search (focus input)
+  //  - ⌘/Ctrl+N => New Chat
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const isMacLocal = /Mac|iPhone|iPad|Macintosh/.test(
-        navigator.platform || ""
-      );
-      if (
-        (isMacLocal && e.metaKey && e.key.toLowerCase() === "k") ||
-        (!isMacLocal && e.ctrlKey && e.key.toLowerCase() === "k")
-      ) {
+      const isMacLocal = /Mac|iPhone|iPad|Macintosh/.test(navigator.platform || "");
+      const key = e.key.toLowerCase();
+
+      const metaPressed = isMacLocal ? e.metaKey : e.ctrlKey;
+
+      if (metaPressed && key === "k") {
         e.preventDefault();
         setSearchOpen(true);
+        // Focus input after dialog opens
         setTimeout(() => {
           searchInputRef.current?.focus();
         }, 0);
+        return;
+      }
+
+      if (metaPressed && key === "n") {
+        e.preventDefault();
+        handleNewChat();
+        return;
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleNewChat() {
@@ -154,7 +171,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     if (!isCollapsed) return;
     const target = e.target as HTMLElement;
     const interactive = !!target.closest(
-      "a,button,input,textarea,select,[role=\"button\"],[data-no-expand]"
+      'a,button,input,textarea,select,[role="button"],[data-no-expand]'
     );
     if (!interactive) onToggle();
   }
@@ -230,7 +247,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             )}
           </div>
 
-          {/* New Chat */}
+          {/* New Chat (now with shortcut hint; styles matched with Search) */}
           <div className={cn("px-2", isCollapsed && "px-0")}>
             {isCollapsed ? (
               <div
@@ -252,12 +269,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         type="button"
                         onClick={handleNewChat}
                         className="relative z-[1] h-12 w-12 overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/60 hover:bg-white/80 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft transition"
-                        aria-label="New chat"
+                        aria-label={`New chat (${shortcutNewChat})`}
+                        title={`New chat (${shortcutNewChat})`}
                       >
                         <Plus className="mx-auto h-5 w-5" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="right">New chat</TooltipContent>
+                    <TooltipContent side="right">New chat ({shortcutNewChat})</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
@@ -275,38 +293,54 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   type="button"
                   onClick={handleNewChat}
                   className="relative z-[1] overflow-hidden w-full rounded-2xl bg-white/60 px-3 py-2 text-left transition hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/15 ring-1 ring-black/10 dark:ring-white/10 shadow-soft"
+                  aria-label={`New chat (${shortcutNewChat})`}
+                  title={`New chat (${shortcutNewChat})`}
                 >
                   <div className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
                     <span className="text-sm font-medium">New chat</span>
+                    <span className="ml-auto text-xs text-ink-subtle">({shortcutNewChat})</span>
                   </div>
                 </button>
               </div>
             )}
           </div>
 
-          {/* Search Button */}
+          {/* Search Button (styled to match New Chat) */}
           <div className={cn("px-2 mt-2", isCollapsed && "px-0")}>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setSearchOpen(true);
-                setTimeout(() => {
-                  searchInputRef.current?.focus();
-                }, 0);
-              }}
-              className="w-full justify-start gap-2 rounded-2xl ring-1 ring-black/10 dark:ring-white/10 hover:bg-black/10 dark:hover:bg-white/15"
-            >
-              <SearchIcon className="h-4 w-4" />
-              {showLabels && (
-                <span className="flex-1 text-sm">
-                  Search{" "}
-                  <span className="text-xs text-ink-subtle ml-1">
-                    ({shortcutLabel})
-                  </span>
-                </span>
-              )}
-            </Button>
+            {isCollapsed ? (
+              <div className="relative group flex justify-center" data-no-expand>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchOpen(true);
+                    setTimeout(() => searchInputRef.current?.focus(), 0);
+                  }}
+                  className="relative z-[1] h-12 w-12 overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/60 hover:bg-white/80 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft transition"
+                  aria-label={`Search (${shortcutSearch})`}
+                  title={`Search (${shortcutSearch})`}
+                >
+                  <SearchIcon className="mx-auto h-5 w-5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchOpen(true);
+                  setTimeout(() => searchInputRef.current?.focus(), 0);
+                }}
+                className="relative z-[1] overflow-hidden w-full rounded-2xl bg-white/60 px-3 py-2 text-left transition hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/15 ring-1 ring-black/10 dark:ring-white/10 shadow-soft"
+                aria-label={`Search (${shortcutSearch})`}
+                title={`Search (${shortcutSearch})`}
+              >
+                <div className="flex items-center gap-2">
+                  <SearchIcon className="h-4 w-4" />
+                  <span className="text-sm font-medium">Search</span>
+                  <span className="ml-auto text-xs text-ink-subtle">({shortcutSearch})</span>
+                </div>
+              </button>
+            )}
           </div>
 
           <Separator className="my-3" />
@@ -448,19 +482,19 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
       </div>
 
-      {/* Search palette */}
-      <Sheet open={searchOpen} onOpenChange={setSearchOpen}>
-        <SheetContent className="glass ring-1 ring-black/10 dark:ring-white/10 w-full sm:max-w-lg rounded-2xl">
-          <SheetHeader>
-            <SheetTitle>Search chats</SheetTitle>
-          </SheetHeader>
-          <div className="mt-3">
+      {/* Search modal (centered window) */}
+      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <DialogContent className="glass ring-1 ring-black/10 dark:ring-white/10 rounded-2xl sm:max-w-lg">
+          <DialogHeaderBase>
+            <DialogTitleBase>Search chats</DialogTitleBase>
+          </DialogHeaderBase>
+          <div className="mt-1">
             <input
               ref={searchInputRef}
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search chats… (${shortcutLabel})`}
+              placeholder={`Search chats… (${shortcutSearch})`}
               className="w-full rounded-xl border-none ring-1 ring-black/10 dark:ring-white/10 bg-white/70 dark:bg-white/10 px-3 py-2 outline-none"
             />
             <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-1">
@@ -482,8 +516,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               )}
             </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }
