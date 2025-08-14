@@ -14,7 +14,11 @@ type Msg = {
 export default function Chat({ chatId }: { chatId: string }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+
   const listRef = useRef<HTMLDivElement>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+  const streamingPlaceholderIdRef = useRef<string | null>(null);
 
   // Scroll helpers
   function scrollToBottom(behavior: ScrollBehavior = "smooth") {
@@ -30,42 +34,33 @@ export default function Chat({ chatId }: { chatId: string }) {
     let mounted = true;
     async function load() {
       try {
-        // Prefer the dedicated messages route if available
         const res = await fetch(`/api/messages/${encodeURIComponent(chatId)}`, {
           cache: "no-store",
         });
         if (res.ok) {
           const json = await res.json().catch(() => ({}));
-          // Support both { ok, messages: [...] } and raw array returns
           const got: Msg[] = Array.isArray(json)
             ? (json as Msg[])
             : (json?.messages as Msg[]) ?? [];
           if (mounted) {
             setMsgs(got);
-            // Jump immediately on first paint
             requestAnimationFrame(() => scrollToBottom("auto"));
           }
           return;
         }
-      } catch {
-        // fall through to legacy path
-      }
-
-      // Legacy fallback: /api/chats?id=...
+      } catch {}
       try {
         const res2 = await fetch(`/api/chats?id=${encodeURIComponent(chatId)}`, {
           cache: "no-store",
         });
-        if (!res2.ok) throw new Error("messages list via /api/chats not available");
+        if (!res2.ok) throw new Error("legacy messages endpoint not available");
         const json2 = await res2.json().catch(() => ({}));
         const dbMsgs: Msg[] = json2?.messages ?? [];
         if (mounted) {
           setMsgs(dbMsgs);
           requestAnimationFrame(() => scrollToBottom("auto"));
         }
-      } catch {
-        // ignore for now (empty chat)
-      }
+      } catch {}
     }
     load();
     return () => {
@@ -73,48 +68,133 @@ export default function Chat({ chatId }: { chatId: string }) {
     };
   }, [chatId]);
 
-  // Keep the viewport pinned to the bottom as messages append
+  // Keep viewport pinned to bottom as messages append
   useEffect(() => {
-    // Smooth scroll on subsequent updates
     scrollToBottom("smooth");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [msgs.length]);
 
-  // Sending logic with optimistic insert
+  // STOP streaming handler
+  const handleStop = () => {
+    try {
+      controllerRef.current?.abort();
+    } catch {}
+  };
+
+  // Streaming send
   const handleSend = async (content: string) => {
+    if (streaming) return; // prevent overlapping streams
     const trimmed = content.trim();
     if (!trimmed) return;
 
-    // Optimistic local user message
-    const optimistic: Msg = {
+    // Optimistic user message
+    const userMsg: Msg = {
       id: crypto.randomUUID(),
       chat_id: chatId,
       role: "user",
       content: trimmed,
       created_at: new Date().toISOString(),
     };
-    setMsgs((m) => [...m, optimistic]);
+    setMsgs((m) => [...m, userMsg]);
     setInput("");
 
+    // Placeholder assistant message to stream into
+    const placeholderId = `assist-${crypto.randomUUID()}`;
+    streamingPlaceholderIdRef.current = placeholderId;
+    const placeholder: Msg = {
+      id: placeholderId,
+      chat_id: chatId,
+      role: "assistant",
+      content: "",
+      created_at: new Date().toISOString(),
+    };
+    setMsgs((m) => [...m, placeholder]);
+
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setStreaming(true);
+
     try {
-      const res = await fetch(`/api/messages/${encodeURIComponent(chatId)}`, {
+      const res = await fetch(`/api/messages/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: trimmed }),
+        body: JSON.stringify({ chatId, content: trimmed }),
+        signal: controller.signal,
       });
 
-      if (!res.ok) throw new Error("send failed");
-      const assistantMsg: Msg = await res.json();
+      if (!res.ok || !res.body) {
+        throw new Error(`stream failed: ${res.status}`);
+      }
 
-      // Append assistant response returned by the server
-      setMsgs((m) => [...m, assistantMsg]);
-    } catch {
-      // Optionally: append a local error bubble or toast
-      // setMsgs((m) => [...m, { ...optimistic, role: "assistant", content: "Sorry, I couldn’t send that." } as Msg]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+
+        // SSE events separated by \n\n
+        let idx;
+        while ((idx = buffer.indexOf("\n\n")) !== -1) {
+          const event = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 2);
+
+          const dataLine = event.split("\n").find((l) => l.startsWith("data:"));
+          if (!dataLine) continue;
+          const data = dataLine.slice(5).trim();
+          if (data === "[DONE]") continue;
+
+          try {
+            const obj = JSON.parse(data);
+            const delta = obj?.choices?.[0]?.delta ?? obj?.choices?.[0]?.message ?? {};
+            const token: string = delta?.content ?? "";
+            if (token) {
+              full += token;
+              const pid = streamingPlaceholderIdRef.current;
+              if (pid) {
+                setMsgs((prev) =>
+                  prev.map((m) => (m.id === pid ? { ...m, content: full } : m))
+                );
+              }
+              scrollToBottom("auto");
+            }
+          } catch {
+            // ignore JSON parse errors on incomplete frames
+          }
+        }
+      }
+
+      // On normal end: API route already persisted assistant message.
+      // Optionally you could refetch the last message from the DB here.
+
+    } catch (err: any) {
+      // If aborted, keep whatever text we had in the placeholder (server persists partial).
+      if (err?.name !== "AbortError") {
+        // reflect an error note into the placeholder
+        const pid = streamingPlaceholderIdRef.current;
+        if (pid) {
+          setMsgs((prev) =>
+            prev.map((m) =>
+              m.id === pid
+                ? { ...m, content: (m.content || "") + "\n\n[Streaming failed]" }
+                : m
+            )
+          );
+        }
+      }
+    } finally {
+      setStreaming(false);
+      controllerRef.current = null;
+      streamingPlaceholderIdRef.current = null;
     }
   };
 
-  // Suggested prompts for empty state (unchanged)
+  // Suggested prompts for empty state
   const suggestions = useMemo(
     () => ["Summarize this", "Draft an email", "Explain a topic", "Create a plan"],
     []
@@ -126,11 +206,12 @@ export default function Chat({ chatId }: { chatId: string }) {
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 pb-24 pt-6 md:px-6">
         {msgs.length === 0 ? (
           <div className="grid place-content-center mx-auto w-full max-w-2xl px-6">
-            {/* Center composer when the chat is empty */}
             <Composer
               value={input}
               onChange={setInput}
               onSend={handleSend}
+              isStreaming={streaming}
+              onStop={handleStop}
               placeholder="Message CareIQ…"
               className="shadow-soft"
             />
@@ -185,6 +266,8 @@ export default function Chat({ chatId }: { chatId: string }) {
             value={input}
             onChange={setInput}
             onSend={handleSend}
+            isStreaming={streaming}
+            onStop={handleStop}
             placeholder="Message CareIQ…"
             className="focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition"
           />
