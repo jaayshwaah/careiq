@@ -8,13 +8,13 @@ const HEADERS = [
   "Let’s get this done.",
   "What can I help with today?",
   "Tell me what you need.",
-  "How can I make your day easier?",
-  "Your HR sidekick is on.",
-  "I’m listening — what’s up?",
+  "How can I help?",
+  "I’m listening.",
+  "Good to go when you are.",
 ];
 
 export default function HeaderBanner() {
-  // Pick once per mount (no timer), so it changes on refresh/page-visit only
+  // Pick once per mount (no timer) so it changes only on refresh/page visit
   const [index] = useState(() => Math.floor(Math.random() * HEADERS.length));
   const title = useMemo(() => HEADERS[index], [index]);
 

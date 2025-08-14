@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Plus, PanelsTopLeft, Settings, User, LogOut } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, PanelsTopLeft, Settings, User, LogOut, Search as SearchIcon } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,8 @@ type SidebarProps = {
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [chats, setChats] = useState<ChatRow[]>([]);
   const pathname = usePathname();
   const router = useRouter();
@@ -35,12 +37,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     async function load() {
       try {
-        // Graceful: if env missing/invalid, this will throw; we just show zero chats silently.
         const { data, error } = await supabase
           .from("chats")
           .select("*")
           .order("created_at", { ascending: false });
-
         if (!mounted) return;
         if (!error) setChats(data || []);
       } catch {
@@ -66,6 +66,19 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     };
   }, []);
 
+  // Cmd/Ctrl+K opens search
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const isMac = /Mac|iPhone|iPad|Macintosh/.test(navigator.platform || "");
+      if ((isMac && e.metaKey && e.key.toLowerCase() === "k") || (!isMac && e.ctrlKey && e.key.toLowerCase() === "k")) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   async function handleNewChat() {
     const resp = await fetch("/api/chats", { method: "POST" });
     const created = await resp.json();
@@ -77,16 +90,22 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       ? pathname.split("/").pop()
       : null;
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return chats;
+    return chats.filter((c) => (c.title || "New chat").toLowerCase().includes(q) || c.id.toLowerCase().includes(q));
+  }, [query, chats]);
+
   return (
     <aside className={cn("relative h-svh shrink-0 transition-[width] duration-300 ease-ios", width)}>
       <div className="sticky top-0 h-svh p-2 sm:p-3">
         <div className="glass ring-1 ring-black/10 dark:ring-white/10 flex h-full flex-col overflow-hidden rounded-2xl">
-          {/* Top bar: logo + collapse toggle */}
+          {/* Top bar: logo + collapse */}
           <div className={cn("flex items-center gap-2 p-2", isCollapsed ? "justify-center" : "")}>
             <Link
               href="/"
               className={cn(
-                "flex items-center gap-2 rounded-xl px-2 py-1 transition hover:bg-black/5 dark:hover:bg白/5",
+                "flex items-center gap-2 rounded-xl px-2 py-1 transition hover:bg-black/5 dark:hover:bg-white/5",
                 isCollapsed ? "justify-center" : ""
               )}
             >
@@ -96,7 +115,24 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               {showLabels && <span className="text-sm font-semibold">CareIQ</span>}
             </Link>
 
-            <div className={cn("ml-auto", isCollapsed && "hidden")}>
+            <div className={cn("ml-auto flex items-center gap-1", isCollapsed && "hidden")}>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="rounded-xl ring-1 ring-black/10 dark:ring-white/10 hover:bg-black/10 dark:hover:bg-white/15"
+                      onClick={() => setSearchOpen(true)}
+                      aria-label="Search chats"
+                    >
+                      <SearchIcon className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Search (⌘K)</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -110,13 +146,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <PanelsTopLeft className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">Collapse</TooltipContent>
+                  <TooltipContent side="bottom">Collapse</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
           </div>
 
-          {/* New Chat */}
+          {/* New Chat (icon when collapsed, label when expanded) */}
           <div className={cn("px-2", isCollapsed && "px-0")}>
             {isCollapsed ? (
               <div className="flex justify-center pb-2">
@@ -154,7 +190,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <div className={cn("h-full", isCollapsed ? "" : "px-2")}>
               <ScrollArea className="h-[calc(100%-1px)]">
                 {isCollapsed ? (
-                  /* Collapsed: icons */
                   <ul className="flex flex-col items-center gap-2 pb-4">
                     {chats.map((c) => {
                       const isActive = c.id === activeId;
@@ -183,7 +218,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     })}
                   </ul>
                 ) : (
-                  /* Expanded: titles */
                   <ul className="space-y-1 pb-4">
                     {chats.map((c) => {
                       const isActive = c.id === activeId;
@@ -245,21 +279,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         <SheetTitle>Settings</SheetTitle>
                       </SheetHeader>
                       <div className="mt-4 space-y-6">
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium">Appearance</div>
-                          <div className="text-xs text-ink-subtle">Uses your system light/dark theme.</div>
-                        </div>
-                        <Separator />
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium">Account</div>
-                          <Button variant="secondary" className="w-full justify-start gap-2 rounded-xl">
-                            Manage account (placeholder)
-                          </Button>
-                          <Button variant="ghost" className="w-full justify-start gap-2 rounded-xl text-red-600 hover:text-red-700">
-                            <LogOut className="h-4 w-4" />
-                            Log out
-                          </Button>
-                        </div>
+                        {/* Placeholder settings */}
                       </div>
                     </SheetContent>
                   </Sheet>
@@ -269,6 +289,40 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
         </div>
       </div>
+
+      {/* Search palette */}
+      <Sheet open={searchOpen} onOpenChange={setSearchOpen}>
+        <SheetContent className="glass ring-1 ring-black/10 dark:ring-white/10 w-full sm:max-w-lg rounded-2xl">
+          <SheetHeader>
+            <SheetTitle>Search chats</SheetTitle>
+          </SheetHeader>
+          <div className="mt-3">
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search chats…"
+              className="w-full rounded-xl border-none ring-1 ring-black/10 dark:ring-white/10 bg-white/70 dark:bg-white/10 px-3 py-2 outline-none"
+            />
+            <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-1">
+              {filtered.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/chat/${c.id}`}
+                  onClick={() => setSearchOpen(false)}
+                  className="block rounded-xl px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10 transition"
+                >
+                  <div className="text-sm">{c.title || "New chat"}</div>
+                  <div className="text-[11px] text-ink-subtle">{c.id}</div>
+                </Link>
+              ))}
+              {filtered.length === 0 && (
+                <div className="rounded-xl px-3 py-2 text-xs text-ink-subtle">No results</div>
+              )}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </aside>
   );
 }
