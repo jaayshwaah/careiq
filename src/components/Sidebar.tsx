@@ -44,12 +44,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [chats, setChats] = useState<ChatRow[]>([]);
+  const [isMac, setIsMac] = useState(false); // NEW
   const pathname = usePathname();
   const router = useRouter();
 
   const isCollapsed = collapsed;
   const width = isCollapsed ? "w-[76px]" : "w-[300px]";
   const showLabels = !isCollapsed;
+  const shortcutLabel = isMac ? "⌘K" : "Ctrl+K"; // NEW
 
   // gradient palette for "New chat" chip-style button (randomized on mount)
   const newChatPalette = useMemo<[string, string]>(() => {
@@ -61,6 +63,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       ["#c1ffd7", "#ffd1f7"],
     ];
     return seeds[Math.floor(Math.random() * seeds.length)];
+  }, []);
+
+  useEffect(() => {
+    setIsMac(/Mac|iPhone|iPad|Macintosh/.test(navigator.platform || "")); // NEW
   }, []);
 
   useEffect(() => {
@@ -100,8 +106,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   // Cmd/Ctrl+K opens search
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const isMac = /Mac|iPhone|iPad|Macintosh/.test(navigator.platform || "");
-      if ((isMac && e.metaKey && e.key.toLowerCase() === "k") || (!isMac && e.ctrlKey && e.key.toLowerCase() === "k")) {
+      const isMacLocal = /Mac|iPhone|iPad|Macintosh/.test(navigator.platform || "");
+      if ((isMacLocal && e.metaKey && e.key.toLowerCase() === "k") || (!isMacLocal && e.ctrlKey && e.key.toLowerCase() === "k")) {
         e.preventDefault();
         setSearchOpen(true);
       }
@@ -174,7 +180,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               {showLabels && <span className="text-sm font-semibold">CareIQ</span>}
             </Link>
 
-            <div className={cn("ml-auto flex items-center gap-1", isCollapsed && "hidden")}>
+            <div className={cn("ml-auto flex items-center gap-2", isCollapsed && "hidden")}>
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -183,14 +189,22 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       variant="ghost"
                       className="rounded-xl ring-1 ring-black/10 dark:ring-white/10 hover:bg-black/10 dark:hover:bg-white/15"
                       onClick={() => setSearchOpen(true)}
-                      aria-label="Search chats"
+                      aria-label={`Search chats (${shortcutLabel})`} // UPDATED
                     >
                       <SearchIcon className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">Search (⌘K)</TooltipContent>
+                  <TooltipContent side="bottom">Search ({shortcutLabel})</TooltipContent> {/* UPDATED */}
                 </Tooltip>
               </TooltipProvider>
+
+              {/* NEW: visible hint next to the button */}
+              <span
+                className="text-[11px] text-ink-subtle px-1 select-none"
+                aria-hidden
+              >
+                ({shortcutLabel})
+              </span>
 
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
@@ -297,7 +311,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                 <Link
                                   href={`/chat/${c.id}`}
                                   className={cn(
-                                    "flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition",
+                                    "flex h-12 w-12 items-center justify-center rounded-2xl hover:bg黑/5 dark:hover:bg白/5 transition".replace("黑","black").replace("白","white"),
                                     isActive && "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
                                   )}
                                 >
@@ -404,7 +418,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search chats…"
+              placeholder={`Search chats… (${shortcutLabel})`} // UPDATED
               className="w-full rounded-xl border-none ring-1 ring-black/10 dark:ring-white/10 bg-white/70 dark:bg-white/10 px-3 py-2 outline-none"
             />
             <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-1">
