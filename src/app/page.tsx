@@ -55,6 +55,7 @@ export default function HomePage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   // TODO: wire this to your auth user later
@@ -80,14 +81,13 @@ export default function HomePage() {
 
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  // Smooth scroll to bottom (used after every chunk)
+  // Smooth scroll to bottom
   const scrollToBottom = () => {
     const el = listRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   };
 
-  // Ensure we land at the bottom when a new message arrives
   useEffect(() => {
     scrollToBottom();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,6 +98,7 @@ export default function HomePage() {
     abortRef.current?.abort();
     abortRef.current = null;
     setIsStreaming(false);
+    setStreamingId(null);
   };
 
   /** Send a message and stream assistant reply */
@@ -124,6 +125,7 @@ export default function HomePage() {
 
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setInput("");
+    setStreamingId(asstId);
 
     // Start streaming
     const controller = new AbortController();
@@ -141,18 +143,17 @@ export default function HomePage() {
       });
 
       if (!res.ok || !res.body) {
-        // Fall back to a non-stream “sorry” message
         const fallback =
           "I hit an error generating the reply. If you’re using OpenRouter, check your API key/credits.";
         setMessages((prev) =>
           prev.map((m) => (m.id === asstId ? { ...m, content: fallback } : m))
         );
         setIsStreaming(false);
+        setStreamingId(null);
         abortRef.current = null;
         return;
       }
 
-      // Read streamed text and append to assistant message
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let done = false;
@@ -163,12 +164,9 @@ export default function HomePage() {
         done = d;
         if (value) {
           acc += decoder.decode(value, { stream: true });
-          // Update the last assistant message content
-          const chunk = acc;
           setMessages((prev) =>
-            prev.map((m) => (m.id === asstId ? { ...m, content: chunk } : m))
+            prev.map((m) => (m.id === asstId ? { ...m, content: acc } : m))
           );
-          // Keep the view pinned to bottom while typing
           scrollToBottom();
         }
       }
@@ -182,8 +180,8 @@ export default function HomePage() {
       }
     } finally {
       setIsStreaming(false);
+      setStreamingId(null);
       abortRef.current = null;
-      // one last nudge to bottom
       requestAnimationFrame(scrollToBottom);
     }
   }
@@ -198,7 +196,6 @@ export default function HomePage() {
           <div className="mx-auto w-full max-w-2xl">
             <StaticHeading phrases={headlinePhrases} />
 
-            {/* Large composer */}
             <Composer
               value={input}
               onChange={setInput}
@@ -247,7 +244,11 @@ export default function HomePage() {
                 aria-live="polite"
                 aria-busy={isStreaming ? "true" : "false"}
               >
-                <MessageList messages={messages} />
+                <MessageList
+                  messages={messages}
+                  isStreaming={isStreaming}
+                  streamingId={streamingId}
+                />
               </div>
             </div>
           </main>
