@@ -5,13 +5,24 @@ import { SendHorizonal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
-type Msg = { id: string; chat_id: string; role: "user" | "assistant"; content: string; created_at: string };
+type Msg = {
+  id: string;
+  chat_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+};
 
 export default function Chat({ chatId }: { chatId: string }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
-  const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad|Macintosh/.test((navigator as any).userAgentData?.platform || navigator.platform || "");
+
+  const isMac =
+    typeof navigator !== "undefined" &&
+    /Mac|iPhone|iPad|Macintosh/.test(
+      (navigator as any).userAgentData?.platform || navigator.platform || ""
+    );
 
   useEffect(() => {
     let mounted = true;
@@ -30,11 +41,16 @@ export default function Chat({ chatId }: { chatId: string }) {
       }
     }
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [chatId]);
 
   function scrollToBottom() {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+    listRef.current?.scrollTo({
+      top: listRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   }
 
   async function onSend(e: React.FormEvent) {
@@ -42,7 +58,16 @@ export default function Chat({ chatId }: { chatId: string }) {
     const content = input.trim();
     if (!content) return;
 
-    setMsgs((m) => [...m, { id: crypto.randomUUID(), chat_id: chatId, role: "user", content, created_at: new Date().toISOString() }]);
+    setMsgs((m) => [
+      ...m,
+      {
+        id: crypto.randomUUID(),
+        chat_id: chatId,
+        role: "user",
+        content,
+        created_at: new Date().toISOString(),
+      },
+    ]);
     setInput("");
     scrollToBottom();
 
@@ -72,7 +97,10 @@ export default function Chat({ chatId }: { chatId: string }) {
   );
 
   const EmptyComposer = (
-    <form onSubmit={onSend} className="glass ring-1 ring-black/10 dark:ring-white/10 rounded-2xl p-3 shadow-soft focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition">
+    <form
+      onSubmit={onSend}
+      className="glass ring-1 ring-black/10 dark:ring-white/10 rounded-2xl p-3 shadow-soft focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition"
+    >
       <div className="flex items-end gap-2">
         <Textarea
           value={input}
@@ -80,7 +108,13 @@ export default function Chat({ chatId }: { chatId: string }) {
           placeholder="Message CareIQ…"
           className="min-h-[68px] max-h-[40vh] resize-y rounded-xl border-0 bg-transparent focus-visible:ring-0"
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              !e.ctrlKey &&
+              !e.metaKey &&
+              !e.altKey
+            ) {
               e.preventDefault();
               (e.currentTarget as HTMLTextAreaElement).form?.requestSubmit();
             }
@@ -100,7 +134,10 @@ export default function Chat({ chatId }: { chatId: string }) {
       <div className="mt-1 flex items-center justify-between px-1">
         {sendHint}
         <div className="text-[11px] text-ink-subtle" aria-hidden>
-          {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          {new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </div>
       </div>
     </form>
@@ -111,27 +148,47 @@ export default function Chat({ chatId }: { chatId: string }) {
       {/* List */}
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 pb-24 pt-6 md:px-6">
         {msgs.length === 0 ? (
-          <div className="mx-auto w-full max-w-2xl px-6">
+          <div className="grid place-content-center mx-auto w-full max-w-2xl px-6">
             {EmptyComposer}
-            {/* simple suggestions */}
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:gap-3">
-              {["Summarize this", "Draft an email", "Explain a topic", "Create a plan"].map((t) => (
-                <button key={t} onClick={() => setInput(t)} className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15">
-                  {t}
-                </button>
-              ))}
+              {["Summarize this", "Draft an email", "Explain a topic", "Create a plan"].map(
+                (t) => (
+                  <button
+                    key={t}
+                    onClick={() => setInput(t)}
+                    className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15"
+                  >
+                    {t}
+                  </button>
+                )
+              )}
             </div>
           </div>
         ) : (
           msgs.map((m) => (
-            <div key={m.id} className={`mb-3 flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div
+              key={m.id}
+              className={`mb-3 flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+            >
               <div
-                className={`max-w-[78%] rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-soft
-                ${m.role === "user" ? "bg-gradient-to-br from-[#3c5ebf] to-[#2d4aa0] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]" : "bg-white/70 dark:bg-white/10 border border-border dark:border-border-dark"}`}
+                className={`max-w-[78%] rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-soft ${
+                  m.role === "user"
+                    ? "bg-gradient-to-br from-[#3c5ebf] to-[#2d4aa0] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]"
+                    : "bg-white/70 dark:bg-white/10 border border-border dark:border-border-dark"
+                }`}
               >
                 <div className="whitespace-pre-wrap">{m.content}</div>
-                <div className={`mt-1 text-[11px] ${m.role === "user" ? "text-white/70 dark:text-black/60" : "text-gray-600 dark:text-white/50"}`}>
-                  {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                <div
+                  className={`mt-1 text-[11px] ${
+                    m.role === "user"
+                      ? "text-white/70 dark:text-black/60"
+                      : "text-gray-600 dark:text-white/50"
+                  }`}
+                >
+                  {new Date(m.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </div>
               </div>
             </div>
@@ -141,7 +198,10 @@ export default function Chat({ chatId }: { chatId: string }) {
 
       {/* Bottom composer only after first message */}
       {msgs.length > 0 && (
-        <form onSubmit={onSend} className="glass ring-1 ring-black/10 dark:ring-white/10 focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition mx-auto w-full max-w-2xl p-2 sm:p-3 rounded-2xl sticky bottom-2 inset-x-4">
+        <form
+          onSubmit={onSend}
+          className="glass ring-1 ring-black/10 dark:ring-white/10 focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition mx-auto w-full max-w-2xl p-2 sm:p-3 rounded-2xl sticky bottom-2 inset-x-4"
+        >
           <div className="flex items-end gap-2">
             <Textarea
               value={input}
@@ -149,7 +209,13 @@ export default function Chat({ chatId }: { chatId: string }) {
               placeholder="Message CareIQ…"
               className="min-h[52px] min-h-[52px] max-h-[40vh] resize-y rounded-xl border-0 bg-transparent focus-visible:ring-0"
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                if (
+                  e.key === "Enter" &&
+                  !e.shiftKey &&
+                  !e.ctrlKey &&
+                  !e.metaKey &&
+                  !e.altKey
+                ) {
                   e.preventDefault();
                   (e.currentTarget as HTMLTextAreaElement).form?.requestSubmit();
                 }
@@ -166,9 +232,7 @@ export default function Chat({ chatId }: { chatId: string }) {
               <span className="sr-only">Send</span>
             </Button>
           </div>
-          <div className="mt-2 text-center text-xs text-ink-subtle">
-            {sendHint}
-          </div>
+          <div className="mt-2 text-center text-xs text-ink-subtle">{sendHint}</div>
         </form>
       )}
     </div>

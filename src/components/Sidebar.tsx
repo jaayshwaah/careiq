@@ -2,14 +2,32 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, PanelsTopLeft, Settings, User, LogOut, Search as SearchIcon } from "lucide-react";
+import {
+  Plus,
+  PanelsTopLeft,
+  Settings,
+  User,
+  Search as SearchIcon,
+  ChevronRight,
+} from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -62,7 +80,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     } catch {}
     return () => {
       mounted = false;
-      try { unsub?.(); } catch {}
+      try {
+        unsub?.();
+      } catch {}
     };
   }, []);
 
@@ -70,7 +90,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const isMac = /Mac|iPhone|iPad|Macintosh/.test(navigator.platform || "");
-      if ((isMac && e.metaKey && e.key.toLowerCase() === "k") || (!isMac && e.ctrlKey && e.key.toLowerCase() === "k")) {
+      if (
+        (isMac && e.metaKey && e.key.toLowerCase() === "k") ||
+        (!isMac && e.ctrlKey && e.key.toLowerCase() === "k")
+      ) {
         e.preventDefault();
         setSearchOpen(true);
       }
@@ -86,22 +109,67 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }
 
   const activeId =
-    pathname?.startsWith("/chat/") && pathname.split("/").filter(Boolean)[1] !== "chat"
+    pathname?.startsWith("/chat/") &&
+    pathname.split("/").filter(Boolean)[1] !== "chat"
       ? pathname.split("/").pop()
       : null;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return chats;
-    return chats.filter((c) => (c.title || "New chat").toLowerCase().includes(q) || c.id.toLowerCase().includes(q));
+    return chats.filter(
+      (c) =>
+        (c.title || "New chat").toLowerCase().includes(q) ||
+        c.id.toLowerCase().includes(q)
+    );
   }, [query, chats]);
 
+  // Expand-on-background-click when collapsed (ignore clicks on interactive controls)
+  function handleContainerClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (!isCollapsed) return;
+    const target = e.target as HTMLElement;
+    const interactive = !!target.closest(
+      'a,button,input,textarea,select,[role="button"],[data-no-expand]'
+    );
+    if (!interactive) onToggle();
+  }
+
   return (
-    <aside className={cn("relative h-svh shrink-0 transition-[width] duration-300 ease-ios", width)}>
+    <aside
+      className={cn(
+        "relative h-svh shrink-0 transition-[width] duration-300 ease-ios",
+        width
+      )}
+    >
       <div className="sticky top-0 h-svh p-2 sm:p-3">
-        <div className="glass ring-1 ring-black/10 dark:ring-white/10 flex h-full flex-col overflow-hidden rounded-2xl">
-          {/* Top bar: logo + collapse */}
-          <div className={cn("flex items-center gap-2 p-2", isCollapsed ? "justify-center" : "")}>
+        <div
+          className="glass ring-1 ring-black/10 dark:ring-white/10 relative flex h-full flex-col overflow-hidden rounded-2xl"
+          onClick={handleContainerClick}
+        >
+          {/* Click-to-expand chevron when collapsed */}
+          {isCollapsed && (
+            <button
+              type="button"
+              data-no-expand
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-xl ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft backdrop-blur-sm"
+              title="Expand sidebar"
+              aria-label="Expand sidebar"
+            >
+              <ChevronRight className="mx-auto h-4 w-4" />
+            </button>
+          )}
+
+          {/* Top bar: logo + collapse/search */}
+          <div
+            className={cn(
+              "flex items-center gap-2 p-2",
+              isCollapsed ? "justify-center" : ""
+            )}
+          >
             <Link
               href="/"
               className={cn(
@@ -115,7 +183,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               {showLabels && <span className="text-sm font-semibold">CareIQ</span>}
             </Link>
 
-            <div className={cn("ml-auto flex items-center gap-1", isCollapsed && "hidden")}>
+            <div
+              className={cn(
+                "ml-auto flex items-center gap-1",
+                isCollapsed && "hidden"
+              )}
+            >
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -202,13 +275,17 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                   href={`/chat/${c.id}`}
                                   className={cn(
                                     "flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition",
-                                    isActive && "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
+                                    isActive &&
+                                      "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
                                   )}
                                 >
                                   <div className="h-5 w-5 rounded-md bg-black/20 dark:bg-white/20" />
                                 </Link>
                               </TooltipTrigger>
-                              <TooltipContent side="right" className="max-w-[220px]">
+                              <TooltipContent
+                                side="right"
+                                className="max-w-[220px]"
+                              >
                                 {c.title || "New chat"}
                               </TooltipContent>
                             </Tooltip>
@@ -227,19 +304,24 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                             href={`/chat/${c.id}`}
                             className={cn(
                               "group flex items-center gap-2 rounded-2xl px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/5 ring-1 ring-transparent hover:ring-black/10 dark:hover:ring-white/10",
-                              isActive && "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
+                              isActive &&
+                                "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
                             )}
                           >
                             <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
                               <span className="h-3 w-3 rounded-[4px] bg-black/30 dark:bg-white/30" />
                             </div>
-                            <div className="flex-1 truncate text-sm">{c.title || "New chat"}</div>
+                            <div className="flex-1 truncate text-sm">
+                              {c.title || "New chat"}
+                            </div>
                           </Link>
                         </li>
                       );
                     })}
                     {chats.length === 0 && (
-                      <li className="px-2 py-2 text-xs text-ink-subtle">No chats yet</li>
+                      <li className="px-2 py-2 text-xs text-ink-subtle">
+                        No chats yet
+                      </li>
                     )}
                   </ul>
                 )}
@@ -251,7 +333,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
           {/* Bottom account */}
           <div className="px-2 pb-2">
-            <div className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-2")}>
+            <div
+              className={cn(
+                "flex items-center",
+                isCollapsed ? "justify-center" : "gap-2"
+              )}
+            >
               {isCollapsed ? (
                 <div className="flex items-center gap-2">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/10">
@@ -270,7 +357,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
                   <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
                     <SheetTrigger asChild>
-                      <Button variant="ghost" size="icon" className="rounded-xl" aria-label="Settings">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-xl"
+                        aria-label="Settings"
+                      >
                         <Settings className="h-5 w-5" />
                       </Button>
                     </SheetTrigger>
@@ -278,9 +370,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <SheetHeader>
                         <SheetTitle>Settings</SheetTitle>
                       </SheetHeader>
-                      <div className="mt-4 space-y-6">
-                        {/* Placeholder settings */}
-                      </div>
+                      <div className="mt-4 space-y-6">{/* placeholder */}</div>
                     </SheetContent>
                   </Sheet>
                 </>
@@ -317,7 +407,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </Link>
               ))}
               {filtered.length === 0 && (
-                <div className="rounded-xl px-3 py-2 text-xs text-ink-subtle">No results</div>
+                <div className="rounded-xl px-3 py-2 text-xs text-ink-subtle">
+                  No results
+                </div>
               )}
             </div>
           </div>
