@@ -8,6 +8,7 @@ import Composer from "@/components/Composer";
  * Home page chat:
  * - Creates a new chat on first send
  * - Redirects to /chat/[id]?q=<initial message> so Chat.tsx auto-sends it
+ * - Larger header + glowing suggestion area + large composer
  */
 export default function HomePage() {
   const router = useRouter();
@@ -43,30 +44,46 @@ export default function HomePage() {
     <div className="flex min-h-svh flex-col">
       <main className="flex-1 grid place-content-center px-6 py-10">
         <div className="mx-auto w-full max-w-2xl">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-semibold">CareIQ</h1>
-            <p className="text-ink-subtle mt-1">How can I help today?</p>
+          {/* Bigger header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">CareIQ</h1>
+            <p className="text-base md:text-lg text-ink-subtle mt-2">
+              How can I help today?
+            </p>
           </div>
 
+          {/* Larger composer */}
           <Composer
             value={input}
             onChange={setInput}
             onSend={handleSend}
             disabled={creating}
             placeholder="Message CareIQ…"
+            size="lg"
             className="shadow-soft"
           />
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:gap-3">
-            {suggestions.map((t) => (
-              <button
-                key={t}
-                onClick={() => setInput(t)}
-                className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15"
-              >
-                {t}
-              </button>
-            ))}
+          {/* Suggestions with soft gradient glow */}
+          <div className="relative mt-6">
+            <span
+              className="pointer-events-none absolute inset-x-8 -top-3 bottom-0 -z-10 rounded-[28px] blur-2xl opacity-60"
+              style={{
+                background:
+                  "linear-gradient(120deg, rgba(139,176,255,.8), rgba(255,214,165,.7), rgba(193,255,215,.8))",
+              }}
+              aria-hidden
+            />
+            <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
+              {suggestions.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setInput(t)}
+                  className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15"
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </main>

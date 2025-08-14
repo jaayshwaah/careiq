@@ -6,6 +6,8 @@ import { useAutoResize } from "@/hooks/useAutoResize";
 import { Button } from "@/components/ui/button";
 import { Paperclip, ArrowUpCircle, Square } from "lucide-react";
 
+type ComposerSize = "sm" | "md" | "lg";
+
 type ComposerProps = {
   placeholder?: string;
   disabled?: boolean;
@@ -18,6 +20,27 @@ type ComposerProps = {
   /** Streaming state + handler to STOP generation */
   isStreaming?: boolean;
   onStop?: () => void;
+
+  /** Visual size of the composer (padding & font); default "md" */
+  size?: ComposerSize;
+};
+
+const sizeMap: Record<ComposerSize, { container: string; textarea: string; hint: string }> = {
+  sm: {
+    container: "px-2 py-2",
+    textarea: "px-2 py-2 text-sm",
+    hint: "text-[11px]",
+  },
+  md: {
+    container: "px-3 py-2",
+    textarea: "px-3 py-2 text-[15px]",
+    hint: "text-[11px]",
+  },
+  lg: {
+    container: "px-4 py-3",
+    textarea: "px-4 py-3 text-[16px] md:text-[17px]",
+    hint: "text-xs",
+  },
 };
 
 export default function Composer({
@@ -30,6 +53,7 @@ export default function Composer({
   className,
   isStreaming,
   onStop,
+  size = "md",
 }: ComposerProps) {
   const [inner, setInner] = React.useState("");
   const [sending, setSending] = React.useState(false);
@@ -44,8 +68,7 @@ export default function Composer({
     }
   };
 
-  // Auto-resize the textarea up to ~50vh.
-  // IMPORTANT: do NOT reference `window` here (render time). The hook computes viewport safely on mount.
+  // Auto-resize the textarea up to ~50vh (computed safely in the hook after mount)
   const textareaRef = useAutoResize<HTMLTextAreaElement>();
 
   const doSend = async () => {
@@ -77,12 +100,13 @@ export default function Composer({
   };
 
   const busy = !!disabled || sending;
+  const sz = sizeMap[size];
 
   return (
     <div
       className={cn(
         "w-full rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/70 dark:bg-white/10 shadow-soft",
-        "px-2 py-2 sm:px-3 sm:py-2",
+        sz.container,
         className
       )}
     >
@@ -112,15 +136,15 @@ export default function Composer({
             spellCheck
             disabled={busy}
             className={cn(
-              "w-full resize-none overflow-hidden bg-transparent outline-none",
-              "rounded-xl px-2 py-2 sm:px-3 sm:py-2",
-              "text-sm sm:text-[15px]"
+              "w-full resize-none overflow-hidden bg-transparent outline-none rounded-xl",
+              sz.textarea
             )}
             // Safety max-height fallback in case JS is disabled momentarily
             style={{ maxHeight: "50vh" }}
           />
-          <div className="px-2 sm:px-3 pb-1 pt-0.5 text-[11px] text-ink-subtle">
-            Press <kbd className="px-1 py-0.5 rounded border border-black/20 dark:border-white/20">Shift</kbd>+<kbd className="px-1 py-0.5 rounded border border-black/20 dark:border-white/20">Enter</kbd> for newline
+          <div className={cn("px-2 sm:px-3 pb-1 pt-0.5 text-ink-subtle", sz.hint)}>
+            Press <kbd className="px-1 py-0.5 rounded border border-black/20 dark:border-white/20">Shift</kbd>+
+            <kbd className="px-1 py-0.5 rounded border border-black/20 dark:border-white/20">Enter</kbd> for newline
           </div>
         </div>
 

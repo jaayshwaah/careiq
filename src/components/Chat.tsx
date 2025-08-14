@@ -226,7 +226,7 @@ export default function Chat({ chatId }: { chatId: string }) {
     }
   };
 
-  // Suggested prompts for empty state
+  // Suggested prompts for empty state (with glow)
   const suggestions = useMemo(
     () => ["Summarize this", "Draft an email", "Explain a topic", "Create a plan"],
     []
@@ -238,6 +238,7 @@ export default function Chat({ chatId }: { chatId: string }) {
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 pb-24 pt-6 md:px-6">
         {msgs.length === 0 ? (
           <div className="grid place-content-center mx-auto w-full max-w-2xl px-6">
+            {/* Larger composer for empty state */}
             <Composer
               value={input}
               onChange={setInput}
@@ -245,18 +246,31 @@ export default function Chat({ chatId }: { chatId: string }) {
               isStreaming={streaming}
               onStop={handleStop}
               placeholder="Message CareIQ…"
+              size="lg"
               className="shadow-soft"
             />
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:gap-3">
-              {suggestions.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setInput(t)}
-                  className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15"
-                >
-                  {t}
-                </button>
-              ))}
+
+            {/* Suggestions with soft gradient glow */}
+            <div className="relative mt-6">
+              <span
+                className="pointer-events-none absolute inset-x-8 -top-3 bottom-0 -z-10 rounded-[28px] blur-2xl opacity-60"
+                style={{
+                  background:
+                    "linear-gradient(120deg, rgba(139,176,255,.8), rgba(255,214,165,.7), rgba(193,255,215,.8))",
+                }}
+                aria-hidden
+              />
+              <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
+                {suggestions.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setInput(t)}
+                    className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
@@ -310,7 +324,7 @@ export default function Chat({ chatId }: { chatId: string }) {
         )}
       </div>
 
-      {/* Bottom composer once there are messages */}
+      {/* Bottom composer once there are messages (larger) */}
       {msgs.length > 0 && (
         <div className="mx-auto w-full max-w-2xl sticky bottom-2 inset-x-4">
           <Composer
@@ -320,6 +334,7 @@ export default function Chat({ chatId }: { chatId: string }) {
             isStreaming={streaming}
             onStop={handleStop}
             placeholder="Message CareIQ…"
+            size="lg"
             className="focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition"
           />
           <div className="mt-2 text-center text-xs text-ink-subtle">
