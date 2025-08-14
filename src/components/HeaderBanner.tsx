@@ -1,10 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const HEADERS = [
+  "Ready when you are.",
   "Here whenever you’re ready.",
-  "Ready when you need me.",
   "Let’s get this done.",
   "What can I help with today?",
   "Tell me what you need.",
@@ -14,17 +14,21 @@ const HEADERS = [
 ];
 
 export default function HeaderBanner() {
-  const [title] = React.useState<string>(() => {
-    const idx = Math.floor(Math.random() * HEADERS.length);
-    return HEADERS[idx];
-  });
+  const [index, setIndex] = useState(0);
+  const title = useMemo(() => HEADERS[index % HEADERS.length], [index]);
+
+  useEffect(() => {
+    const id = setInterval(() => setIndex((i) => i + 1), 3500);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <div className="w-full">
       <div className="mx-auto max-w-3xl px-4 pt-12 pb-4 text-center">
         <h1
-          className="font-semibold tracking-tight leading-tight"
+          className="font-semibold tracking-tight leading-tight select-none transition-opacity duration-500"
           style={{ color: "var(--text)", fontSize: "clamp(2.25rem, 6vw, 3.25rem)" }}
+          aria-live="polite"
         >
           {title}
         </h1>

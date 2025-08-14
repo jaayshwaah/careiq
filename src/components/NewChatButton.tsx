@@ -18,44 +18,24 @@ export default function NewChatButton({
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
 
-  const onClick = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/conversations", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title: "New chat" }),
-      });
-
-      if (!res.ok) {
-        const err = await safeJson(res);
-        throw new Error(err?.error || `Request failed (${res.status})`);
-      }
-
-      const data = await res.json();
-      // API returns: { ok: true, conversation: {...} }
-      const id = data?.conversation?.id;
-
-      if (id && toConversationHref) {
-        router.push(toConversationHref(id));
-      } else {
-        // No dedicated page? just refresh the list
-        router.refresh();
-      }
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Failed to create chat");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <button
-      type="button"
-      onClick={onClick}
+      className={`inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium transition ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft hover:shadow-md focus:outline-none ${className ?? ""}`}
       disabled={loading}
-      className={className ?? "rounded-xl px-3 py-2 border text-sm hover:bg-neutral-900/10 disabled:opacity-60"}
+      onClick={async () => {
+        if (loading) return;
+        setLoading(true);
+        try {
+          const resp = await fetch("/api/chats", { method: "POST" });
+          const json = await safeJson(resp);
+          const id = json?.id || json?.data?.id;
+          const href = toConversationHref ? toConversationHref(id) : `/chat/${id}`;
+          router.push(href);
+        } catch {
+        } finally {
+          setLoading(false);
+        }
+      }}
       aria-busy={loading}
     >
       {loading ? "Creating..." : label}

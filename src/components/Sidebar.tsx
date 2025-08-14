@@ -45,7 +45,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         if (error) {
           setLoadError(error.message);
         } else {
-          setLoadError(null);
           setChats(data || []);
         }
       } catch (err: any) {
@@ -77,12 +76,15 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     router.push(`/chat/${created.id}`);
   }
 
-  const activeId = pathname?.startsWith("/chat/") ? pathname.split("/").pop() : "";
+  const activeId =
+    pathname?.startsWith("/chat/") && pathname.split("/").filter(Boolean)[1] !== "chat"
+      ? pathname.split("/").pop()
+      : null;
 
   return (
     <aside className={cn("relative h-svh shrink-0 transition-[width] duration-300 ease-ios", width)}>
       <div className="sticky top-0 h-svh p-3">
-        <div className="glass flex h-full flex-col overflow-hidden">
+        <div className="glass ring-1 ring-black/10 dark:ring-white/10 focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition flex h-full flex-col overflow-hidden rounded-2xl">
           {/* Header / Toggle */}
           <div className={cn("flex items-center gap-2 p-2", isCollapsed ? "justify-center" : "")}>
             <Link
@@ -102,7 +104,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button size="icon" variant="ghost" className="rounded-xl" onClick={onToggle} aria-label="Toggle sidebar">
+                    <Button size="icon" variant="ghost" className="rounded-xl ring-1 ring-black/10 dark:ring-white/10 hover:bg-black/10 dark:hover:bg-white/15" onClick={onToggle} aria-label="Toggle sidebar">
                       <PanelsTopLeft className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
@@ -116,16 +118,18 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <div className="absolute left-0 right-0 -bottom-2 flex justify-center">
                 <Button
                   size="icon"
-                  variant="ghost"
-                  className="rounded-xl"
+                  variant="default"
+                  className="h-10 w-10 rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft hover:shadow-md"
                   onClick={onToggle}
-                  aria-label="Expand sidebar"
+                  aria-label="Toggle sidebar"
                 >
                   <PanelsTopLeft className="h-5 w-5" />
                 </Button>
               </div>
             )}
           </div>
+
+          <Separator className="my-3" />
 
           {/* New chat */}
           <div className={cn("px-2", isCollapsed && "px-0")}>
@@ -137,7 +141,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <Button
                         size="icon"
                         variant="default"
-                        className="h-12 w-12 rounded-2xl shadow hover:shadow-md"
+                        className="h-12 w-12 rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft hover:shadow-md"
                         onClick={handleNewChat}
                       >
                         <Plus className="h-5 w-5" />
@@ -148,7 +152,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </TooltipProvider>
               </div>
             ) : (
-              <Button className="w-full rounded-2xl shadow hover:shadow-md transition-shadow justify-start" onClick={handleNewChat}>
+              <Button
+                className="w-full rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft hover:shadow-md transition-shadow justify-start"
+                onClick={handleNewChat}
+              >
                 <Plus className="h-4 w-4" />
                 <span className="text-sm font-medium">New chat</span>
               </Button>
@@ -158,65 +165,68 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <Separator className="my-3" />
 
           {/* Chats list */}
-          <div className="flex-1 px-1">
-            <ScrollArea className="h-full pr-2">
-              {loadError ? (
-                <div className={cn("text-xs text-ink-subtle px-2 py-1", !isCollapsed && "text-left")}>
-                  Unable to load chats.
-                </div>
-              ) : isCollapsed ? (
-                /* Collapsed: show a clean icon stack (no shrinking) */
-                <ul className="flex flex-col items-center gap-2">
-                  {chats.slice(0, 12).map((c) => {
-                    const isActive = c.id === activeId;
-                    return (
-                      <li key={c.id}>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Link
-                                href={`/chat/${c.id}`}
-                                className={cn(
-                                  "flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition",
-                                  isActive && "bg-black/5 dark:bg-white/5"
-                                )}
-                              >
-                                {/* decorative square */}
-                                <div className="h-5 w-5 rounded-md bg-black/20 dark:bg-white/20" />
-                              </Link>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-[220px]">
-                              {c.title || "New chat"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                /* Expanded: full list with titles */
-                <ul className="space-y-1">
-                  {chats.map((c) => {
-                    const isActive = c.id === activeId;
-                    return (
-                      <li key={c.id}>
-                        <Link
-                          href={`/chat/${c.id}`}
-                          className={cn(
-                            "group flex items-center gap-2 rounded-xl px-2 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition",
-                            isActive && "bg-black/5 dark:bg-white/5"
-                          )}
-                        >
-                          <div className="h-6 w-6 rounded-lg bg-black/5 dark:bg-white/10" />
-                          <span className="truncate">{c.title || "New chat"}</span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </ScrollArea>
+          <div className="flex-1 overflow-hidden">
+            {loadError && (
+              <div className="px-3 pt-1 text-xs text-red-600">{loadError}</div>
+            )}
+            <div className={cn("h-full", isCollapsed ? "" : "px-2")}>
+              <ScrollArea className="h-[calc(100%-1px)]">
+                {isCollapsed ? (
+                  /* Collapsed: only icons */
+                  <ul className="flex flex-col items-center gap-2">
+                    {chats.map((c) => {
+                      const isActive = c.id === activeId;
+                      return (
+                        <li key={c.id}>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Link
+                                  href={`/chat/${c.id}`}
+                                  className={cn(
+                                    "flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition",
+                                    isActive && "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
+                                  )}
+                                >
+                                  {/* decorative square */}
+                                  <div className="h-5 w-5 rounded-md bg-black/20 dark:bg-white/20" />
+                                </Link>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-[220px]">
+                                {c.title || "New chat"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  /* Expanded: full list with titles */
+                  <ul className="space-y-1">
+                    {chats.map((c) => {
+                      const isActive = c.id === activeId;
+                      return (
+                        <li key={c.id}>
+                          <Link
+                            href={`/chat/${c.id}`}
+                            className={cn(
+                              "group flex items-center gap-2 rounded-2xl px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/5 ring-1 ring-transparent hover:ring-black/10 dark:hover:ring-white/10",
+                              isActive && "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
+                            )}
+                          >
+                            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
+                              <span className="h-3 w-3 rounded-[4px] bg-black/30 dark:bg-white/30" />
+                            </div>
+                            <div className="flex-1 truncate text-sm">{c.title || "New chat"}</div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </ScrollArea>
+            </div>
           </div>
 
           <Separator className="my-3" />
@@ -246,7 +256,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         <Settings className="h-5 w-5" />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent className="w-[380px] sm:w-[480px]">
+                    <SheetContent className="w-[380px] sm:w-[480px] glass ring-1 ring-black/10 dark:ring-white/10">
                       <SheetHeader>
                         <SheetTitle>Settings</SheetTitle>
                       </SheetHeader>
