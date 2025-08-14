@@ -26,7 +26,7 @@ function StaticHeading({ phrases }: { phrases: string[] }) {
         aria-atomic="true"
         suppressHydrationWarning
       >
-        {idx === null ? "\u00A0" : phrases[idx]}
+        {idx === null ? "\u0000" : phrases[idx]}
       </h1>
     </div>
   );
@@ -84,7 +84,8 @@ export default function HomePage() {
       router.push(`/chat/${encodeURIComponent(id)}?q=${encodeURIComponent(content)}`);
     } catch (err) {
       console.error("[homepage send] ", err);
-      // optional: toast here
+      // Show user feedback on error
+      alert(`Failed to start chat: ${err.message || 'Unknown error. Check console for details.'}`);
       setCreating(false);
     }
   }
@@ -102,7 +103,7 @@ export default function HomePage() {
             onChange={setInput}
             onSend={handleSend}
             disabled={creating}
-            placeholder="Message CareIQ…"
+            placeholder="Message CareIQ..."
             size="lg"
             className="shadow-soft"
           />
@@ -110,7 +111,7 @@ export default function HomePage() {
           {/* Suggestions with soft gradient glow */}
           <div className="relative mt-6">
             <span
-              className="pointer-events-none absolute inset-x-8 -top-3 bottom-0 -z-10 rounded-[28px] blur-2xl opacity-60"
+              className="pointer-events-none absolute inset-x-8 -top-3 bottom-0 z-10 rounded-[28px] blur-2xl opacity-60"
               style={{
                 background:
                   "linear-gradient(120deg, rgba(139,176,255,.8), rgba(255,214,165,.7), rgba(193,255,215,.8))",
@@ -122,7 +123,7 @@ export default function HomePage() {
                 <button
                   key={t}
                   onClick={() => setInput(t)}
-                  className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15"
+                  className="rounded-2xl bg-white/60 px-3 py-1.5 text-sm hover:bg-white/80 transition-colors"
                 >
                   {t}
                 </button>
