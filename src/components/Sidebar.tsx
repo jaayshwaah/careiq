@@ -34,6 +34,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { createPortal } from "react-dom";
+import AccountMenu from "./AccountMenu";
 
 type ChatRow = { id: string; title: string | null; created_at: string };
 
@@ -98,13 +99,10 @@ function CenteredModal({
       aria-modal="true"
       className="fixed inset-0 z-[100] flex items-center justify-center"
       onMouseDown={(e) => {
-        // Close when clicking outside the panel
         if (e.target === overlayRef.current) onOpenChange(false);
       }}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
-      {/* Panel */}
       <div
         className={cn(
           "relative glass ring-1 ring-black/10 dark:ring-white/10 rounded-2xl w-[min(92vw,680px)] p-4 shadow-xl",
@@ -196,13 +194,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // NEW: account popover state
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountAnchorRef = useRef<HTMLButtonElement>(null);
+
   const isCollapsed = collapsed;
   const width = isCollapsed ? "w-[76px]" : "w-[300px]";
   const showLabels = !isCollapsed;
   const shortcutSearch = isMac ? "⌘K" : "Ctrl+K";
   const shortcutNewChat = isMac ? "⌘N" : "Ctrl+N";
 
-  // gradient palette for "New chat" chip-style button (randomized on mount)
   const newChatPalette = useMemo<[string, string]>(() => {
     const seeds: [string, string][] = [
       ["#8bb0ff", "#a0e3ff"],
@@ -218,14 +219,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     setIsMac(/Mac|iPhone|iPad|Macintosh/.test(navigator.platform || ""));
   }, []);
 
-  // Load pinned on mount (client-side)
   useEffect(() => {
     try {
       setPinnedIds(loadPinnedIds());
     } catch {}
   }, []);
 
-  // Load chats + realtime
   useEffect(() => {
     let mounted = true;
 
@@ -245,7 +244,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     load();
 
-    // Realtime best-effort
     let unsub: (() => void) | null = null;
     try {
       const channel = (supabase as any)
@@ -266,9 +264,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     };
   }, []);
 
-  // Global hotkeys:
-  //  - ⌘/Ctrl+K => open Search (focus input)
-  //  - ⌘/Ctrl+N => New Chat
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const isMacLocal = /Mac|iPhone|iPad|Macintosh/.test(
@@ -281,7 +276,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       if (metaPressed && key === "k") {
         e.preventDefault();
         setSearchOpen(true);
-        // Focus input after dialog opens
         setTimeout(() => {
           searchInputRef.current?.focus();
         }, 0);
@@ -292,6 +286,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         e.preventDefault();
         handleNewChat();
         return;
+      }
+
+      if (e.key === "Escape") {
+        setAccountOpen(false);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -335,7 +333,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     );
   }, [query, chats]);
 
-  // Derived lists: pinned & recent (preserve original recency within each group)
   const { pinnedList, recentList } = useMemo(() => {
     const pinned: ChatRow[] = [];
     const recent: ChatRow[] = [];
@@ -343,7 +340,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       if (pinnedIds.includes(c.id)) pinned.push(c);
       else recent.push(c);
     }
-    // Optional: order pinned by the order in pinnedIds
     const pinnedOrderIndex = new Map<string, number>();
     pinnedIds.forEach((id, idx) => pinnedOrderIndex.set(id, idx));
     pinned.sort(
@@ -353,9 +349,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     return { pinnedList: pinned, recentList: recent };
   }, [chats, pinnedIds]);
 
-  // Expand-on-background-click when collapsed (ignore clicks on interactive controls)
   function handleContainerClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (!isCollapsed) return;
+    if (!collapsed) return;
     const target = e.target as HTMLElement;
     const interactive = !!target.closest(
       'a,button,input,textarea,select,[role="button"],[data-no-expand]'
@@ -367,7 +362,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <aside
       className={cn(
         "relative h-svh shrink-0 transition-[width] duration-300 ease-ios",
-        width
+        isCollapsed ? "w-[76px]" : "w-[300px]"
       )}
     >
       <div className="sticky top-0 h-svh p-2 sm:p-3">
@@ -375,7 +370,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           className="glass ring-1 ring-black/10 dark:ring-white/10 relative flex h-full flex-col overflow-hidden rounded-2xl"
           onClick={handleContainerClick}
         >
-          {/* Click-to-expand chevron when collapsed */}
           {isCollapsed && (
             <button
               type="button"
@@ -392,7 +386,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </button>
           )}
 
-          {/* Top bar: logo + collapse */}
+          {/* Top bar */}
           <div
             className={cn(
               "flex items-center gap-2 p-2",
@@ -409,9 +403,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <div className="relative h-9 w-9 overflow-hidden rounded-xl shadow-insetglass">
                 <Image src="/logo.svg" alt="CareIQ" fill sizes="36px" priority />
               </div>
-              {showLabels && (
-                <span className="text-sm font-semibold">CareIQ</span>
-              )}
+              {!isCollapsed && <span className="text-sm font-semibold">CareIQ</span>}
             </Link>
 
             {!isCollapsed && (
@@ -434,13 +426,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             )}
           </div>
 
-          {/* New Chat (with shortcut hint; soft glass style) */}
+          {/* New Chat */}
           <div className={cn("px-2", isCollapsed && "px-0")}>
             {isCollapsed ? (
-              <div
-                className="relative group flex justify-center pb-2"
-                data-no-expand
-              >
+              <div className="relative group flex justify-center pb-2" data-no-expand>
                 <span
                   className="pointer-events-none absolute inset-x-1 -z-10 top-0 bottom-0 rounded-2xl opacity-90 animate-blob"
                   style={{
@@ -456,14 +445,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         type="button"
                         onClick={handleNewChat}
                         className="relative z-[1] h-12 w-12 overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/60 hover:bg-white/80 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft transition"
-                        aria-label={`New chat (${shortcutNewChat})`}
-                        title={`New chat (${shortcutNewChat})`}
+                        aria-label={`New chat (${isMac ? "⌘N" : "Ctrl+N"})`}
+                        title={`New chat (${isMac ? "⌘N" : "Ctrl+N"})`}
                       >
                         <Plus className="mx-auto h-5 w-5" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      New chat ({shortcutNewChat})
+                      New chat ({isMac ? "⌘N" : "Ctrl+N"})
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -482,14 +471,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   type="button"
                   onClick={handleNewChat}
                   className="relative z-[1] overflow-hidden w-full rounded-2xl bg-white/60 px-3 py-2 text-left transition hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/15 ring-1 ring-black/10 dark:ring-white/10 shadow-soft"
-                  aria-label={`New chat (${shortcutNewChat})`}
-                  title={`New chat (${shortcutNewChat})`}
+                  aria-label={`New chat (${isMac ? "⌘N" : "Ctrl+N"})`}
+                  title={`New chat (${isMac ? "⌘N" : "Ctrl+N"})`}
                 >
                   <div className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
                     <span className="text-sm font-medium">New chat</span>
                     <span className="ml-auto text-xs text-ink-subtle">
-                      ({shortcutNewChat})
+                      ({isMac ? "⌘N" : "Ctrl+N"})
                     </span>
                   </div>
                 </button>
@@ -497,7 +486,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             )}
           </div>
 
-          {/* Search Button (styled to match New Chat) */}
+          {/* Search */}
           <div className={cn("px-2 mt-2", isCollapsed && "px-0")}>
             {isCollapsed ? (
               <div className="relative group flex justify-center" data-no-expand>
@@ -508,8 +497,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     setTimeout(() => searchInputRef.current?.focus(), 0);
                   }}
                   className="relative z-[1] h-12 w-12 overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/60 hover:bg-white/80 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft transition"
-                  aria-label={`Search (${shortcutSearch})`}
-                  title={`Search (${shortcutSearch})`}
+                  aria-label={`Search (${isMac ? "⌘K" : "Ctrl+K"})`}
+                  title={`Search (${isMac ? "⌘K" : "Ctrl+K"})`}
                 >
                   <SearchIcon className="mx-auto h-5 w-5" />
                 </button>
@@ -522,14 +511,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   setTimeout(() => searchInputRef.current?.focus(), 0);
                 }}
                 className="relative z-[1] overflow-hidden w-full rounded-2xl bg-white/60 px-3 py-2 text-left transition hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/15 ring-1 ring-black/10 dark:ring-white/10 shadow-soft"
-                aria-label={`Search (${shortcutSearch})`}
-                title={`Search (${shortcutSearch})`}
+                aria-label={`Search (${isMac ? "⌘K" : "Ctrl+K"})`}
+                title={`Search (${isMac ? "⌘K" : "Ctrl+K"})`}
               >
                 <div className="flex items-center gap-2">
                   <SearchIcon className="h-4 w-4" />
                   <span className="text-sm font-medium">Search</span>
                   <span className="ml-auto text-xs text-ink-subtle">
-                    ({shortcutSearch})
+                    ({isMac ? "⌘K" : "Ctrl+K"})
                   </span>
                 </div>
               </button>
@@ -538,11 +527,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
           <Separator className="my-3" />
 
-          {/* Chats list with Pinned / Recent sections */}
+          {/* Chats list */}
           <div className="flex-1 overflow-hidden">
             <div className={cn("h-full", isCollapsed ? "" : "px-2")}>
               <ScrollArea className="h-[calc(100%-1px)] pr-1">
-                {/* Collapsed: icon-only */}
                 {isCollapsed ? (
                   <ul className="flex flex-col items-center gap-2 pb-4">
                     {pinnedList.map((c) => {
@@ -581,7 +569,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                 <Link
                                   href={`/chat/${c.id}`}
                                   className={cn(
-                                    "flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition",
+                                    "flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-black/5 dark:hover:bg:white/5 transition",
                                     isActive &&
                                       "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
                                   )}
@@ -600,8 +588,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   </ul>
                 ) : (
                   <div className="pb-4 space-y-3">
-                    {/* Pinned section */}
-                    {pinnedList.length > 0 && (
+                    {!!pinnedList.length && (
                       <section>
                         <div className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-ink-subtle">
                           Pinned
@@ -624,7 +611,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       </section>
                     )}
 
-                    {/* Recent section */}
                     <section>
                       <div className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-ink-subtle">
                         Recent
@@ -643,7 +629,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                             />
                           );
                         })}
-                        {recentList.length === 0 && pinnedList.length === 0 && (
+                        {!recentList.length && !pinnedList.length && (
                           <li className="px-2 py-2 text-xs text-ink-subtle">
                             No chats yet
                           </li>
@@ -658,71 +644,60 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
           <Separator className="my-3" />
 
-          {/* Bottom account */}
+          {/* Bottom account (now opens popover) */}
           <div className="px-2 pb-2">
-            <div
+            <button
+              ref={accountAnchorRef}
+              type="button"
               className={cn(
-                "flex items-center",
+                "flex w-full items-center rounded-2xl px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/10",
                 isCollapsed ? "justify-center" : "gap-2"
               )}
+              onClick={() => setAccountOpen((v) => !v)}
+              aria-label="Account menu"
             >
-              {isCollapsed ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/10">
-                    <User className="h-5 w-5" />
-                  </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
+                <User className="h-5 w-5" />
+              </div>
+              {!isCollapsed && (
+                <div className="flex-1 text-left">
+                  <div className="text-sm font-medium">You</div>
+                  <div className="text-xs text-ink-subtle">Free plan</div>
                 </div>
-              ) : (
-                <>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
-                    <User className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">You</div>
-                    <div className="text-xs text-ink-subtle">Free plan</div>
-                  </div>
-
-                  <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-                    <SheetTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-xl"
-                        aria-label="Settings"
-                      >
-                        <Settings className="h-5 w-5" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent className="w-[380px] sm:w-[480px] glass ring-1 ring-black/10 dark:ring-white/10">
-                      <SheetHeader>
-                        <SheetTitle>Settings</SheetTitle>
-                      </SheetHeader>
-                      <div className="mt-4 space-y-6">
-                        {/* Placeholder settings */}
-                        <Button
-                          variant="secondary"
-                          className="w-full justify-start gap-2 rounded-xl"
-                        >
-                          Manage account (placeholder)
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start gap-2 rounded-xl text-red-600 hover:text-red-700"
-                        >
-                          <LogOut className="h-4 w-4" />
-                          Log out
-                        </Button>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-                </>
               )}
-            </div>
+              {!isCollapsed && (
+                <Settings className="ml-auto h-4 w-4 opacity-50" aria-hidden />
+              )}
+            </button>
+
+            {/* Popover content */}
+            <AccountMenu
+              open={accountOpen}
+              onClose={() => setAccountOpen(false)}
+              anchorRef={accountAnchorRef}
+              email="jking4600@gmail.com"
+              onCustomize={() => {
+                setAccountOpen(false);
+                // Placeholder – hook up to your customize modal later
+              }}
+              onSettings={() => {
+                setAccountOpen(false);
+                setSettingsOpen(true);
+              }}
+              onHelp={() => {
+                setAccountOpen(false);
+                // Placeholder – route to /help or open a modal
+              }}
+              onLogout={() => {
+                setAccountOpen(false);
+                // Placeholder – wire auth later
+              }}
+            />
           </div>
         </div>
       </div>
 
-      {/* Search modal (centered window) */}
+      {/* Search modal */}
       <CenteredModal open={searchOpen} onOpenChange={setSearchOpen} ariaLabel="Search chats">
         <div className="mb-2">
           <h3 className="text-base font-semibold">Search chats</h3>
@@ -732,7 +707,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={`Search chats… (${shortcutSearch})`}
+          placeholder={`Search chats… (${isMac ? "⌘K" : "Ctrl+K"})`}
           className="w-full rounded-xl border-none ring-1 ring-black/10 dark:ring-white/10 bg-white/70 dark:bg-white/10 px-3 py-2 outline-none"
         />
         <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-1">
@@ -741,19 +716,38 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               key={c.id}
               href={`/chat/${c.id}`}
               onClick={() => setSearchOpen(false)}
-              className="block rounded-xl px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10 transition"
+              className="block rounded-2xl px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10 transition"
             >
               <div className="text-sm">{c.title || "New chat"}</div>
               <div className="text-[11px] text-ink-subtle">{c.id}</div>
             </Link>
           ))}
-          {filtered.length === 0 && (
-            <div className="rounded-xl px-3 py-2 text-xs text-ink-subtle">
+          {!filtered.length && (
+            <div className="rounded-2xl px-3 py-2 text-xs text-ink-subtle">
               No results
             </div>
           )}
         </div>
       </CenteredModal>
+
+      {/* Settings sheet (re-used; opens from the account popover) */}
+      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+        {/* We don’t need a visible trigger; we toggle via state */}
+        <SheetContent className="w-[380px] sm:w-[480px] glass ring-1 ring-black/10 dark:ring-white/10">
+          <SheetHeader>
+            <SheetTitle>Settings</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-6">
+            <Button variant="secondary" className="w-full justify-start gap-2 rounded-xl">
+              Manage account (placeholder)
+            </Button>
+            <Button variant="ghost" className="w-full justify-start gap-2 rounded-xl text-red-600 hover:text-red-700">
+              <LogOut className="h-4 w-4" />
+              Log out
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </aside>
   );
 }
@@ -789,7 +783,6 @@ function SidebarRow({
           <div className="truncate text-sm">{chat.title || "New chat"}</div>
         </Link>
 
-        {/* Row actions */}
         <div className="ml-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           <TooltipProvider>
             <Tooltip>
@@ -799,11 +792,7 @@ function SidebarRow({
                   aria-label={pinned ? "Unpin chat" : "Pin chat"}
                   onClick={onPinToggle}
                 >
-                  {pinned ? (
-                    <Pin className="h-4 w-4 fill-current" />
-                  ) : (
-                    <Pin className="h-4 w-4" />
-                  )}
+                  {pinned ? <Pin className="h-4 w-4 fill-current" /> : <Pin className="h-4 w-4" />}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">{pinned ? "Unpin" : "Pin"}</TooltipContent>
@@ -827,7 +816,7 @@ function SidebarRow({
                 items={[
                   { label: "Rename (coming soon)", disabled: true },
                   { label: "Duplicate (coming soon)", disabled: true },
-                  { label: "—", disabled: true }, // visual separator fallback
+                  { label: "—", disabled: true },
                   { label: "Delete (coming soon)", disabled: true, danger: true },
                 ]}
               />
