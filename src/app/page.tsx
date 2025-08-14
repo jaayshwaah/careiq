@@ -49,7 +49,7 @@ function StaticHeading({ phrases }: { phrases: string[] }) {
  * Chat on the home page:
  * - No redirects; stays on `/`
  * - Hero (headline + suggestions) before first message
- * - After first message: ChatGPT-style thread with sticky composer
+ * - After first message: ChatGPT-style thread with sticky composer + scrollable list
  */
 export default function HomePage() {
   const [input, setInput] = useState("");
@@ -57,7 +57,7 @@ export default function HomePage() {
   const [sending, setSending] = useState(false);
 
   // TODO: wire this to your auth user later
-  const userName = "Jay";
+  const userName = "Josh";
 
   const suggestions = useMemo(
     () => ["Summarize this", "Draft an email", "Explain a topic", "Create a plan"],
@@ -126,7 +126,7 @@ export default function HomePage() {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err: any) {
+    } catch {
       const fallback: ChatMessage = {
         id: uid("asst"),
         role: "assistant",
@@ -190,13 +190,12 @@ export default function HomePage() {
       ) : (
         // CHAT VIEW: after first message
         <>
-          {/* Make the center column a flex container with min-h-0 so the list can scroll */}
+          {/* Center column with proper scroll behavior */}
           <main className="flex-1 flex flex-col">
             <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col min-h-0 px-4">
-              {/* Scroll container */}
               <div
                 ref={listRef}
-                className="flex-1 overflow-y-auto pt-6 pb-28"
+                className="flex-1 overflow-y-auto overscroll-contain pt-6 pb-32"
                 aria-live="polite"
                 aria-busy={sending ? "true" : "false"}
               >
@@ -205,7 +204,7 @@ export default function HomePage() {
             </div>
           </main>
 
-          {/* Sticky composer (like ChatGPT) */}
+          {/* Sticky composer (ChatGPT style) */}
           <div className="sticky bottom-0 w-full border-t border-neutral-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
             <div className="mx-auto max-w-3xl px-4 py-3">
               <Composer

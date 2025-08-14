@@ -1,5 +1,6 @@
 "use client";
 
+import { Copy, ThumbsUp, ThumbsDown, Volume2, Wand2, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ChatRole = "system" | "user" | "assistant";
@@ -10,53 +11,87 @@ type ChatMessage = {
   createdAt: string; // ISO
 };
 
-function Avatar({ role }: { role: ChatRole }) {
-  // Simple dot avatars approximating ChatGPT layout
-  const base =
-    "h-7 w-7 shrink-0 rounded-full grid place-content-center text-[11px] font-semibold";
-  if (role === "assistant") {
-    return <div className={cn(base, "bg-black text-white")}>CI</div>;
-  }
-  if (role === "user") {
-    return <div className={cn(base, "bg-neutral-200 text-neutral-700")}>You</div>;
-  }
-  return <div className={cn(base, "bg-neutral-100 text-neutral-500")}>Sys</div>;
+function ActionIcon({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className="h-7 w-7 grid place-content-center rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700"
+    >
+      {/* The icon is passed via children when used */}
+    </button>
+  );
 }
 
 export default function MessageList({ messages }: { messages: ChatMessage[] }) {
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
-      {messages.map((m) => (
-        <div key={m.id} className="flex gap-3">
-          <Avatar role={m.role} />
-          <div className="min-w-0 flex-1">
-            {/* Name line */}
-            <div className="mb-1 text-xs font-medium text-neutral-500">
-              {m.role === "assistant" ? "CareIQ" : m.role === "user" ? "You" : "System"}
-              <span className="ml-2 text-[11px] text-neutral-400">
-                {new Date(m.createdAt).toLocaleString()}
-              </span>
+      {messages.map((m) => {
+        if (m.role === "user") {
+          // Right-aligned, pill bubble (soft violet) — like your screenshot
+          return (
+            <div key={m.id} className="flex justify-end">
+              <div
+                className={cn(
+                  "max-w-[65ch] rounded-2xl px-3 py-1.5",
+                  "bg-violet-100 text-violet-900"
+                )}
+              >
+                <p className="whitespace-pre-wrap text-[15px] leading-6">{m.content}</p>
+              </div>
             </div>
+          );
+        }
 
-            {/* Bubble */}
-            <div
-              className={cn(
-                "prose prose-neutral max-w-none",
-                "rounded-2xl border",
-                m.role === "assistant"
-                  ? "bg-neutral-50 border-neutral-200"
-                  : m.role === "user"
-                  ? "bg-white border-neutral-200"
-                  : "bg-white border-neutral-100"
-              )}
-            >
-              <div className="px-4 py-3">
-                <p className="whitespace-pre-wrap leading-7">{m.content}</p>
+        // Assistant — left aligned plain text with small action bar below
+        return (
+          <div key={m.id} className="flex">
+            <div className="min-w-0">
+              <div className="max-w-[65ch] text-[15px] md:text-[16px] leading-7 text-neutral-900">
+                <p className="whitespace-pre-wrap">{m.content}</p>
+              </div>
+
+              {/* Action bar */}
+              <div className="mt-3 flex items-center gap-1.5 text-neutral-500">
+                <ActionIcon label="Copy" onClick={() => copy(m.content)}>
+                  <Copy className="h-4 w-4" />
+                </ActionIcon>
+                <ActionIcon label="Good response">
+                  <ThumbsUp className="h-4 w-4" />
+                </ActionIcon>
+                <ActionIcon label="Bad response">
+                  <ThumbsDown className="h-4 w-4" />
+                </ActionIcon>
+                <ActionIcon label="Listen">
+                  <Volume2 className="h-4 w-4" />
+                </ActionIcon>
+                <ActionIcon label="Improve writing">
+                  <Wand2 className="h-4 w-4" />
+                </ActionIcon>
+                <ActionIcon label="Regenerate">
+                  <RotateCcw className="h-4 w-4" />
+                </ActionIcon>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
