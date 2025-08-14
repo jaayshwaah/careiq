@@ -4,52 +4,36 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Composer from "@/components/Composer";
 
-/** Big rotating headline that cycles through phrases at a fixed interval. */
-function RotatingHeading({
+/** One-time headline (random per visit/refresh). */
+function StaticHeading({
   phrases,
-  intervalMs = 2500,
 }: {
   phrases: string[];
-  intervalMs?: number;
 }) {
-  const [idx, setIdx] = useState(0);
-  const [show, setShow] = useState(true);
+  const [idx, setIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    let fadeTimeout: number | undefined;
-    const tick = () => {
-      // fade out
-      setShow(false);
-      // swap text mid-fade, then fade back in
-      fadeTimeout = window.setTimeout(() => {
-        setIdx((i) => (i + 1) % phrases.length);
-        setShow(true);
-      }, 180);
-    };
-
-    const id = window.setInterval(tick, intervalMs);
-    return () => {
-      window.clearInterval(id);
-      if (fadeTimeout) window.clearTimeout(fadeTimeout);
-    };
-  }, [phrases.length, intervalMs]);
+    // Choose a stable random index per visit after mount (avoids SSR window/crypto issues)
+    try {
+      // Prefer cryptographic randomness when available
+      const arr = new Uint32Array(1);
+      crypto.getRandomValues(arr);
+      setIdx(arr[0] % phrases.length);
+    } catch {
+      setIdx(Math.floor(Math.random() * phrases.length));
+    }
+  }, [phrases.length]);
 
   return (
-    <div className="h-[1.35em] md:h-[1.2em] overflow-hidden text-center mb-8">
+    <div className="relative z-10 -mt-2 mb-6 text-center">
       <h1
         className="text-4xl md:text-5xl font-semibold tracking-tight"
         aria-live="polite"
         aria-atomic="true"
+        suppressHydrationWarning
       >
-        <span
-          className={[
-            "inline-block will-change-transform transition-all duration-300",
-            show ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2",
-          ].join(" ")}
-          key={idx /* helps some transition strategies */}
-        >
-          {phrases[idx]}
-        </span>
+        {/* Render a non-breaking space until we pick a phrase on the client to avoid SSR mismatch */}
+        {idx === null ? "\u00A0" : phrases[idx]}
       </h1>
     </div>
   );
@@ -59,7 +43,7 @@ function RotatingHeading({
  * Home page chat:
  * - Creates a new chat on first send
  * - Redirects to /chat/[id]?q=<initial message> so Chat.tsx auto-sends it
- * - Large rotating heading + glowing suggestion area + large composer
+ * - Big static (per-visit) headline + glowing suggestion area + large composer
  */
 export default function HomePage() {
   const router = useRouter();
@@ -107,8 +91,8 @@ export default function HomePage() {
     <div className="flex min-h-svh flex-col">
       <main className="flex-1 grid place-content-center px-6 py-10">
         <div className="mx-auto w-full max-w-2xl">
-          {/* Rotating headline (replaces the big CareIQ header) */}
-          <RotatingHeading phrases={headlinePhrases} />
+          {/* Static per-visit headline (raised and above composer) */}
+          <StaticHeading phrases={headlinePhrases} />
 
           {/* Large composer */}
           <Composer
