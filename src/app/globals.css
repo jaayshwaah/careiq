@@ -49,3 +49,11 @@ body::before {
 .message.user { @apply bg-accent-soft border border-accent/30; }
 
 kbd { @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-xs font-medium border border-border bg-white/70 dark:bg-white/10 dark:border-border-dark; }
+
+/* Animated gradient blob (soft wave) */
+@keyframes blobFloat {
+  0% { transform: translateY(0px) scale(1); filter: blur(16px); }
+  50% { transform: translateY(-6px) scale(1.02); filter: blur(18px); }
+  100% { transform: translateY(0px) scale(1); filter: blur(16px); }
+}
+.animate-blob { animation: blobFloat 6s ease-in-out infinite; }

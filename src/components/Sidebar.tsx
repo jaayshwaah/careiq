@@ -23,12 +23,11 @@ type SidebarProps = {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [chats, setChats] = useState<ChatRow[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
   const isCollapsed = collapsed;
-  const width = isCollapsed ? "w-[84px]" : "w-[300px]";
+  const width = isCollapsed ? "w-[76px]" : "w-[300px]";
   const showLabels = !isCollapsed;
 
   useEffect(() => {
@@ -36,20 +35,17 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     async function load() {
       try {
+        // Graceful: if env missing/invalid, this will throw; we just show zero chats silently.
         const { data, error } = await supabase
           .from("chats")
           .select("*")
           .order("created_at", { ascending: false });
 
         if (!mounted) return;
-        if (error) {
-          setLoadError(error.message);
-        } else {
-          setChats(data || []);
-        }
-      } catch (err: any) {
+        if (!error) setChats(data || []);
+      } catch {
         if (!mounted) return;
-        setLoadError(err?.message || "Failed to load chats");
+        setChats([]);
       }
     }
 
@@ -83,14 +79,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   return (
     <aside className={cn("relative h-svh shrink-0 transition-[width] duration-300 ease-ios", width)}>
-      <div className="sticky top-0 h-svh p-3">
-        <div className="glass ring-1 ring-black/10 dark:ring-white/10 focus-within:ring-2 focus-within:ring-black/20 dark:focus-within:ring-white/20 transition flex h-full flex-col overflow-hidden rounded-2xl">
-          {/* Header / Toggle */}
+      <div className="sticky top-0 h-svh p-2 sm:p-3">
+        <div className="glass ring-1 ring-black/10 dark:ring-white/10 flex h-full flex-col overflow-hidden rounded-2xl">
+          {/* Top bar: logo + collapse toggle */}
           <div className={cn("flex items-center gap-2 p-2", isCollapsed ? "justify-center" : "")}>
             <Link
               href="/"
               className={cn(
-                "flex items-center gap-2 rounded-xl px-2 py-1 transition hover:bg-black/5 dark:hover:bg-white/5",
+                "flex items-center gap-2 rounded-xl px-2 py-1 transition hover:bg-black/5 dark:hover:bg白/5",
                 isCollapsed ? "justify-center" : ""
               )}
             >
@@ -104,37 +100,26 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button size="icon" variant="ghost" className="rounded-xl ring-1 ring-black/10 dark:ring-white/10 hover:bg-black/10 dark:hover:bg-white/15" onClick={onToggle} aria-label="Toggle sidebar">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="rounded-xl ring-1 ring-black/10 dark:ring-white/10 hover:bg-black/10 dark:hover:bg-white/15"
+                      onClick={onToggle}
+                      aria-label="Collapse sidebar"
+                    >
                       <PanelsTopLeft className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">Toggle sidebar</TooltipContent>
+                  <TooltipContent side="right">Collapse</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
-
-            {/* When collapsed, show the toggle centered below logo */}
-            {isCollapsed && (
-              <div className="absolute left-0 right-0 -bottom-2 flex justify-center">
-                <Button
-                  size="icon"
-                  variant="default"
-                  className="h-10 w-10 rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft hover:shadow-md"
-                  onClick={onToggle}
-                  aria-label="Toggle sidebar"
-                >
-                  <PanelsTopLeft className="h-5 w-5" />
-                </Button>
-              </div>
-            )}
           </div>
 
-          <Separator className="my-3" />
-
-          {/* New chat */}
+          {/* New Chat */}
           <div className={cn("px-2", isCollapsed && "px-0")}>
             {isCollapsed ? (
-              <div className="flex justify-center">
+              <div className="flex justify-center pb-2">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -153,7 +138,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               </div>
             ) : (
               <Button
-                className="w-full rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft hover:shadow-md transition-shadow justify-start"
+                className="w-full rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft hover:shadow-md transition-shadow justify-start gap-2"
                 onClick={handleNewChat}
               >
                 <Plus className="h-4 w-4" />
@@ -166,14 +151,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
           {/* Chats list */}
           <div className="flex-1 overflow-hidden">
-            {loadError && (
-              <div className="px-3 pt-1 text-xs text-red-600">{loadError}</div>
-            )}
             <div className={cn("h-full", isCollapsed ? "" : "px-2")}>
               <ScrollArea className="h-[calc(100%-1px)]">
                 {isCollapsed ? (
-                  /* Collapsed: only icons */
-                  <ul className="flex flex-col items-center gap-2">
+                  /* Collapsed: icons */
+                  <ul className="flex flex-col items-center gap-2 pb-4">
                     {chats.map((c) => {
                       const isActive = c.id === activeId;
                       return (
@@ -188,7 +170,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                     isActive && "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
                                   )}
                                 >
-                                  {/* decorative square */}
                                   <div className="h-5 w-5 rounded-md bg-black/20 dark:bg-white/20" />
                                 </Link>
                               </TooltipTrigger>
@@ -202,8 +183,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     })}
                   </ul>
                 ) : (
-                  /* Expanded: full list with titles */
-                  <ul className="space-y-1">
+                  /* Expanded: titles */
+                  <ul className="space-y-1 pb-4">
                     {chats.map((c) => {
                       const isActive = c.id === activeId;
                       return (
@@ -223,6 +204,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         </li>
                       );
                     })}
+                    {chats.length === 0 && (
+                      <li className="px-2 py-2 text-xs text-ink-subtle">No chats yet</li>
+                    )}
                   </ul>
                 )}
               </ScrollArea>
@@ -231,7 +215,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
           <Separator className="my-3" />
 
-          {/* Account bottom */}
+          {/* Bottom account */}
           <div className="px-2 pb-2">
             <div className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-2")}>
               {isCollapsed ? (

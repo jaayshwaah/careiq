@@ -13,7 +13,7 @@ export default function ChatWindow({
   chat: Chat | null;
   onSend: (content: string) => Promise<void>;
 }) {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(""); 
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -22,13 +22,11 @@ export default function ChatWindow({
   const messages = (chat?.messages || []) as Message[];
 
   useEffect(() => {
-    // Auto-scroll on new messages
     if (endRef.current) {
       endRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   }, [messages.length]);
 
-  // --- Keyboard / OS hints ---
   const isMac = useMemo(() => {
     if (typeof navigator === "undefined") return false;
     const p = (navigator as any).userAgentData?.platform || navigator.platform || "";
@@ -51,7 +49,7 @@ export default function ChatWindow({
     setBusy(true);
     try {
       await onSend(text);
-      setInput("");
+      setInput("");      
     } finally {
       setBusy(false);
       inputRef.current?.focus();
@@ -78,30 +76,12 @@ export default function ChatWindow({
   }
 
   if (!chat) {
-    // Home view + composer
     return (
       <div className="flex h-full flex-col">
         <HeaderBanner />
-        <div className="m-auto w-full max-w-2xl px-6 pb-40 pt-2">
-          <div className="mx-auto mb-6 grid max-w-xl grid-cols-2 gap-2 text-left text-sm">
-            {[
-              "Summarize this article",
-              "Draft an email to a family",
-              "Explain PBJ reporting",
-              "Create a staffing plan",
-            ].map((t) => (
-              <button
-                key={t}
-                onClick={() => !busy && onSend(t)}
-                className="rounded-xl px-3 py-2 text-left transition hover:bg-black/[0.08] dark:bg-white/10 dark:hover:bg-white/15"
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
 
-        {/** Composer Dock */}
+        <Suggestions onSend={(t) => !busy && onSend(t)} />
+
         <ComposerDock
           input={input}
           setInput={setInput}
@@ -118,12 +98,10 @@ export default function ChatWindow({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header bar */}
       <div className="sticky top-0 z-10 mx-4 mb-1 mt-1 rounded-2xl px-3 py-2 text-sm text-ink-subtle backdrop-blur-md lg:mx-6">
         {chat.title || "New chat"}
       </div>
 
-      {/* Messages */}
       <div
         ref={listRef}
         className="flex-1 overflow-y-auto px-4 pb-[140px] pt-6 md:px-6"
@@ -138,7 +116,6 @@ export default function ChatWindow({
         <div ref={endRef} />
       </div>
 
-      {/* Composer Dock */}
       <ComposerDock
         input={input}
         setInput={setInput}
@@ -149,6 +126,49 @@ export default function ChatWindow({
         sendHint={sendHint}
         inputRef={inputRef}
       />
+    </div>
+  );
+}
+
+function Suggestions({ onSend }: { onSend: (t: string) => void }) {
+  const choices = [
+    "Summarize this article",
+    "Draft an email to a family",
+    "Explain PBJ reporting",
+    "Create a staffing plan",
+  ];
+
+  const palettes = useMemo(() => {
+    const seeds = [
+      ["#8bb0ff", "#a0e3ff"],
+      ["#b8f3d4", "#8fd8ff"],
+      ["#ffd6a5", "#cdb4ff"],
+      ["#ffcad4", "#cce6ff"],
+      ["#c1ffd7", "#ffd1f7"],
+    ];
+    const shuffled = [...seeds].sort(() => Math.random() - 0.5).slice(0, choices.length);
+    return shuffled as [string, string][];
+  }, []);
+
+  return (
+    <div className="m-auto w-full max-w-2xl px-6 pb-32 pt-4">
+      <div className="relative grid grid-cols-2 gap-2 text-left text-sm md:gap-3">
+        {choices.map((t, i) => (
+          <div key={t} className="relative">
+            <div
+              className="pointer-events-none absolute -inset-1 rounded-2xl opacity-80 blur-md animate-blob"
+              style={{ background: `linear-gradient(120deg, ${palettes[i][0]}, ${palettes[i][1]})` }}
+              aria-hidden
+            />
+            <button
+              onClick={() => onSend(t)}
+              className="relative z-[1] rounded-2xl bg-white/60 px-3 py-2 text-left transition hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/15 ring-1 ring-black/10 dark:ring-white/10 shadow-soft"
+            >
+              {t}
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -220,8 +240,6 @@ function ComposerDock({
   );
 }
 
-/* ---------- Bubbles ---------- */
-
 function MessageBubble({ m }: { m: Message }) {
   const isUser = m.role === "user";
   const bubbleClasses = isUser
@@ -239,28 +257,11 @@ function MessageBubble({ m }: { m: Message }) {
   );
 }
 
-/* ---------- Empty ---------- */
-
 function EmptyState({ onSend }: { onSend: (text: string) => void | Promise<void> }) {
   return (
     <div className="m-auto max-w-xl p-8 text-center">
       <HeaderBanner />
-      <div className="mx-auto mt-2 grid max-w-md grid-cols-2 gap-2 text-left text-sm">
-        {[
-          "Summarize this article",
-          "Draft an email to a family",
-          "Explain PBJ reporting",
-          "Create a staffing plan",
-        ].map((t) => (
-          <button
-            key={t}
-            onClick={() => onSend(t)}
-            className="rounded-xl px-3 py-2 text-left transition hover:bg-black/[0.08] dark:bg-white/10 dark:hover:bg-white/15"
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      <Suggestions onSend={onSend as any} />
     </div>
   );
 }

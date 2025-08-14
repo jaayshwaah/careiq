@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 
 const HEADERS = [
   "Ready when you are.",
@@ -14,19 +14,15 @@ const HEADERS = [
 ];
 
 export default function HeaderBanner() {
-  const [index, setIndex] = useState(0);
-  const title = useMemo(() => HEADERS[index % HEADERS.length], [index]);
-
-  useEffect(() => {
-    const id = setInterval(() => setIndex((i) => i + 1), 3500);
-    return () => clearInterval(id);
-  }, []);
+  // Pick once per mount (no timer), so it changes on refresh/page-visit only
+  const [index] = useState(() => Math.floor(Math.random() * HEADERS.length));
+  const title = useMemo(() => HEADERS[index], [index]);
 
   return (
     <div className="w-full">
       <div className="mx-auto max-w-3xl px-4 pt-12 pb-4 text-center">
         <h1
-          className="font-semibold tracking-tight leading-tight select-none transition-opacity duration-500"
+          className="font-semibold tracking-tight leading-tight select-none"
           style={{ color: "var(--text)", fontSize: "clamp(2.25rem, 6vw, 3.25rem)" }}
           aria-live="polite"
         >
