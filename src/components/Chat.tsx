@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Composer from "@/components/Composer";
 
 type Msg = {
@@ -11,14 +12,29 @@ type Msg = {
   created_at: string;
 };
 
+function TypingDots() {
+  return (
+    <span className="inline-flex items-center gap-1 align-middle">
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-70 animate-bounce [animation-delay:-0.2s]" />
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-70 animate-bounce [animation-delay:-0.1s]" />
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-70 animate-bounce" />
+    </span>
+  );
+}
+
 export default function Chat({ chatId }: { chatId: string }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
 
   const listRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<AbortController | null>(null);
-  const streamingPlaceholderIdRef = useRef<string | null>(null);
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pendingQueryRef = useRef<string | null>(null);
+  const autoSentRef = useRef(false);
 
   // Scroll helpers
   function scrollToBottom(behavior: ScrollBehavior = "smooth") {
@@ -68,6 +84,30 @@ export default function Chat({ chatId }: { chatId: string }) {
     };
   }, [chatId]);
 
+  // Pick up initial message from query (?q=...) and auto-send once
+  useEffect(() => {
+    const q = (searchParams?.get("q") || "").trim();
+    if (!q || autoSentRef.current) return;
+    pendingQueryRef.current = q;
+    autoSentRef.current = true;
+
+    // Remove the query param from URL so refreshes don't resend
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("q");
+      router.replace(url.pathname + url.search);
+    } catch {}
+
+    // Send after a tick to let messages load
+    setTimeout(() => {
+      if (pendingQueryRef.current) {
+        void handleSend(pendingQueryRef.current);
+        pendingQueryRef.current = null;
+      }
+    }, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   // Keep viewport pinned to bottom as messages append
   useEffect(() => {
     scrollToBottom("smooth");
@@ -100,7 +140,7 @@ export default function Chat({ chatId }: { chatId: string }) {
 
     // Placeholder assistant message to stream into
     const placeholderId = `assist-${crypto.randomUUID()}`;
-    streamingPlaceholderIdRef.current = placeholderId;
+    setStreamingId(placeholderId);
     const placeholder: Msg = {
       id: placeholderId,
       chat_id: chatId,
@@ -155,12 +195,9 @@ export default function Chat({ chatId }: { chatId: string }) {
             const token: string = delta?.content ?? "";
             if (token) {
               full += token;
-              const pid = streamingPlaceholderIdRef.current;
-              if (pid) {
-                setMsgs((prev) =>
-                  prev.map((m) => (m.id === pid ? { ...m, content: full } : m))
-                );
-              }
+              setMsgs((prev) =>
+                prev.map((m) => (m.id === placeholderId ? { ...m, content: full } : m))
+              );
               scrollToBottom("auto");
             }
           } catch {
@@ -169,28 +206,23 @@ export default function Chat({ chatId }: { chatId: string }) {
         }
       }
 
-      // On normal end: API route already persisted assistant message.
-      // Optionally you could refetch the last message from the DB here.
+      // On normal end: server already persisted assistant message.
 
     } catch (err: any) {
       // If aborted, keep whatever text we had in the placeholder (server persists partial).
       if (err?.name !== "AbortError") {
-        // reflect an error note into the placeholder
-        const pid = streamingPlaceholderIdRef.current;
-        if (pid) {
-          setMsgs((prev) =>
-            prev.map((m) =>
-              m.id === pid
-                ? { ...m, content: (m.content || "") + "\n\n[Streaming failed]" }
-                : m
-            )
-          );
-        }
+        setMsgs((prev) =>
+          prev.map((m) =>
+            m.id === streamingId
+              ? { ...m, content: (m.content || "") + "\n\n[Streaming failed]" }
+              : m
+          )
+        );
       }
     } finally {
       setStreaming(false);
       controllerRef.current = null;
-      streamingPlaceholderIdRef.current = null;
+      setStreamingId(null);
     }
   };
 
@@ -228,34 +260,53 @@ export default function Chat({ chatId }: { chatId: string }) {
             </div>
           </div>
         ) : (
-          msgs.map((m) => (
-            <div
-              key={m.id}
-              className={`mb-3 flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-            >
+          msgs.map((m) => {
+            const isAssistant = m.role === "assistant";
+            const isStreamingBubble = streaming && isAssistant && m.id === streamingId;
+
+            return (
               <div
-                className={`max-w-[78%] rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-soft ${
-                  m.role === "user"
-                    ? "bg-gradient-to-br from-[#3c5ebf] to-[#2d4aa0] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]"
-                    : "bg-white/70 dark:bg-white/10 border border-border dark:border-border-dark"
-                }`}
+                key={m.id}
+                className={`mb-3 flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                <div className="whitespace-pre-wrap">{m.content}</div>
                 <div
-                  className={`mt-1 text-[11px] ${
+                  className={`max-w-[78%] rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-soft ${
                     m.role === "user"
-                      ? "text-white/70 dark:text-black/60"
-                      : "text-gray-600 dark:text-white/50"
+                      ? "bg-gradient-to-br from-[#3c5ebf] to-[#2d4aa0] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]"
+                      : "bg-white/70 dark:bg-white/10 border border-border dark:border-border-dark"
                   }`}
                 >
-                  {new Date(m.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {isAssistant ? (
+                    <>
+                      <div className="whitespace-pre-wrap">
+                        {m.content || (isStreamingBubble ? <TypingDots /> : null)}
+                      </div>
+                      {isStreamingBubble && m.content && (
+                        <div className="mt-1 opacity-80">
+                          <TypingDots />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="whitespace-pre-wrap">{m.content}</div>
+                  )}
+
+                  <div
+                    className={`mt-1 text-[11px] ${
+                      m.role === "user"
+                        ? "text-white/70 dark:text-black/60"
+                        : "text-gray-600 dark:text-white/50"
+                    }`}
+                  >
+                    {new Date(m.created_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
