@@ -12,7 +12,6 @@ import {
   LogOut,
   Pin,
   MoreHorizontal,
-  PinOff,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -32,22 +31,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader as DialogHeaderBase,
-  DialogTitle as DialogTitleBase,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { createPortal } from "react-dom";
 
 type ChatRow = { id: string; title: string | null; created_at: string };
 
@@ -57,6 +43,8 @@ type SidebarProps = {
 };
 
 const PIN_STORAGE_KEY = "careiq.pinnedChatIds.v1";
+
+/* ----------------------------- Local Utilities ---------------------------- */
 
 function loadPinnedIds(): string[] {
   try {
@@ -74,6 +62,128 @@ function savePinnedIds(ids: string[]) {
     localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(ids));
   } catch {}
 }
+
+/* --------------------------- Headless UI: Modal --------------------------- */
+
+function CenteredModal({
+  open,
+  onOpenChange,
+  children,
+  className,
+  ariaLabel = "Dialog",
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  children: React.ReactNode;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onOpenChange(false);
+    }
+    if (open) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onOpenChange]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      ref={overlayRef}
+      role="dialog"
+      aria-label={ariaLabel}
+      aria-modal="true"
+      className="fixed inset-0 z-[100] flex items-center justify-center"
+      onMouseDown={(e) => {
+        // Close when clicking outside the panel
+        if (e.target === overlayRef.current) onOpenChange(false);
+      }}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+      {/* Panel */}
+      <div
+        className={cn(
+          "relative glass ring-1 ring-black/10 dark:ring-white/10 rounded-2xl w-[min(92vw,680px)] p-4 shadow-xl",
+          className
+        )}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* ------------------------- Headless UI: Tiny Menu ------------------------- */
+
+function useClickOutside<T extends HTMLElement>(
+  ref: React.RefObject<T>,
+  onOutside: () => void
+) {
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target as Node)) onOutside();
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [ref, onOutside]);
+}
+
+function TinyMenu({
+  align = "end",
+  items,
+  onClose,
+}: {
+  align?: "start" | "end";
+  items: Array<{
+    label: string;
+    onSelect?: () => void;
+    disabled?: boolean;
+    danger?: boolean;
+  }>;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useClickOutside(ref, onClose);
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "absolute z-50 mt-1 min-w-40 rounded-xl border border-black/10 dark:border-white/10 bg-background/95 backdrop-blur-sm shadow-lg p-1",
+        align === "end" ? "right-0" : "left-0"
+      )}
+    >
+      {items.map((it, i) => (
+        <button
+          key={i}
+          type="button"
+          disabled={it.disabled}
+          onClick={() => {
+            if (it.disabled) return;
+            it.onSelect?.();
+            onClose();
+          }}
+          className={cn(
+            "w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-black/5 dark:hover:bg-white/10",
+            it.disabled && "opacity-50 cursor-not-allowed",
+            it.danger && "text-red-600 hover:text-red-700"
+          )}
+        >
+          {it.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* --------------------------------- Sidebar -------------------------------- */
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -108,13 +218,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     setIsMac(/Mac|iPhone|iPad|Macintosh/.test(navigator.platform || ""));
   }, []);
 
+  // Load pinned on mount (client-side)
   useEffect(() => {
-    // Load pinned on mount (client-side)
     try {
       setPinnedIds(loadPinnedIds());
     } catch {}
   }, []);
 
+  // Load chats + realtime
   useEffect(() => {
     let mounted = true;
 
@@ -431,7 +542,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <div className="flex-1 overflow-hidden">
             <div className={cn("h-full", isCollapsed ? "" : "px-2")}>
               <ScrollArea className="h-[calc(100%-1px)] pr-1">
-                {/* Collapsed: keep simple icon list */}
+                {/* Collapsed: icon-only */}
                 {isCollapsed ? (
                   <ul className="flex flex-col items-center gap-2 pb-4">
                     {pinnedList.map((c) => {
@@ -500,79 +611,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                             const isActive = c.id === activeId;
                             const pinned = isPinned(c.id);
                             return (
-                              <li key={c.id}>
-                                <div
-                                  className={cn(
-                                    "group flex items-center gap-2 rounded-2xl px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/5 ring-1 ring-transparent hover:ring-black/10 dark:hover:ring-white/10",
-                                    isActive &&
-                                      "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
-                                  )}
-                                >
-                                  <Link
-                                    href={`/chat/${c.id}`}
-                                    className="min-w-0 flex flex-1 items-center gap-2"
-                                  >
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
-                                      <span className="h-3 w-3 rounded-[4px] bg-black/30 dark:bg-white/30" />
-                                    </div>
-                                    <div className="truncate text-sm">
-                                      {c.title || "New chat"}
-                                    </div>
-                                  </Link>
-
-                                  {/* Row actions: Pin / Overflow */}
-                                  <div className="ml-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <button
-                                            className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
-                                            aria-label={pinned ? "Unpin chat" : "Pin chat"}
-                                            onClick={() => togglePin(c.id)}
-                                          >
-                                            {pinned ? (
-                                              <Pin className="h-4 w-4 fill-current" />
-                                            ) : (
-                                              <Pin className="h-4 w-4" />
-                                            )}
-                                          </button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="bottom">
-                                          {pinned ? "Unpin" : "Pin"}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <button
-                                          className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
-                                          aria-label="More actions"
-                                        >
-                                          <MoreHorizontal className="h-4 w-4" />
-                                        </button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="w-40">
-                                        <DropdownMenuLabel>Chat actions</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem disabled>
-                                          Rename (coming soon)
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem disabled>
-                                          Duplicate (coming soon)
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          className="text-red-600"
-                                          disabled
-                                        >
-                                          Delete (coming soon)
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-                                </div>
-                              </li>
+                              <SidebarRow
+                                key={c.id}
+                                chat={c}
+                                isActive={isActive}
+                                pinned={pinned}
+                                onPinToggle={() => togglePin(c.id)}
+                              />
                             );
                           })}
                         </ul>
@@ -589,79 +634,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                           const isActive = c.id === activeId;
                           const pinned = isPinned(c.id);
                           return (
-                            <li key={c.id}>
-                              <div
-                                className={cn(
-                                  "group flex items-center gap-2 rounded-2xl px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/5 ring-1 ring-transparent hover:ring-black/10 dark:hover:ring-white/10",
-                                  isActive &&
-                                    "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
-                                )}
-                              >
-                                <Link
-                                  href={`/chat/${c.id}`}
-                                  className="min-w-0 flex flex-1 items-center gap-2"
-                                >
-                                  <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
-                                    <span className="h-3 w-3 rounded-[4px] bg-black/30 dark:bg-white/30" />
-                                  </div>
-                                  <div className="truncate text-sm">
-                                    {c.title || "New chat"}
-                                  </div>
-                                </Link>
-
-                                {/* Row actions: Pin / Overflow */}
-                                <div className="ml-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button
-                                          className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
-                                          aria-label={pinned ? "Unpin chat" : "Pin chat"}
-                                          onClick={() => togglePin(c.id)}
-                                        >
-                                          {pinned ? (
-                                            <Pin className="h-4 w-4 fill-current" />
-                                          ) : (
-                                            <Pin className="h-4 w-4" />
-                                          )}
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="bottom">
-                                        {pinned ? "Unpin" : "Pin"}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <button
-                                        className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
-                                        aria-label="More actions"
-                                      >
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-40">
-                                      <DropdownMenuLabel>Chat actions</DropdownMenuLabel>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem disabled>
-                                        Rename (coming soon)
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem disabled>
-                                        Duplicate (coming soon)
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        className="text-red-600"
-                                        disabled
-                                      >
-                                        Delete (coming soon)
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                              </div>
-                            </li>
+                            <SidebarRow
+                              key={c.id}
+                              chat={c}
+                              isActive={isActive}
+                              pinned={pinned}
+                              onPinToggle={() => togglePin(c.id)}
+                            />
                           );
                         })}
                         {recentList.length === 0 && pinnedList.length === 0 && (
@@ -744,42 +723,118 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Search modal (centered window) */}
-      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <DialogContent className="glass ring-1 ring-black/10 dark:ring-white/10 rounded-2xl sm:max-w-lg">
-          <DialogHeaderBase>
-            <DialogTitleBase>Search chats</DialogTitleBase>
-          </DialogHeaderBase>
-          <div className="mt-1">
-            <input
-              ref={searchInputRef}
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search chats… (${shortcutSearch})`}
-              className="w-full rounded-xl border-none ring-1 ring-black/10 dark:ring-white/10 bg-white/70 dark:bg-white/10 px-3 py-2 outline-none"
-            />
-            <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-1">
-              {filtered
-                .map((c) => (
-                  <Link
-                    key={c.id}
-                    href={`/chat/${c.id}`}
-                    onClick={() => setSearchOpen(false)}
-                    className="block rounded-xl px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10 transition"
-                  >
-                    <div className="text-sm">{c.title || "New chat"}</div>
-                    <div className="text-[11px] text-ink-subtle">{c.id}</div>
-                  </Link>
-                ))}
-              {filtered.length === 0 && (
-                <div className="rounded-xl px-3 py-2 text-xs text-ink-subtle">
-                  No results
-                </div>
-              )}
+      <CenteredModal open={searchOpen} onOpenChange={setSearchOpen} ariaLabel="Search chats">
+        <div className="mb-2">
+          <h3 className="text-base font-semibold">Search chats</h3>
+        </div>
+        <input
+          ref={searchInputRef}
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={`Search chats… (${shortcutSearch})`}
+          className="w-full rounded-xl border-none ring-1 ring-black/10 dark:ring-white/10 bg-white/70 dark:bg-white/10 px-3 py-2 outline-none"
+        />
+        <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-1">
+          {filtered.map((c) => (
+            <Link
+              key={c.id}
+              href={`/chat/${c.id}`}
+              onClick={() => setSearchOpen(false)}
+              className="block rounded-xl px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10 transition"
+            >
+              <div className="text-sm">{c.title || "New chat"}</div>
+              <div className="text-[11px] text-ink-subtle">{c.id}</div>
+            </Link>
+          ))}
+          {filtered.length === 0 && (
+            <div className="rounded-xl px-3 py-2 text-xs text-ink-subtle">
+              No results
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          )}
+        </div>
+      </CenteredModal>
     </aside>
+  );
+}
+
+/* ---------------------------- Row Component ---------------------------- */
+
+function SidebarRow({
+  chat,
+  isActive,
+  pinned,
+  onPinToggle,
+}: {
+  chat: ChatRow;
+  isActive: boolean;
+  pinned: boolean;
+  onPinToggle: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuAnchorRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    <li>
+      <div
+        className={cn(
+          "group relative flex items-center gap-2 rounded-2xl px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/5 ring-1 ring-transparent hover:ring-black/10 dark:hover:ring-white/10",
+          isActive && "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
+        )}
+      >
+        <Link href={`/chat/${chat.id}`} className="min-w-0 flex flex-1 items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
+            <span className="h-3 w-3 rounded-[4px] bg-black/30 dark:bg-white/30" />
+          </div>
+          <div className="truncate text-sm">{chat.title || "New chat"}</div>
+        </Link>
+
+        {/* Row actions */}
+        <div className="ml-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                  aria-label={pinned ? "Unpin chat" : "Pin chat"}
+                  onClick={onPinToggle}
+                >
+                  {pinned ? (
+                    <Pin className="h-4 w-4 fill-current" />
+                  ) : (
+                    <Pin className="h-4 w-4" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{pinned ? "Unpin" : "Pin"}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <div className="relative">
+            <button
+              ref={menuAnchorRef}
+              className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+              aria-label="More actions"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+
+            {menuOpen && (
+              <TinyMenu
+                align="end"
+                onClose={() => setMenuOpen(false)}
+                items={[
+                  { label: "Rename (coming soon)", disabled: true },
+                  { label: "Duplicate (coming soon)", disabled: true },
+                  { label: "—", disabled: true }, // visual separator fallback
+                  { label: "Delete (coming soon)", disabled: true, danger: true },
+                ]}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </li>
   );
 }
