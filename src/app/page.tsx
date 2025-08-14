@@ -18,10 +18,17 @@ type Attachment = {
   name: string;
   type: string;
   size: number;
-  text?: string;           // extracted text (server-returned)
+  text?: string;
   status: "pending" | "ready" | "error";
   error?: string;
 };
+
+type SseEvent =
+  | { type: "status"; message: string }
+  | { type: "token"; text: string }
+  | { type: "usage"; input?: number; output?: number }
+  | { type: "error"; message: string }
+  | { type: "done" };
 
 function uid(prefix = "msg") {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
@@ -55,23 +62,19 @@ function StaticHeading({ phrases }: { phrases: string[] }) {
   );
 }
 
-/**
- * Chat on the home page:
- * - No redirects; stays on `/`
- * - Hero before first message
- * - After first: ChatGPT-style thread with sticky composer + streaming + attachments
- */
 export default function HomePage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [lastUsage, setLastUsage] = useState<{ input?: number; output?: number } | null>(null);
+
   const abortRef = useRef<AbortController | null>(null);
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // TODO: wire this to auth user later
+  // TODO: wire to auth user later
   const userName = "Josh";
 
   const suggestions = useMemo(
@@ -113,13 +116,12 @@ export default function HomePage() {
     setStreamingId(null);
   };
 
-  /** File attach flow */
+  /** Attachment handling */
   const handleAttachClick = () => fileInputRef.current?.click();
 
   const handleFilesChosen = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    // Stage attachments as pending
     const staged: Attachment[] = Array.from(files).map((f) => ({
       id: uid("att"),
       name: f.name,
@@ -129,7 +131,6 @@ export default function HomePage() {
     }));
     setAttachments((prev) => [...prev, ...staged]);
 
-    // Send to extractor API
     const form = new FormData();
     Array.from(files).forEach((f) => form.append("files", f));
 
@@ -145,46 +146,39 @@ export default function HomePage() {
           const match = data.files.find((f) => f.name === a.name);
           if (!match) return a;
           if (match.error) return { ...a, status: "error", error: match.error };
-          return { ...a, status: "ready", text: (match.text || "").slice(0, 150_000) }; // clamp
+          return { ...a, status: "ready", text: (match.text || "").slice(0, 150_000) };
         })
       );
-    } catch (e: any) {
+    } catch {
       setAttachments((prev) =>
-        prev.map((a) =>
-          a.status === "pending"
-            ? { ...a, status: "error", error: "Failed to extract" }
-            : a
-        )
+        prev.map((a) => (a.status === "pending" ? { ...a, status: "error", error: "Failed to extract" } : a))
       );
     }
   };
 
-  const removeAttachment = (id: string) =>
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  const removeAttachment = (id: string) => setAttachments((prev) => prev.filter((a) => a.id !== id));
 
-  /** Send a message and stream assistant reply (with attachments) */
+  /** Send a message and stream SSE reply (tokens/status/usage/errors) */
   async function handleSend(text?: string) {
     const content = (text ?? input).trim();
     if (!content || isStreaming) return;
 
-    // Build attachments payload with extracted text only
+    // Build attachments payload to send
     const ready = attachments.filter((a) => a.status === "ready" && a.text?.trim());
     const attsPayload = ready.map((a) => ({
       name: a.name,
       type: a.type,
       size: a.size,
-      text: (a.text || "").slice(0, 60_000), // extra clamp per-file
+      text: (a.text || "").slice(0, 60_000),
     }));
 
-    // User message
+    // Append user message + placeholder assistant
     const userMsg: ChatMessage = {
       id: uid("user"),
       role: "user",
       content,
       createdAt: new Date().toISOString(),
     };
-
-    // Placeholder assistant message (will stream into this)
     const asstId = uid("asst");
     const assistantMsg: ChatMessage = {
       id: asstId,
@@ -196,8 +190,9 @@ export default function HomePage() {
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setInput("");
     setStreamingId(asstId);
+    setLastUsage(null);
 
-    // Start streaming
+    // Open SSE stream (via fetch; we'll parse "data: {...}\n\n" frames)
     const controller = new AbortController();
     abortRef.current = controller;
     setIsStreaming(true);
@@ -214,10 +209,8 @@ export default function HomePage() {
       });
 
       if (!res.ok || !res.body) {
-        const fallback =
-          "I hit an error generating the reply. If you’re using OpenRouter, check your API key/credits.";
         setMessages((prev) =>
-          prev.map((m) => (m.id === asstId ? { ...m, content: fallback } : m))
+          prev.map((m) => (m.id === asstId ? { ...m, content: "Error starting stream. Check server logs." } : m))
         );
         setIsStreaming(false);
         setStreamingId(null);
@@ -225,28 +218,60 @@ export default function HomePage() {
         return;
       }
 
+      // Parse SSE frames
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let done = false;
-      let acc = "";
+      let buffer = "";
 
-      while (!done) {
-        const { value, done: d } = await reader.read();
-        done = d;
-        if (value) {
-          acc += decoder.decode(value, { stream: true });
-          setMessages((prev) =>
-            prev.map((m) => (m.id === asstId ? { ...m, content: acc } : m))
-          );
-          scrollToBottom();
+      const handleEvent = (evt: SseEvent) => {
+        switch (evt.type) {
+          case "token":
+            setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, content: (m.content || "") + evt.text } : m)));
+            break;
+          case "status":
+            // optionally show in UI; our spinner already covers "thinking"
+            break;
+          case "usage":
+            setLastUsage({ input: evt.input, output: evt.output });
+            break;
+          case "error":
+            setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, content: evt.message } : m)));
+            break;
+          case "done":
+            setIsStreaming(false);
+            setStreamingId(null);
+            abortRef.current = null;
+            break;
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const data = trimmed.slice(5).trim();
+          if (!data) continue;
+
+          try {
+            const json = JSON.parse(data) as SseEvent;
+            handleEvent(json);
+            scrollToBottom();
+          } catch {
+            // ignore keep-alive lines
+          }
         }
       }
     } catch (err) {
       if ((err as any)?.name !== "AbortError") {
-        const msg =
-          "There was a network error while streaming the reply. Please try again.";
         setMessages((prev) =>
-          prev.map((m) => (m.id === asstId ? { ...m, content: msg } : m))
+          prev.map((m) => (m.id === asstId ? { ...m, content: "Network error while streaming reply." } : m))
         );
       }
     } finally {
@@ -270,7 +295,6 @@ export default function HomePage() {
         multiple
         onChange={(e) => handleFilesChosen(e.target.files)}
         className="hidden"
-        // Accept common doc types; expand as needed
         accept=".txt,.md,.csv,.json,.pdf,.docx"
       />
 
@@ -287,16 +311,14 @@ export default function HomePage() {
               disabled={isStreaming}
               isStreaming={isStreaming}
               onStop={handleStop}
-              onAttachClick={handleAttachClick}
+              onAttachClick={() => fileInputRef.current?.click()}
               placeholder="Message CareIQ..."
               size="lg"
               className="shadow-soft"
             />
 
             {/* Attached files preview */}
-            {attachments.length > 0 && (
-              <AttachmentBar atts={attachments} onRemove={removeAttachment} />
-            )}
+            {attachments.length > 0 && <AttachmentBar atts={attachments} onRemove={removeAttachment} />}
 
             {/* Suggestions */}
             <div className="relative mt-6">
@@ -334,17 +356,12 @@ export default function HomePage() {
                 aria-live="polite"
                 aria-busy={isStreaming ? "true" : "false"}
               >
-                <MessageList
-                  messages={messages}
-                  isStreaming={isStreaming}
-                  streamingId={streamingId}
-                  // Show attachment chips below the composer area, not in the list
-                />
+                <MessageList messages={messages} isStreaming={isStreaming} streamingId={streamingId} />
               </div>
             </div>
           </main>
 
-          {/* Sticky composer (ChatGPT style) */}
+          {/* Sticky composer */}
           <div className="sticky bottom-0 w-full border-t border-neutral-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
             <div className="mx-auto max-w-3xl px-4 py-3">
               <Composer
@@ -354,16 +371,22 @@ export default function HomePage() {
                 disabled={isStreaming}
                 isStreaming={isStreaming}
                 onStop={handleStop}
-                onAttachClick={handleAttachClick}
+                onAttachClick={() => fileInputRef.current?.click()}
                 placeholder="Message CareIQ..."
               />
               {/* Attached files preview */}
-              {attachments.length > 0 && (
-                <AttachmentBar atts={attachments} onRemove={removeAttachment} />
+              {attachments.length > 0 && <AttachmentBar atts={attachments} onRemove={removeAttachment} />}
+
+              {/* Optional: show usage if provided by SSE */}
+              {lastUsage && (lastUsage.input || lastUsage.output) ? (
+                <p className="mt-2 text-[11px] text-neutral-400 text-center">
+                  tokens — in: {lastUsage.input ?? "?"} • out: {lastUsage.output ?? "?"}
+                </p>
+              ) : (
+                <p className="mt-2 text-[11px] text-neutral-400 text-center">
+                  CareIQ can make mistakes. Check important info.
+                </p>
               )}
-              <p className="mt-2 text-[11px] text-neutral-400 text-center">
-                CareIQ can make mistakes. Check important info.
-              </p>
             </div>
           </div>
         </>
@@ -373,13 +396,7 @@ export default function HomePage() {
 }
 
 /** Small chips for attachments */
-function AttachmentBar({
-  atts,
-  onRemove,
-}: {
-  atts: Attachment[];
-  onRemove: (id: string) => void;
-}) {
+function AttachmentBar({ atts, onRemove }: { atts: Attachment[]; onRemove: (id: string) => void }) {
   return (
     <div className="mt-3 flex flex-wrap gap-2">
       {atts.map((a) => (
@@ -389,12 +406,8 @@ function AttachmentBar({
           title={a.name}
         >
           <span className="truncate max-w-[24ch]">{a.name}</span>
-          {a.status === "pending" && (
-            <span className="text-neutral-400">extracting…</span>
-          )}
-          {a.status === "error" && (
-            <span className="text-red-500">error</span>
-          )}
+          {a.status === "pending" && <span className="text-neutral-400">extracting…</span>}
+          {a.status === "error" && <span className="text-red-500">error</span>}
           <button
             type="button"
             className="rounded hover:bg-neutral-100 px-1"
