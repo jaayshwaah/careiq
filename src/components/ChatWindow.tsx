@@ -13,7 +13,7 @@ export default function ChatWindow({
   chat: Chat | null;
   onSend: (content: string) => Promise<void>;
 }) {
-  const [input, setInput] = useState(""); 
+  const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -49,7 +49,7 @@ export default function ChatWindow({
     setBusy(true);
     try {
       await onSend(text);
-      setInput("");      
+      setInput("");
     } finally {
       setBusy(false);
       inputRef.current?.focus();
@@ -98,6 +98,7 @@ export default function ChatWindow({
 
   return (
     <div className="flex h-full flex-col">
+      {/* Keep the small sticky title within the chat view */}
       <div className="sticky top-0 z-10 mx-4 mb-1 mt-1 rounded-2xl px-3 py-2 text-sm text-ink-subtle backdrop-blur-md lg:mx-6">
         {chat.title || "New chat"}
       </div>
@@ -130,6 +131,8 @@ export default function ChatWindow({
   );
 }
 
+/* ---------- Suggestions (with snug gradient glow) ---------- */
+
 function Suggestions({ onSend }: { onSend: (t: string) => void }) {
   const choices = [
     "Summarize this article",
@@ -139,24 +142,27 @@ function Suggestions({ onSend }: { onSend: (t: string) => void }) {
   ];
 
   const palettes = useMemo(() => {
-    const seeds = [
+    const seeds: [string, string][] = [
       ["#8bb0ff", "#a0e3ff"],
       ["#b8f3d4", "#8fd8ff"],
       ["#ffd6a5", "#cdb4ff"],
       ["#ffcad4", "#cce6ff"],
       ["#c1ffd7", "#ffd1f7"],
     ];
+    // Randomize once per load; one palette per chip
     const shuffled = [...seeds].sort(() => Math.random() - 0.5).slice(0, choices.length);
-    return shuffled as [string, string][];
+    return shuffled;
   }, []);
 
   return (
     <div className="m-auto w-full max-w-2xl px-6 pb-32 pt-4">
-      <div className="relative grid grid-cols-2 gap-2 text-left text-sm md:gap-3">
+      {/* Wrapped row so each chip sizes to its text */}
+      <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
         {choices.map((t, i) => (
-          <div key={t} className="relative">
-            <div
-              className="pointer-events-none absolute -inset-1 rounded-2xl opacity-80 blur-md animate-blob"
+          <div key={t} className="relative inline-block">
+            {/* gradient matches the chip width exactly */}
+            <span
+              className="pointer-events-none absolute inset-0 -z-10 rounded-2xl opacity-80 blur-md animate-blob"
               style={{ background: `linear-gradient(120deg, ${palettes[i][0]}, ${palettes[i][1]})` }}
               aria-hidden
             />
@@ -240,11 +246,13 @@ function ComposerDock({
   );
 }
 
+/* ---------- Bubbles / Empty ---------- */
+
 function MessageBubble({ m }: { m: Message }) {
   const isUser = m.role === "user";
   const bubbleClasses = isUser
     ? "bg-gradient-to-br from-[#3c5ebf] to-[#2d4aa0] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]"
-    : "bg-white/70 dark:bg-white/10 border border-border dark:border-border-dark";
+    : "bg-white/70 dark:bg白/10 border border-border dark:border-border-dark";
   const metaClasses = isUser ? "text-white/70 dark:text-black/60" : "text-gray-600 dark:text-white/50";
 
   return (
