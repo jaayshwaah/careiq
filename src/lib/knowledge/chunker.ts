@@ -1,4 +1,3 @@
-// src/lib/knowledge/chunker.ts
 export type Chunk = {
   title: string;
   content: string;
@@ -23,7 +22,7 @@ export function chunkText(
   {
     chunkSize = DEFAULT_CHARS,
     overlap = DEFAULT_OVERLAP,
-    metadata = {},
+    metadata = {}
   }: { chunkSize?: number; overlap?: number; metadata?: Record<string, any> } = {}
 ): Chunk[] {
   const t = cleanText(text);
