@@ -17,22 +17,19 @@ export async function POST(req: Request) {
 
     const qEmbedding = await embedQuery(query);
 
-    // Prefer the RPC if you created it in Supabase:
     const { data: vectorHits, error: vErr } = await supa.rpc("search_knowledge", {
       query_embedding: qEmbedding,
       in_category: category ?? null,
       in_facility: facilityId ?? null,
-      k: Math.max(1, Math.min(50, topK))
+      k: Math.max(1, Math.min(50, topK)),
     });
 
     if (vErr) {
-      // FTS fallback
       const { data: ftsHits, error: fErr } = await supa
         .from("knowledge_base")
         .select("id, facility_id, category, title, content, metadata, source_url, last_updated")
         .textSearch("fts", query, { type: "websearch", config: "english" })
         .limit(topK);
-
       if (fErr) return NextResponse.json({ ok: false, error: fErr.message }, { status: 500 });
       return NextResponse.json({ ok: true, results: ftsHits || [] });
     }

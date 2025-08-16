@@ -39,8 +39,9 @@ export async function POST(req: Request) {
     const chunks = chunkText(title, rawText, {
       chunkSize: 1200,
       overlap: 150,
-      metadata: { filename: file.name, category }
+      metadata: { filename: file.name, category },
     });
+
     const embeddings = await embedTexts(chunks.map((c) => c.content));
 
     const rows = chunks.map((c, i) => ({
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
       metadata: c.metadata,
       embedding: embeddings[i],
       source_url: sourceUrl,
-      last_updated: lastUpdatedStr ? new Date(lastUpdatedStr).toISOString() : null
+      last_updated: lastUpdatedStr ? new Date(lastUpdatedStr).toISOString() : null,
     }));
 
     const supa = supabaseService();

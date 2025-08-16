@@ -1,23 +1,24 @@
-// src/lib/supabase/server.ts
-import { createClient } from "@supabase/supabase-js";
+// src/lib/supabase-server.ts
+// Legacy compatibility shim so imports like "@/lib/supabase-server" keep working.
+export {
+  supabaseService,
+  supabaseServerWithAuth,
+  createClientServer,
+  supabaseServer,
+} from "./supabase/server";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!; // server only
+const defaultExport = {
+  supabaseService: undefined as any,
+  supabaseServerWithAuth: undefined as any,
+  createClientServer: undefined as any,
+  supabaseServer: undefined as any,
+};
 
-// For server routes that need RLS-bypassing writes (ingest)
-export function supabaseService() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
+// Populate default with live fns (avoids circular TS resolution complaints)
+import * as live from "./supabase/server";
+(defaultExport as any).supabaseService = live.supabaseService;
+(defaultExport as any).supabaseServerWithAuth = live.supabaseServerWithAuth;
+(defaultExport as any).createClientServer = live.createClientServer;
+(defaultExport as any).supabaseServer = live.supabaseServer;
 
-// For server routes that should respect user RLS (search)
-export function supabaseServerWithAuth(accessToken?: string) {
-  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: {
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-    },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
+export default defaultExport;
