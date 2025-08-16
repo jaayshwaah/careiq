@@ -2,12 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/ingest/route.ts": {
-      "runtime": "nodejs20.x",
       "maxDuration": 60,
       "memory": 1024
     },
     "api/search/route.ts": {
-      "runtime": "nodejs20.x",
       "maxDuration": 30,
       "memory": 512
     }
