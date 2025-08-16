@@ -33,7 +33,6 @@ export default function Chat({ chatId }: { chatId: string }) {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const pendingQueryRef = useRef<string | null>(null);
   const autoSentRef = useRef(false);
 
   // Scroll helpers
@@ -45,89 +44,74 @@ export default function Chat({ chatId }: { chatId: string }) {
     });
   }
 
-  // Initial load (supports either /api/messages/[chatId] or legacy /api/chats?id=)
+  // Initial load of messages
   useEffect(() => {
     let mounted = true;
-    async function load() {
+    async function loadMessages() {
       try {
         const res = await fetch(`/api/messages/${encodeURIComponent(chatId)}`, {
           cache: "no-store",
         });
         if (res.ok) {
-          const json = await res.json().catch(() => ({}));
-          const got: Msg[] = Array.isArray(json)
-            ? (json as Msg[])
-            : (json?.messages as Msg[]) ?? [];
+          const json = await res.json();
+          const messages: Msg[] = json?.messages || [];
           if (mounted) {
-            setMsgs(got);
+            setMsgs(messages);
             requestAnimationFrame(() => scrollToBottom("auto"));
           }
-          return;
         }
-      } catch {}
-      try {
-        const res2 = await fetch(`/api/chats?id=${encodeURIComponent(chatId)}`, {
-          cache: "no-store",
-        });
-        if (!res2.ok) throw new Error("legacy messages endpoint not available");
-        const json2 = await res2.json().catch(() => ({}));
-        const dbMsgs: Msg[] = json2?.messages ?? [];
-        if (mounted) {
-          setMsgs(dbMsgs);
-          requestAnimationFrame(() => scrollToBottom("auto"));
-        }
-      } catch {}
+      } catch (error) {
+        console.error("Failed to load messages:", error);
+      }
     }
-    load();
+    loadMessages();
     return () => {
       mounted = false;
     };
   }, [chatId]);
 
-  // Pick up initial message from query (?q=...) and auto-send once
+  // Handle initial query parameter (auto-send first message)
   useEffect(() => {
     const q = (searchParams?.get("q") || "").trim();
     if (!q || autoSentRef.current) return;
-    pendingQueryRef.current = q;
+    
     autoSentRef.current = true;
-
-    // Remove the query param from URL so refreshes don't resend
+    
+    // Remove query param
     try {
       const url = new URL(window.location.href);
       url.searchParams.delete("q");
       router.replace(url.pathname + url.search);
     } catch {}
 
-    // Send after a tick to let messages load
+    // Auto-send after messages load
     setTimeout(() => {
-      if (pendingQueryRef.current) {
-        void handleSend(pendingQueryRef.current);
-        pendingQueryRef.current = null;
-      }
-    }, 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+      handleSend(q);
+    }, 100);
+  }, [searchParams, router]);
 
-  // Keep viewport pinned to bottom as messages append
+  // Keep viewport at bottom
   useEffect(() => {
     scrollToBottom("smooth");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [msgs.length]);
 
-  // STOP streaming handler
+  // Stop streaming
   const handleStop = () => {
     try {
       controllerRef.current?.abort();
     } catch {}
+    setStreaming(false);
+    setStreamingId(null);
+    controllerRef.current = null;
   };
 
-  // Streaming send
+  // Send message with streaming
   const handleSend = async (content: string) => {
-    if (streaming) return; // prevent overlapping streams
+    if (streaming) return;
     const trimmed = content.trim();
     if (!trimmed) return;
 
-    // Optimistic user message
+    // Add optimistic user message
     const userMsg: Msg = {
       id: crypto.randomUUID(),
       chat_id: chatId,
@@ -135,41 +119,41 @@ export default function Chat({ chatId }: { chatId: string }) {
       content: trimmed,
       created_at: new Date().toISOString(),
     };
-    setMsgs((m) => [...m, userMsg]);
+    setMsgs((prev) => [...prev, userMsg]);
     setInput("");
 
-    // Placeholder assistant message to stream into
-    const placeholderId = `assist-${crypto.randomUUID()}`;
-    setStreamingId(placeholderId);
-    const placeholder: Msg = {
-      id: placeholderId,
+    // Add placeholder assistant message
+    const assistantId = `streaming-${Date.now()}`;
+    const assistantMsg: Msg = {
+      id: assistantId,
       chat_id: chatId,
       role: "assistant",
       content: "",
       created_at: new Date().toISOString(),
     };
-    setMsgs((m) => [...m, placeholder]);
+    setMsgs((prev) => [...prev, assistantMsg]);
+    setStreamingId(assistantId);
 
     const controller = new AbortController();
     controllerRef.current = controller;
     setStreaming(true);
 
     try {
-      const res = await fetch(`/api/messages/stream`, {
+      const response = await fetch("/api/messages/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chatId, content: trimmed }),
         signal: controller.signal,
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error(`stream failed: ${res.status}`);
+      if (!response.ok || !response.body) {
+        throw new Error(`Stream failed: ${response.status}`);
       }
 
-      const reader = res.body.getReader();
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let full = "";
       let buffer = "";
+      let fullContent = "";
 
       while (true) {
         const { value, done } = await reader.read();
@@ -178,55 +162,55 @@ export default function Chat({ chatId }: { chatId: string }) {
         const chunk = decoder.decode(value, { stream: true });
         buffer += chunk;
 
-        // SSE events separated by \n\n
-        let idx;
-        while ((idx = buffer.indexOf("\n\n")) !== -1) {
-          const event = buffer.slice(0, idx).trim();
-          buffer = buffer.slice(idx + 2);
+        // Process SSE events
+        let eventEnd;
+        while ((eventEnd = buffer.indexOf("\n\n")) !== -1) {
+          const event = buffer.slice(0, eventEnd).trim();
+          buffer = buffer.slice(eventEnd + 2);
 
-          const dataLine = event.split("\n").find((l) => l.startsWith("data:"));
+          const dataLine = event.split("\n").find((line) => line.startsWith("data:"));
           if (!dataLine) continue;
+
           const data = dataLine.slice(5).trim();
           if (data === "[DONE]") continue;
+          if (!data) continue;
 
           try {
-            const obj = JSON.parse(data);
-            const delta = obj?.choices?.[0]?.delta ?? obj?.choices?.[0]?.message ?? {};
-            const token: string = delta?.content ?? "";
-            if (token) {
-              full += token;
+            const parsed = JSON.parse(data);
+            const delta = parsed?.content || parsed?.choices?.[0]?.delta?.content || "";
+            
+            if (delta) {
+              fullContent += delta;
               setMsgs((prev) =>
-                prev.map((m) => (m.id === placeholderId ? { ...m, content: full } : m))
+                prev.map((msg) =>
+                  msg.id === assistantId ? { ...msg, content: fullContent } : msg
+                )
               );
               scrollToBottom("auto");
             }
           } catch {
-            // ignore JSON parse errors on incomplete frames
+            // Ignore JSON parse errors
           }
         }
       }
-
-      // On normal end: server already persisted assistant message.
-
-    } catch (err: any) {
-      // If aborted, keep whatever text we had in the placeholder (server persists partial).
-      if (err?.name !== "AbortError") {
+    } catch (error: any) {
+      if (error?.name !== "AbortError") {
         setMsgs((prev) =>
-          prev.map((m) =>
-            m.id === streamingId
-              ? { ...m, content: (m.content || "") + "\n\n[Streaming failed]" }
-              : m
+          prev.map((msg) =>
+            msg.id === assistantId
+              ? { ...msg, content: msg.content + "\n\n[Error: Streaming failed]" }
+              : msg
           )
         );
       }
     } finally {
       setStreaming(false);
-      controllerRef.current = null;
       setStreamingId(null);
+      controllerRef.current = null;
     }
   };
 
-  // Suggested prompts for empty state (with glow)
+  // Suggested prompts for empty state
   const suggestions = useMemo(
     () => ["Summarize this", "Draft an email", "Explain a topic", "Create a plan"],
     []
@@ -238,7 +222,11 @@ export default function Chat({ chatId }: { chatId: string }) {
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 pb-24 pt-6 md:px-6">
         {msgs.length === 0 ? (
           <div className="grid place-content-center mx-auto w-full max-w-2xl px-6">
-            {/* Larger composer for empty state */}
+            {/* Empty state with large composer */}
+            <div className="text-center mb-6">
+              <h1 className="text-3xl font-semibold mb-2">Ready when you are.</h1>
+            </div>
+            
             <Composer
               value={input}
               onChange={setInput}
@@ -250,7 +238,7 @@ export default function Chat({ chatId }: { chatId: string }) {
               className="shadow-soft"
             />
 
-            {/* Suggestions with soft gradient glow */}
+            {/* Suggestions with gradient glow */}
             <div className="relative mt-6">
               <span
                 className="pointer-events-none absolute inset-x-8 -top-3 bottom-0 -z-10 rounded-[28px] blur-2xl opacity-60"
@@ -261,58 +249,60 @@ export default function Chat({ chatId }: { chatId: string }) {
                 aria-hidden
               />
               <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
-                {suggestions.map((t) => (
+                {suggestions.map((text) => (
                   <button
-                    key={t}
-                    onClick={() => setInput(t)}
-                    className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15"
+                    key={text}
+                    onClick={() => setInput(text)}
+                    className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-black/10 dark:ring-white/10 dark:bg-white/10 shadow-soft hover:bg-white/80 dark:hover:bg-white/15 transition-colors"
+                    disabled={streaming}
                   >
-                    {t}
+                    {text}
                   </button>
                 ))}
               </div>
             </div>
           </div>
         ) : (
-          msgs.map((m) => {
-            const isAssistant = m.role === "assistant";
-            const isStreamingBubble = streaming && isAssistant && m.id === streamingId;
+          // Message bubbles
+          msgs.map((msg) => {
+            const isAssistant = msg.role === "assistant";
+            const isStreamingThis = streaming && msg.id === streamingId;
 
             return (
               <div
-                key={m.id}
-                className={`mb-3 flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                key={msg.id}
+                className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[78%] rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-soft ${
-                    m.role === "user"
+                    msg.role === "user"
                       ? "bg-gradient-to-br from-[#3c5ebf] to-[#2d4aa0] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]"
-                      : "bg-white/70 dark:bg-white/10 border border-border dark:border-border-dark"
+                      : "bg-white/70 dark:bg-white/10 border border-black/10 dark:border-white/10"
                   }`}
                 >
                   {isAssistant ? (
                     <>
                       <div className="whitespace-pre-wrap">
-                        {m.content || (isStreamingBubble ? <TypingDots /> : null)}
+                        {msg.content || (isStreamingThis ? <TypingDots /> : null)}
                       </div>
-                      {isStreamingBubble && m.content && (
+                      {isStreamingThis && msg.content && (
                         <div className="mt-1 opacity-80">
                           <TypingDots />
                         </div>
                       )}
                     </>
                   ) : (
-                    <div className="whitespace-pre-wrap">{m.content}</div>
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
                   )}
 
                   <div
                     className={`mt-1 text-[11px] ${
-                      m.role === "user"
-                        ? "text-white/70 dark:text-black/60"
+                      msg.role === "user"
+                        ? "text-white/70"
                         : "text-gray-600 dark:text-white/50"
                     }`}
                   >
-                    {new Date(m.created_at).toLocaleTimeString([], {
+                    {new Date(msg.created_at).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
@@ -324,9 +314,9 @@ export default function Chat({ chatId }: { chatId: string }) {
         )}
       </div>
 
-      {/* Bottom composer once there are messages (larger) */}
+      {/* Sticky bottom composer (when there are messages) */}
       {msgs.length > 0 && (
-        <div className="mx-auto w-full max-w-2xl sticky bottom-2 inset-x-4">
+        <div className="mx-auto w-full max-w-2xl sticky bottom-2 px-4">
           <Composer
             value={input}
             onChange={setInput}
