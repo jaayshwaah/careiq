@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -6,16 +7,30 @@ export const runtime = "nodejs";
 type Msg = { role: "system" | "user" | "assistant"; content: string };
 type Attachment = { name: string; type: string; size: number; text: string };
 
-// Helper: write one SSE event line
 function sseLine(obj: unknown) {
   return `data: ${JSON.stringify(obj)}\n\n`;
 }
 
+async function retrieveChunks(query: string, limit = 6) {
+  // Simple, free retrieval using Postgres full-text search
+  // Uses the expression index we created for speed.
+  const { data, error } = await supabaseAdmin
+    .from("chunks")
+    .select("id, document_id, idx, content")
+    .textSearch("content", query, { type: "websearch", config: "english" })
+    .limit(limit);
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 /**
- * Streams JSON events:
+ * SSE events:
  *  - {type:"status", message:"thinking"}
- *  - {type:"token", text:"..."}  // partial content chunks
- *  - {type:"usage", input: n, output: n} // if available
+ *  - {type:"step", message:"retrieving", count:n}
+ *  - {type:"citation", items:[{document_id,idx,preview}]}
+ *  - {type:"token", text:"..."}
+ *  - {type:"usage", input:n, output:n} (if upstream provides)
  *  - {type:"error", message:"..."}
  *  - {type:"done"}
  */
@@ -37,54 +52,88 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Build a system instruction that includes attachment excerpts, if any
+  // Build a system preface with attachments (from one-off uploads)
   const attText = Array.isArray(attachments)
     ? attachments
-        .map((a, i) => {
-          const snippet = (a.text || "").slice(0, 30_000); // clamp each
-          return `# Attachment ${i + 1}: ${a.name}\n${snippet}`;
-        })
+        .map((a, i) => `# Attachment ${i + 1}: ${a.name}\n${(a.text || "").slice(0, 30_000)}`)
         .join("\n\n")
     : "";
 
-  const systemPrefix =
-    attachments.length > 0
-      ? `You are given ${attachments.length} attachment(s). Use only the information in the attachments and the conversation to answer. If something is not in the attachments or message, say you don't know.\n\n${attText}`
-      : "";
+  // Retrieve persistent KB chunks using the user's latest question
+  const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+  let retrieved: Array<{ document_id: string; idx: number; content: string }> = [];
+  try {
+    if (lastUser.trim()) {
+      retrieved = await retrieveChunks(lastUser, 6);
+    }
+  } catch (e) {
+    // non-fatal; we'll just skip retrieval if DB is down
+  }
 
-  const upstreamMessages: Msg[] = systemPrefix ? [{ role: "system", content: systemPrefix }, ...messages] : messages;
+  const retrievedText = retrieved
+    .map((c, i) => `# KB ${i + 1} (doc ${c.document_id} · #${c.idx})\n${c.content.slice(0, 2000)}`)
+    .join("\n\n");
+
+  // Build the final system prefix
+  const systemParts = [];
+  if (attachments.length) {
+    systemParts.push(
+      `You are given ${attachments.length} attachment(s). Prefer using them when answering.\n\n${attText}`
+    );
+  }
+  if (retrieved.length) {
+    systemParts.push(
+      `You also have ${retrieved.length} knowledge base chunk(s) retrieved by search. Use them if relevant.\n\n${retrievedText}`
+    );
+  }
+  if (!systemParts.length) {
+    systemParts.push(`Answer helpfully and concisely. If you don't know, say so.`);
+  }
+  const systemPrefix = systemParts.join("\n\n");
+
+  const upstreamMessages: Msg[] = [{ role: "system", content: systemPrefix }, ...messages];
 
   const key = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
   const model = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-70b-instruct";
 
-  // Create an SSE stream to the client
+  // SSE stream to client
   const stream = new ReadableStream({
     async start(controller) {
-      const encoder = new TextEncoder();
+      const enc = new TextEncoder();
+      const push = (o: unknown) => controller.enqueue(enc.encode(sseLine(o)));
 
-      // Emit initial status
-      controller.enqueue(encoder.encode(sseLine({ type: "status", message: "thinking" })));
+      push({ type: "status", message: "thinking" });
 
-      // If no key, stream a mock response as SSE tokens
+      // Send retrieval signals so you can render them later
+      if (retrieved.length) {
+        push({ type: "step", message: "retrieving", count: retrieved.length });
+        push({
+          type: "citation",
+          items: retrieved.map((r) => ({
+            document_id: r.document_id,
+            idx: r.idx,
+            preview: r.content.slice(0, 140),
+          })),
+        });
+      }
+
+      // If no key, stream a mock response
       if (!key) {
-        const last = upstreamMessages.filter((m) => m.role === "user").slice(-1)[0]?.content ?? "";
+        const last = lastUser;
         const mock =
-          `Mock reply (no API key set). I read ${attachments.length} attachment(s). ` +
-          (attachments.length ? "I’ll focus on them. " : "") +
+          `Mock reply (no API key set). KB chunks: ${retrieved.length}. ` +
+          (retrieved.length ? "I’ll use those if relevant. " : "") +
           `You said: “${last}”.`;
-
-        // Tokenize on small chunks to simulate typing
-        const words = mock.split(/(\s+)/);
-        for (const w of words) {
-          controller.enqueue(encoder.encode(sseLine({ type: "token", text: w })));
+        for (const w of mock.split(/(\s+)/)) {
+          push({ type: "token", text: w });
           await new Promise((r) => setTimeout(r, 12));
         }
-        controller.enqueue(encoder.encode(sseLine({ type: "done" })));
+        push({ type: "done" });
         controller.close();
         return;
       }
 
-      // Call OpenRouter with streaming; proxy as SSE JSON events
+      // Call OpenRouter and proxy as SSE JSON
       let upstream: Response | null = null;
       try {
         upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -103,21 +152,17 @@ export async function POST(req: NextRequest) {
             max_tokens: 1024,
           }),
         });
-      } catch (e: any) {
-        controller.enqueue(encoder.encode(sseLine({ type: "error", message: "Network error reaching OpenRouter" })));
-        controller.enqueue(encoder.encode(sseLine({ type: "done" })));
+      } catch {
+        push({ type: "error", message: "Network error reaching OpenRouter" });
+        push({ type: "done" });
         controller.close();
         return;
       }
 
       if (!upstream.ok || !upstream.body) {
         const errText = upstream ? await upstream.text().catch(() => "") : "";
-        controller.enqueue(
-          encoder.encode(
-            sseLine({ type: "error", message: `Upstream error ${upstream?.status ?? 500}: ${errText || "unknown"}` })
-          )
-        );
-        controller.enqueue(encoder.encode(sseLine({ type: "done" })));
+        push({ type: "error", message: `Upstream error ${upstream?.status ?? 500}: ${errText || "unknown"}` });
+        push({ type: "done" });
         controller.close();
         return;
       }
@@ -126,23 +171,18 @@ export async function POST(req: NextRequest) {
       const decoder = new TextDecoder();
       let buffer = "";
 
-      const flushUsage = (usage?: any) => {
-        // If upstream provided usage totals, forward them
+      const sendUsage = (usage?: any) => {
         if (!usage) return;
         const input = usage.prompt_tokens ?? usage.input_tokens ?? undefined;
         const output = usage.completion_tokens ?? usage.output_tokens ?? undefined;
-        if (input || output) {
-          controller.enqueue(encoder.encode(sseLine({ type: "usage", input, output })));
-        }
+        if (input || output) push({ type: "usage", input, output });
       };
 
-      // Pump upstream SSE -> our SSE JSON frames
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
 
-        // OpenRouter emits "data: {...}\n\n" SSE lines
+        buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
 
@@ -150,35 +190,24 @@ export async function POST(req: NextRequest) {
           const trimmed = line.trim();
           if (!trimmed.startsWith("data:")) continue;
           const data = trimmed.slice(5).trim();
-
           if (data === "[DONE]") {
-            controller.enqueue(encoder.encode(sseLine({ type: "done" })));
+            push({ type: "done" });
             controller.close();
             return;
           }
-
           try {
             const json = JSON.parse(data);
-            const delta = json?.choices?.[0]?.delta ?? {};
-            const token = delta?.content ?? "";
-
-            // Stream partial token if present
-            if (token) controller.enqueue(encoder.encode(sseLine({ type: "token", text: token })));
-
-            // If usage appears in-stream or at end, forward it
-            if (json?.usage) flushUsage(json.usage);
+            const token = json?.choices?.[0]?.delta?.content ?? "";
+            if (token) push({ type: "token", text: token });
+            if (json?.usage) sendUsage(json.usage);
           } catch {
-            // ignore JSON parse errors on keep-alives
+            // ignore keep-alives
           }
         }
       }
 
-      // If the upstream closed without sending [DONE], finish our stream
-      controller.enqueue(encoder.encode(sseLine({ type: "done" })));
+      push({ type: "done" });
       controller.close();
-    },
-    cancel() {
-      // no-op
     },
   });
 

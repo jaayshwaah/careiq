@@ -1,22 +1,23 @@
-// Server-side Supabase client factory (no top-level side effects).
-// IMPORTANT: Do NOT create a client at import time.
+// src/lib/supabase/server.ts
+import { createClient } from "@supabase/supabase-js";
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseEnvServer } from "./env";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!; // server only
 
-/** Call this INSIDE your request handlers. */
-export function createClientServer(): SupabaseClient {
-  const { url, anon } = getSupabaseEnvServer();
-  return createClient(url, anon, {
-    auth: { persistSession: false },
-    global: { headers: { "X-Client-Info": "careiq-nextjs" } },
+// For server routes that need RLS-bypassing writes (ingest)
+export function supabaseService() {
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
   });
 }
 
-/** Optional helper if callers want a named getter (still lazy). */
-export function getSupabaseServer(): SupabaseClient {
-  return createClientServer();
+// For server routes that should respect user RLS (search)
+export function supabaseServerWithAuth(accessToken?: string) {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
-
-// Note: No exported singleton like `supabaseServer` here.
-// Creating a client at module load causes build-time env errors during prerender.
