@@ -1,125 +1,91 @@
+import { NextResponse } from "next/server";
+import { buildRagContext } from "@/lib/ai/buildRagContext";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { NextResponse } from "next/server";
-import { createClientServer } from "@/lib/supabase-server";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
+function bad(status: number, message: string) {
+  return NextResponse.json({ ok: false, error: message }, { status });
+}
 
 export async function POST(req: Request) {
-  const { chatId, content } = await req.json();
-  if (!chatId || !content) {
-    return NextResponse.json({ ok: false, error: "chatId and content required" }, { status: 400 });
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return bad(500, "Missing OPENROUTER_API_KEY");
+
+  let payload: any;
+  try {
+    payload = await req.json();
+  } catch {
+    return bad(400, "Invalid JSON body");
   }
 
-  // Lazily create the Supabase client at request time (prevents build-time URL errors)
-  const supabase = createClientServer();
+  const {
+    messages,
+    model = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-8b-instruct",
+    useRag = true,
+    facilityId = null,
+    category = null,
+  } = payload || {};
 
-  // 1) Insert user message
-  const { error: userErr } = await supabase
-    .from("messages")
-    .insert({ chat_id: chatId, role: "user", content });
-
-  if (userErr) {
-    return NextResponse.json({ ok: false, error: userErr.message }, { status: 500 });
+  if (!Array.isArray(messages) || !messages.length) {
+    return bad(400, "messages[] required");
   }
 
-  // 2) Stream assistant reply (OpenRouter if key present; otherwise mock)
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
+  const lastUser = [...messages].reverse().find((m: any) => m.role === "user");
+  const queryText = lastUser?.content || "";
 
-      async function saveAssistant(full: string) {
-        await supabase.from("messages").insert({
-          chat_id: chatId,
-          role: "assistant",
-          content: full,
-        });
-      }
+  const authHeader = req.headers.get("authorization") || undefined;
+  const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
 
-      try {
-        if (OPENROUTER_API_KEY) {
-          // Build short history
-          const { data: history } = await supabase
-            .from("messages")
-            .select("role,content")
-            .eq("chat_id", chatId)
-            .order("created_at", { ascending: true })
-            .limit(30);
-
-          const messages = (history || []).map((m) => ({ role: m.role, content: m.content }));
-
-          const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-              "HTTP-Referer": "https://careiq",
-              "X-Title": "CareIQ Chat"
-            },
-            body: JSON.stringify({
-              model: "meta-llama/llama-3.1-8b-instruct",
-              messages,
-              stream: true
-            })
-          });
-
-          if (!res.ok || !res.body) throw new Error(`OpenRouter ${res.status}`);
-
-          const reader = res.body.getReader();
-          let full = "";
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = new TextDecoder().decode(value);
-            controller.enqueue(encoder.encode(chunk));
-
-            // accumulate for final save
-            const lines = chunk.split("\n").filter(Boolean);
-            for (const line of lines) {
-              if (!line.startsWith("data: ")) continue;
-              const json = line.slice(6);
-              if (json === "[DONE]") continue;
-              try {
-                const obj = JSON.parse(json);
-                const delta = obj?.choices?.[0]?.delta?.content ?? "";
-                if (delta) full += delta;
-              } catch {}
-            }
-          }
-
-          await saveAssistant(full);
-          controller.close();
-          return;
-        } else {
-          const parts = [
-            "Streaming from local mock since OPENROUTER_API_KEY isn’t set ",
-            "(or not available to this build env). ",
-            "Your UI and DB wiring are good!"
-          ];
-          let full = "";
-          for (const p of parts) {
-            full += p;
-            controller.enqueue(encoder.encode(p));
-            await new Promise((r) => setTimeout(r, 120));
-          }
-          await saveAssistant(full);
-          controller.close();
-        }
-      } catch (err: any) {
-        const msg = `\n\n[Assistant error] ${err?.message || "Unknown error"}`;
-        controller.enqueue(encoder.encode(msg));
-        await saveAssistant(msg);
-        controller.close();
-      }
+  let systemWithContext: any | null = null;
+  if (useRag) {
+    const ctx = await buildRagContext({
+      query: queryText,
+      facilityId,
+      category,
+      topK: 6,
+      accessToken,
+    });
+    if (ctx) {
+      systemWithContext = {
+        role: "system",
+        content:
+          `You are CareIQ, an assistant for skilled nursing facilities. Use the provided context when relevant and cite it like (1), (2), etc.\n\n${ctx}`,
+      };
     }
-  });
+  }
 
-  return new Response(stream, {
+  const finalMessages = systemWithContext
+    ? [systemWithContext, ...messages]
+    : messages;
+
+  const resp = await fetch(OPENROUTER_URL, {
+    method: "POST",
     headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform"
-    }
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+      "X-Title": process.env.OPENROUTER_SITE_NAME || "CareIQ",
+    },
+    body: JSON.stringify({
+      model,
+      messages: finalMessages,
+      stream: false,
+    }),
   });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    return bad(500, `OpenRouter error ${resp.status}: ${text || "no body"}`);
+  }
+
+  const json = await resp.json();
+  const content =
+    json?.choices?.[0]?.message?.content ??
+    json?.choices?.[0]?.delta?.content ??
+    "";
+
+  return NextResponse.json({ ok: true, content, raw: json });
 }
