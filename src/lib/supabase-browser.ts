@@ -1,48 +1,74 @@
-// Browser Supabase client that NEVER initializes at module load.
-// It lazily creates the client on first use, and only in the browser.
+// src/lib/supabase-browser.ts
+// A browser Supabase client that is *safe* to import on the server.
+// It never initializes at module load and never throws during SSR/prerender.
+// If accidentally used on the server at runtime, calls will throw with a clear message.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-// Internal lazy initializer
-function _init(): SupabaseClient {
+// Cached browser client
+let _client: SupabaseClient | null = null;
+
+// Create a small throwing proxy used ONLY if someone actually tries to use
+// the browser client on the server at runtime (shouldn't happen in our app).
+function serverThrowingClient(): SupabaseClient {
+  const handler: ProxyHandler<any> = {
+    get() {
+      throw new Error(
+        "Supabase browser client was used on the server. Use server helpers from `@/lib/supabase/server` instead."
+      );
+    },
+    apply() {
+      throw new Error(
+        "Supabase browser client was used on the server. Use server helpers from `@/lib/supabase/server` instead."
+      );
+    },
+  };
+  return new Proxy({}, handler) as SupabaseClient;
+}
+
+/** Returns a browser Supabase client; safe to call in event handlers/effects. */
+export function getBrowserSupabase(): SupabaseClient {
+  if (_client) return _client;
+
+  // During SSR/prerender there is no window — return a throwing stub.
   if (typeof window === "undefined") {
-    // If someone tries to use the browser client during SSR/prerender, avoid env access.
-    throw new Error("supabase-browser: attempted to initialize on the server.");
+    return serverThrowingClient();
   }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !/^https?:\/\//i.test(url)) {
-    throw new Error("supabase-browser: NEXT_PUBLIC_SUPABASE_URL is missing/invalid.");
+    throw new Error("Missing or invalid NEXT_PUBLIC_SUPABASE_URL.");
   }
   if (!anon) {
-    throw new Error("supabase-browser: NEXT_PUBLIC_SUPABASE_ANON_KEY is missing.");
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY.");
   }
-  return createClient(url, anon, { auth: { persistSession: true } });
-}
 
-let _client: SupabaseClient | null = null;
+  _client = createClient(url, anon, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+    global: { headers: { "X-Client-Info": "careiq-browser" } },
+  });
 
-// Expose a function to explicitly get the client (preferred in new code)
-export function getBrowserSupabase(): SupabaseClient {
-  if (_client) return _client;
-  _client = _init();
   return _client;
 }
 
 /**
- * Backward-compatible export named `supabase` that behaves like a client
- * but initializes lazily on first property access. This lets you keep:
- *
- *   import { supabase } from "@/lib/supabaseClient";
- *   await supabase.from("messages").select("*")
- *
- * …without creating a client at import time.
+ * Convenience default export: a proxy that forwards to getBrowserSupabase()
+ * on first property access. Safe to *import* anywhere; safe to *use* only
+ * in the browser.
  */
-export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
-  get(_t, prop, receiver) {
-    const c = getBrowserSupabase();
-    // @ts-ignore – forward everything to the real client
-    const value = (c as any)[prop];
-    return typeof value === "function" ? value.bind(c) : value;
+const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_t, prop) {
+    const c = getBrowserSupabase() as any;
+    const v = c[prop];
+    return typeof v === "function" ? v.bind(c) : v;
   },
 });
+export default supabase;
+
+// Also expose a named export for legacy imports
+export { supabase };

@@ -1,3 +1,4 @@
+// src/components/Sidebar.tsx
 "use client";
 
 import Link from "next/link";
@@ -162,12 +163,9 @@ function ChatItem({
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (renaming) {
-      setTimeout(() => inputRef.current?.focus(), 10);
-    }
+    if (renaming) setTimeout(() => inputRef.current?.focus(), 10);
   }, [renaming]);
 
-  // keep titleInput up-to-date if changed externally
   useEffect(() => {
     if (!renaming) setTitleInput(row.title || "New chat");
   }, [row.title, renaming]);
@@ -199,10 +197,7 @@ function ChatItem({
       {!renaming ? (
         <Link
           href={`/chat/${row.id}`}
-          className={cn(
-            "block truncate px-3 py-2 pr-10 text-sm",
-            active && "font-medium"
-          )}
+          className={cn("block truncate px-3 py-2 pr-10 text-sm", active && "font-medium")}
           title={row.title || "New chat"}
         >
           {row.title || "New chat"}
@@ -239,7 +234,6 @@ function ChatItem({
         </div>
       )}
 
-      {/* right-side controls */}
       {!renaming && (
         <div className="absolute inset-y-0 right-1 flex items-center gap-1">
           <button
@@ -342,7 +336,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
 
-  // load pins once
+  // load/save pins
   useEffect(() => setPinnedIds(loadPinnedIds()), []);
   useEffect(() => savePinnedIds(pinnedIds), [pinnedIds]);
 
@@ -353,7 +347,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       .from("chats")
       .select("id,title,created_at")
       .order("created_at", { ascending: false })
-      .limit(500); // room to grow
+      .limit(500);
     if (error) {
       console.error("Failed to load chats:", error.message);
       setChats([]);
@@ -362,12 +356,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     setChats((data || []) as ChatRow[]);
   }, [supabase]);
 
-  // initial load
   useEffect(() => {
     fetchChats();
   }, [fetchChats]);
 
-  // realtime sync: reflect inserts / updates / deletes from any client
+  // Realtime sync: reflect inserts/updates/deletes
   useEffect(() => {
     const channel = supabase
       .channel("chats-changes")
@@ -375,27 +368,19 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         "postgres_changes",
         { event: "*", schema: "public", table: "chats" },
         (payload: any) => {
-          // simplest + safest: re-fetch to preserve ordering & dedupe
           fetchChats();
-
-          // if current chat got deleted, bounce to /chat/new
           if (payload.eventType === "DELETE") {
             const deletedId = payload.old?.id as string | undefined;
             if (deletedId && isActiveChat(pathname, deletedId)) {
               router.push("/chat/new");
             }
-            // also ensure pinnedIds drops it
             if (deletedId) {
               setPinnedIds((prev) => prev.filter((p) => p !== deletedId));
             }
           }
         }
       )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          // ok
-        }
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
@@ -425,25 +410,19 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   async function handleDelete(id: string) {
     try {
-      // optimistic: hide immediately
+      // optimistic
       setChats((prev) => prev.filter((c) => c.id !== id));
       setPinnedIds((prev) => prev.filter((p) => p !== id));
 
       const res = await fetch(`/api/chats/${id}`, { method: "DELETE" });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok || json?.ok === false) {
-        throw new Error(json?.error || `HTTP ${res.status}`);
-      }
+      if (!res.ok || json?.ok === false) throw new Error(json?.error || `HTTP ${res.status}`);
 
-      // redirect if we were on it (covers race if realtime hit late)
-      if (isActiveChat(pathname, id)) {
-        router.push("/chat/new");
-      }
+      if (isActiveChat(pathname, id)) router.push("/chat/new");
     } catch (e: any) {
       console.error("Delete failed:", e?.message || e);
       alert(`Could not delete chat: ${e?.message || "Unknown error"}`);
-      // re-fetch to restore list if optimistic change was wrong
-      fetchChats();
+      fetchChats(); // rollback
     }
   }
 
@@ -455,11 +434,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     try {
       const res = await fetch("/api/chats", { method: "POST" });
       const json = await res.json();
-      if (!res.ok || json?.ok === false) {
-        throw new Error(json?.error || `HTTP ${res.status}`);
-      }
+      if (!res.ok || json?.ok === false) throw new Error(json?.error || `HTTP ${res.status}`);
       const newId = json.id as string;
-      // optimistic add; realtime will correct ordering
       setChats((prev) => [
         { id: newId, title: "New chat", created_at: new Date().toISOString() },
         ...prev,
@@ -473,7 +449,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const handleRename = useCallback(
     async (id: string, newTitle: string) => {
-      // optimistic update
       setChats((prev) => prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c)));
       try {
         const res = await fetch(`/api/chats/${id}`, {
@@ -482,13 +457,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           body: JSON.stringify({ title: newTitle }),
         });
         const json = await res.json().catch(() => ({}));
-        if (!res.ok || json?.ok === false) {
-          throw new Error(json?.error || `HTTP ${res.status}`);
-        }
+        if (!res.ok || json?.ok === false) throw new Error(json?.error || `HTTP ${res.status}`);
       } catch (e: any) {
         console.error("Rename failed:", e?.message || e);
         alert(`Could not rename chat: ${e?.message || "Unknown error"}`);
-        // reload to revert optimistic
         fetchChats();
       }
     },
@@ -647,10 +619,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 >
                   <Settings size={16} />
                 </Link>
-                <button
-                  title="Log out"
-                  className="rounded-md p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                >
+                <button title="Log out" className="rounded-md p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800">
                   <LogOut size={16} />
                 </button>
               </div>
