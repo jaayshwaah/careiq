@@ -1,51 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Plus,
   PanelsTopLeft,
+  Search as SearchIcon,
+  MoreHorizontal,
+  Pin,
+  PinOff,
+  Trash2,
   Settings,
   User,
-  Search as SearchIcon,
-  ChevronRight,
   LogOut,
-  Pin,
-  MoreHorizontal,
+  PencilLine,
 } from "lucide-react";
-import Image from "next/image";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { createPortal } from "react-dom";
+import { cn, timeAgo } from "@/lib/utils";
+import { getBrowserSupabase } from "@/lib/supabaseClient";
 import AccountMenu from "./AccountMenu";
 
-type ChatRow = { id: string; title: string | null; created_at: string };
+/* ---------------------------------- Types --------------------------------- */
+
+type ChatRow = {
+  id: string;
+  title: string | null;
+  created_at: string | null;
+};
 
 type SidebarProps = {
   collapsed: boolean;
   onToggle: () => void;
 };
 
+/* ----------------------------- Local constants ---------------------------- */
+
 const PIN_STORAGE_KEY = "careiq.pinnedChatIds.v1";
 
-/* ----------------------------- Local Utilities ---------------------------- */
+/* ------------------------------- Utilities -------------------------------- */
 
 function loadPinnedIds(): string[] {
   try {
@@ -64,766 +57,607 @@ function savePinnedIds(ids: string[]) {
   } catch {}
 }
 
-/* --------------------------- Headless UI: Modal --------------------------- */
-
-function CenteredModal({
-  open,
-  onOpenChange,
-  children,
-  className,
-  ariaLabel = "Dialog",
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  children: React.ReactNode;
-  className?: string;
-  ariaLabel?: string;
-}) {
-  const overlayRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onOpenChange(false);
-    }
-    if (open) window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onOpenChange]);
-
-  if (!open) return null;
-
-  return createPortal(
-    <div
-      ref={overlayRef}
-      role="dialog"
-      aria-label={ariaLabel}
-      aria-modal="true"
-      className="fixed inset-0 z-[100] flex items-center justify-center"
-      onMouseDown={(e) => {
-        if (e.target === overlayRef.current) onOpenChange(false);
-      }}
-    >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
-      <div
-        className={cn(
-          "relative glass ring-1 ring-black/10 dark:ring-white/10 rounded-2xl w-[min(92vw,680px)] p-4 shadow-xl",
-          className
-        )}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>,
-    document.body
-  );
+function isActiveChat(pathname: string | null, id: string) {
+  if (!pathname) return false;
+  return pathname === `/chat/${id}`;
 }
 
-/* ------------------------- Headless UI: Tiny Menu ------------------------- */
+/* --------------------------- Tiny popover menu ---------------------------- */
 
-function useClickOutside<T extends HTMLElement>(
-  ref: React.RefObject<T>,
-  onOutside: () => void
-) {
+function useOutsideClick<T extends HTMLElement>(onOutside: () => void) {
+  const ref = useRef<T | null>(null);
   useEffect(() => {
-    function handler(e: MouseEvent) {
+    function onDoc(e: MouseEvent) {
       if (!ref.current) return;
       if (!ref.current.contains(e.target as Node)) onOutside();
     }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [ref, onOutside]);
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [onOutside]);
+  return ref;
 }
 
 function TinyMenu({
-  align = "end",
-  items,
+  open,
   onClose,
+  align = "start",
+  children,
 }: {
-  align?: "start" | "end";
-  items: Array<{
-    label: string;
-    onSelect?: () => void;
-    disabled?: boolean;
-    danger?: boolean;
-  }>;
+  open: boolean;
   onClose: () => void;
+  align?: "start" | "end";
+  children: React.ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useClickOutside(ref, onClose);
-
+  const ref = useOutsideClick<HTMLDivElement>(() => onClose());
+  if (!open) return null;
   return (
     <div
       ref={ref}
       className={cn(
-        "absolute z-50 mt-1 min-w-40 rounded-xl border border-black/10 dark:border-white/10 bg-background/95 backdrop-blur-sm shadow-lg p-1",
+        "absolute z-50 mt-1 min-w-[200px] rounded-xl border border-black/10 bg-white p-1 text-sm shadow-lg dark:border-white/10 dark:bg-neutral-900",
         align === "end" ? "right-0" : "left-0"
       )}
+      role="menu"
     >
-      {items.map((it, i) => (
-        <button
-          key={i}
-          type="button"
-          disabled={it.disabled}
-          onClick={() => {
-            if (it.disabled) return;
-            it.onSelect?.();
-            onClose();
-          }}
-          className={cn(
-            "w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-black/5 dark:hover:bg-white/10",
-            it.disabled && "opacity-50 cursor-not-allowed",
-            it.danger && "text-red-600 hover:text-red-700"
-          )}
-        >
-          {it.label}
-        </button>
-      ))}
+      {children}
     </div>
+  );
+}
+
+function TinyMenuItem({
+  icon,
+  children,
+  danger,
+  onClick,
+  disabled,
+}: {
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+  danger?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition",
+        disabled
+          ? "cursor-not-allowed opacity-40"
+          : "hover:bg-neutral-100 active:bg-neutral-200 dark:hover:bg-neutral-800 dark:active:bg-neutral-700",
+        danger && "text-red-600 dark:text-red-400"
+      )}
+      role="menuitem"
+    >
+      {icon}
+      <span className="truncate">{children}</span>
+    </button>
+  );
+}
+
+/* -------------------------------- Chat row -------------------------------- */
+
+function ChatItem({
+  row,
+  active,
+  pinned,
+  onPinToggle,
+  onDelete,
+  onRename,
+}: {
+  row: ChatRow;
+  active: boolean;
+  pinned: boolean;
+  onPinToggle: (id: string) => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, newTitle: string) => Promise<void>;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [titleInput, setTitleInput] = useState(row.title || "New chat");
+  const [savingRename, setSavingRename] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (renaming) {
+      setTimeout(() => inputRef.current?.focus(), 10);
+    }
+  }, [renaming]);
+
+  // keep titleInput up-to-date if changed externally
+  useEffect(() => {
+    if (!renaming) setTitleInput(row.title || "New chat");
+  }, [row.title, renaming]);
+
+  const submitRename = async () => {
+    const trimmed = titleInput.trim();
+    if (!trimmed || trimmed === (row.title || "New chat")) {
+      setRenaming(false);
+      return;
+    }
+    try {
+      setSavingRename(true);
+      await onRename(row.id, trimmed);
+      setRenaming(false);
+    } finally {
+      setSavingRename(false);
+    }
+  };
+
+  return (
+    <li
+      className={cn(
+        "group relative rounded-xl",
+        active
+          ? "bg-neutral-100 ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-white/10"
+          : "hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
+      )}
+    >
+      {!renaming ? (
+        <Link
+          href={`/chat/${row.id}`}
+          className={cn(
+            "block truncate px-3 py-2 pr-10 text-sm",
+            active && "font-medium"
+          )}
+          title={row.title || "New chat"}
+        >
+          {row.title || "New chat"}
+          <span className="ml-2 text-xs text-neutral-500">
+            {row.created_at ? timeAgo(row.created_at) : ""}
+          </span>
+        </Link>
+      ) : (
+        <div className="flex items-center gap-2 px-3 py-2 pr-10">
+          <input
+            ref={inputRef}
+            value={titleInput}
+            onChange={(e) => setTitleInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitRename();
+              if (e.key === "Escape") setRenaming(false);
+            }}
+            className="w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-950"
+          />
+          <button
+            className="rounded-md px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            onClick={() => setRenaming(false)}
+            disabled={savingRename}
+          >
+            Cancel
+          </button>
+          <button
+            className="rounded-md bg-neutral-900 px-2 py-1 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-black"
+            onClick={submitRename}
+            disabled={savingRename}
+          >
+            {savingRename ? "Saving…" : "Save"}
+          </button>
+        </div>
+      )}
+
+      {/* right-side controls */}
+      {!renaming && (
+        <div className="absolute inset-y-0 right-1 flex items-center gap-1">
+          <button
+            className={cn(
+              "invisible rounded-md p-1 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 group-hover:visible dark:hover:bg-neutral-800",
+              pinned && "visible"
+            )}
+            aria-label={pinned ? "Unpin chat" : "Pin chat"}
+            onClick={(e) => {
+              e.preventDefault();
+              onPinToggle(row.id);
+            }}
+            title={pinned ? "Unpin" : "Pin"}
+          >
+            {pinned ? <PinOff size={16} /> : <Pin size={16} />}
+          </button>
+
+          <div className="relative">
+            <button
+              className="invisible rounded-md p-1 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 group-hover:visible dark:hover:bg-neutral-800"
+              aria-label="More"
+              onClick={(e) => {
+                e.preventDefault();
+                setMenuOpen((v) => !v);
+                setConfirmDelete(false);
+              }}
+              title="More"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+
+            <TinyMenu open={menuOpen} onClose={() => setMenuOpen(false)} align="end">
+              {!confirmDelete ? (
+                <>
+                  <TinyMenuItem
+                    icon={<PencilLine size={16} />}
+                    onClick={() => {
+                      setRenaming(true);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Rename
+                  </TinyMenuItem>
+                  <TinyMenuItem
+                    icon={<Pin size={16} />}
+                    onClick={() => {
+                      onPinToggle(row.id);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    {pinned ? "Unpin" : "Pin"}
+                  </TinyMenuItem>
+                  <div className="my-1 h-px w-full bg-neutral-100 dark:bg-neutral-800" />
+                  <TinyMenuItem
+                    icon={<Trash2 size={16} />}
+                    danger
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    Delete…
+                  </TinyMenuItem>
+                </>
+              ) : (
+                <>
+                  <div className="px-2 py-1.5 text-sm text-neutral-600 dark:text-neutral-300">
+                    Delete this chat? This can’t be undone.
+                  </div>
+                  <div className="flex gap-2 p-1">
+                    <button
+                      className="flex-1 rounded-lg px-2 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      onClick={() => setConfirmDelete(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="flex-1 rounded-lg bg-red-600 px-2 py-1.5 text-sm text-white hover:bg-red-700"
+                      onClick={() => {
+                        onDelete(row.id);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
+            </TinyMenu>
+          </div>
+        </div>
+      )}
+    </li>
   );
 }
 
 /* --------------------------------- Sidebar -------------------------------- */
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const pathname = usePathname();
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
-  const [isMac, setIsMac] = useState(false);
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState("");
 
-  // NEW: account popover state
-  const [accountOpen, setAccountOpen] = useState(false);
-  const accountAnchorRef = useRef<HTMLButtonElement>(null);
+  // load pins once
+  useEffect(() => setPinnedIds(loadPinnedIds()), []);
+  useEffect(() => savePinnedIds(pinnedIds), [pinnedIds]);
 
-  const isCollapsed = collapsed;
-  const width = isCollapsed ? "w-[76px]" : "w-[300px]";
-  const showLabels = !isCollapsed;
-  const shortcutSearch = isMac ? "⌘K" : "Ctrl+K";
-  const shortcutNewChat = isMac ? "⌘N" : "Ctrl+N";
+  const supabase = getBrowserSupabase();
 
-  const newChatPalette = useMemo<[string, string]>(() => {
-    const seeds: [string, string][] = [
-      ["#8bb0ff", "#a0e3ff"],
-      ["#b8f3d4", "#8fd8ff"],
-      ["#ffd6a5", "#cdb4ff"],
-      ["#ffcad4", "#cce6ff"],
-      ["#c1ffd7", "#ffd1f7"],
-    ];
-    return seeds[Math.floor(Math.random() * seeds.length)];
-  }, []);
-
-  useEffect(() => {
-    setIsMac(/Mac|iPhone|iPad|Macintosh/.test(navigator.platform || ""));
-  }, []);
-
-  useEffect(() => {
-    try {
-      setPinnedIds(loadPinnedIds());
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function load() {
-      try {
-        const { data, error } = await supabase
-          .from("chats")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (!mounted) return;
-        if (!error) setChats(data || []);
-      } catch {
-        if (!mounted) return;
-        setChats([]);
-      }
+  const fetchChats = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("chats")
+      .select("id,title,created_at")
+      .order("created_at", { ascending: false })
+      .limit(500); // room to grow
+    if (error) {
+      console.error("Failed to load chats:", error.message);
+      setChats([]);
+      return;
     }
+    setChats((data || []) as ChatRow[]);
+  }, [supabase]);
 
-    load();
+  // initial load
+  useEffect(() => {
+    fetchChats();
+  }, [fetchChats]);
 
-    let unsub: (() => void) | null = null;
-    try {
-      const channel = (supabase as any)
-        .channel?.("realtime:chats")
-        ?.on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "chats" },
-          load
-        )
-        ?.subscribe();
-      unsub = channel ? () => supabase.removeChannel(channel) : null;
-    } catch {}
+  // realtime sync: reflect inserts / updates / deletes from any client
+  useEffect(() => {
+    const channel = supabase
+      .channel("chats-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "chats" },
+        (payload: any) => {
+          // simplest + safest: re-fetch to preserve ordering & dedupe
+          fetchChats();
+
+          // if current chat got deleted, bounce to /chat/new
+          if (payload.eventType === "DELETE") {
+            const deletedId = payload.old?.id as string | undefined;
+            if (deletedId && isActiveChat(pathname, deletedId)) {
+              router.push("/chat/new");
+            }
+            // also ensure pinnedIds drops it
+            if (deletedId) {
+              setPinnedIds((prev) => prev.filter((p) => p !== deletedId));
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          // ok
+        }
+      });
+
     return () => {
-      mounted = false;
-      try {
-        unsub?.();
-      } catch {}
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [supabase, fetchChats, pathname, router]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const isMacLocal = /Mac|iPhone|iPad|Macintosh/.test(
-        navigator.platform || ""
-      );
-      const key = e.key.toLowerCase();
+  const pinned = useMemo(
+    () => chats.filter((c) => pinnedIds.includes(c.id)),
+    [chats, pinnedIds]
+  );
+  const recent = useMemo(
+    () => chats.filter((c) => !pinnedIds.includes(c.id)),
+    [chats, pinnedIds]
+  );
 
-      const metaPressed = isMacLocal ? e.metaKey : e.ctrlKey;
+  const filteredPinned = useMemo(() => {
+    if (!query) return pinned;
+    const q = query.toLowerCase();
+    return pinned.filter((c) => (c.title || "New chat").toLowerCase().includes(q));
+  }, [pinned, query]);
 
-      if (metaPressed && key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-        setTimeout(() => {
-          searchInputRef.current?.focus();
-        }, 0);
-        return;
+  const filteredRecent = useMemo(() => {
+    if (!query) return recent;
+    const q = query.toLowerCase();
+    return recent.filter((c) => (c.title || "New chat").toLowerCase().includes(q));
+  }, [recent, query]);
+
+  async function handleDelete(id: string) {
+    try {
+      // optimistic: hide immediately
+      setChats((prev) => prev.filter((c) => c.id !== id));
+      setPinnedIds((prev) => prev.filter((p) => p !== id));
+
+      const res = await fetch(`/api/chats/${id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || `HTTP ${res.status}`);
       }
 
-      if (metaPressed && key === "n") {
-        e.preventDefault();
-        handleNewChat();
-        return;
+      // redirect if we were on it (covers race if realtime hit late)
+      if (isActiveChat(pathname, id)) {
+        router.push("/chat/new");
       }
-
-      if (e.key === "Escape") {
-        setAccountOpen(false);
-      }
+    } catch (e: any) {
+      console.error("Delete failed:", e?.message || e);
+      alert(`Could not delete chat: ${e?.message || "Unknown error"}`);
+      // re-fetch to restore list if optimistic change was wrong
+      fetchChats();
     }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function handleNewChat() {
-    const resp = await fetch("/api/chats", { method: "POST" });
-    const created = await resp.json();
-    router.push(`/chat/${created.id}`);
-  }
-
-  function isPinned(id: string) {
-    return pinnedIds.includes(id);
   }
 
   function togglePin(id: string) {
-    setPinnedIds((prev) => {
-      const next = prev.includes(id)
-        ? prev.filter((x) => x !== id)
-        : [id, ...prev];
-      savePinnedIds(next);
-      return next;
-    });
+    setPinnedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev]));
   }
 
-  const activeId =
-    pathname?.startsWith("/chat/") &&
-    pathname.split("/").filter(Boolean)[1] !== "chat"
-      ? pathname.split("/").pop()
-      : null;
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return chats;
-    return chats.filter(
-      (c) =>
-        (c.title || "New chat").toLowerCase().includes(q) ||
-        c.id.toLowerCase().includes(q)
-    );
-  }, [query, chats]);
-
-  const { pinnedList, recentList } = useMemo(() => {
-    const pinned: ChatRow[] = [];
-    const recent: ChatRow[] = [];
-    for (const c of chats) {
-      if (pinnedIds.includes(c.id)) pinned.push(c);
-      else recent.push(c);
+  async function handleNewChat() {
+    try {
+      const res = await fetch("/api/chats", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || `HTTP ${res.status}`);
+      }
+      const newId = json.id as string;
+      // optimistic add; realtime will correct ordering
+      setChats((prev) => [
+        { id: newId, title: "New chat", created_at: new Date().toISOString() },
+        ...prev,
+      ]);
+      router.push(`/chat/${newId}`);
+    } catch (e: any) {
+      console.error("New chat failed:", e?.message || e);
+      alert(`Could not create chat: ${e?.message || "Unknown error"}`);
     }
-    const pinnedOrderIndex = new Map<string, number>();
-    pinnedIds.forEach((id, idx) => pinnedOrderIndex.set(id, idx));
-    pinned.sort(
-      (a, b) =>
-        (pinnedOrderIndex.get(a.id) ?? 0) - (pinnedOrderIndex.get(b.id) ?? 0)
-    );
-    return { pinnedList: pinned, recentList: recent };
-  }, [chats, pinnedIds]);
-
-  function handleContainerClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (!collapsed) return;
-    const target = e.target as HTMLElement;
-    const interactive = !!target.closest(
-      'a,button,input,textarea,select,[role="button"],[data-no-expand]'
-    );
-    if (!interactive) onToggle();
   }
+
+  const handleRename = useCallback(
+    async (id: string, newTitle: string) => {
+      // optimistic update
+      setChats((prev) => prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c)));
+      try {
+        const res = await fetch(`/api/chats/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: newTitle }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json?.ok === false) {
+          throw new Error(json?.error || `HTTP ${res.status}`);
+        }
+      } catch (e: any) {
+        console.error("Rename failed:", e?.message || e);
+        alert(`Could not rename chat: ${e?.message || "Unknown error"}`);
+        // reload to revert optimistic
+        fetchChats();
+      }
+    },
+    [fetchChats]
+  );
 
   return (
     <aside
       className={cn(
         "relative h-svh shrink-0 transition-[width] duration-300 ease-ios",
-        isCollapsed ? "w-[76px]" : "w-[300px]"
+        collapsed ? "w-[76px]" : "w-[300px]"
       )}
     >
       <div className="sticky top-0 h-svh p-2 sm:p-3">
-        <div
-          className="glass ring-1 ring-black/10 dark:ring-white/10 relative flex h-full flex-col overflow-hidden rounded-2xl"
-          onClick={handleContainerClick}
-        >
-          {isCollapsed && (
-            <button
-              type="button"
-              data-no-expand
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggle();
-              }}
-              className="absolute right-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-xl ring-1 ring-black/10 dark:ring-white/10 bg-white/70 hover:bg-white/90 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft backdrop-blur-sm"
-              title="Expand sidebar"
-              aria-label="Expand sidebar"
-            >
-              <ChevronRight className="mx-auto h-4 w-4" />
-            </button>
-          )}
-
+        <div className="glass relative flex h-full flex-col overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10">
           {/* Top bar */}
-          <div
-            className={cn(
-              "flex items-center gap-2 p-2",
-              isCollapsed ? "justify-center" : ""
-            )}
-          >
-            <Link
-              href="/"
-              className={cn(
-                "flex items-center gap-2 rounded-xl px-2 py-1 transition hover:bg-black/5 dark:hover:bg-white/5",
-                isCollapsed ? "justify-center" : ""
-              )}
+          <div className="flex items-center justify-between px-2 py-2">
+            <button
+              className="rounded-xl p-2 hover:bg-neutral-100 active:bg-neutral-200 dark:hover:bg-neutral-800"
+              onClick={onToggle}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand" : "Collapse"}
             >
-              <div className="relative h-9 w-9 overflow-hidden rounded-xl shadow-insetglass">
-                <Image src="/logo.svg" alt="CareIQ" fill sizes="36px" priority />
-              </div>
-              {!isCollapsed && <span className="text-sm font-semibold">CareIQ</span>}
-            </Link>
+              <PanelsTopLeft size={18} />
+            </button>
 
-            {!isCollapsed && (
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="rounded-xl ring-1 ring-black/10 dark:ring-white/10 hover:bg-black/10 dark:hover:bg-white/15 ml-auto"
-                      onClick={onToggle}
-                      aria-label="Collapse sidebar"
-                    >
-                      <PanelsTopLeft className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Collapse</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            {!collapsed && (
+              <Link href="/" className="flex items-center gap-2 px-2 py-1">
+                <div className="relative h-6 w-6 overflow-hidden rounded">
+                  <Image alt="CareIQ" fill src="/logo.svg" />
+                </div>
+                <span className="text-sm font-semibold tracking-tight">CareIQ</span>
+              </Link>
             )}
+
+            <div className="ml-auto">
+              <AccountMenu />
+            </div>
           </div>
 
-          {/* New Chat */}
-          <div className={cn("px-2", isCollapsed && "px-0")}>
-            {isCollapsed ? (
-              <div className="relative group flex justify-center pb-2" data-no-expand>
-                <span
-                  className="pointer-events-none absolute inset-x-1 -z-10 top-0 bottom-0 rounded-2xl opacity-90 animate-blob"
-                  style={{
-                    background: `linear-gradient(120deg, ${newChatPalette[0]}, ${newChatPalette[1]})`,
-                    filter: "blur(14px)",
-                  }}
-                  aria-hidden
-                />
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={handleNewChat}
-                        className="relative z-[1] h-12 w-12 overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/60 hover:bg-white/80 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft transition"
-                        aria-label={`New chat (${isMac ? "⌘N" : "Ctrl+N"})`}
-                        title={`New chat (${isMac ? "⌘N" : "Ctrl+N"})`}
-                      >
-                        <Plus className="mx-auto h-5 w-5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      New chat ({isMac ? "⌘N" : "Ctrl+N"})
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            ) : (
-              <div className="relative group" data-no-expand>
-                <span
-                  className="pointer-events-none absolute inset-0 -z-10 rounded-2xl opacity-90 animate-blob"
-                  style={{
-                    background: `linear-gradient(120deg, ${newChatPalette[0]}, ${newChatPalette[1]})`,
-                    filter: "blur(14px)",
-                  }}
-                  aria-hidden
-                />
+          {/* Search + New Chat */}
+          <div className={cn("px-2 pb-2", collapsed && "px-1")}>
+            {!collapsed ? (
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <div className="relative">
+                    <SearchIcon className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-neutral-500" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search chats…"
+                      className="w-full rounded-xl border border-neutral-200 bg-white py-2 pl-8 pr-3 text-sm outline-none ring-0 transition placeholder:text-neutral-400 focus:border-neutral-300 focus:bg-white focus:ring-0 dark:border-neutral-800 dark:bg-neutral-950 dark:focus:border-neutral-700"
+                    />
+                  </div>
+                </div>
                 <button
-                  type="button"
                   onClick={handleNewChat}
-                  className="relative z-[1] overflow-hidden w-full rounded-2xl bg-white/60 px-3 py-2 text-left transition hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/15 ring-1 ring-black/10 dark:ring-white/10 shadow-soft"
-                  aria-label={`New chat (${isMac ? "⌘N" : "Ctrl+N"})`}
-                  title={`New chat (${isMac ? "⌘N" : "Ctrl+N"})`}
+                  className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-100 active:bg-neutral-200 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
                 >
-                  <div className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    <span className="text-sm font-medium">New chat</span>
-                    <span className="ml-auto text-xs text-ink-subtle">
-                      ({isMac ? "⌘N" : "Ctrl+N"})
-                    </span>
+                  <div className="flex items-center gap-1">
+                    <Plus size={16} />
+                    New chat
                   </div>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Search */}
-          <div className={cn("px-2 mt-2", isCollapsed && "px-0")}>
-            {isCollapsed ? (
-              <div className="relative group flex justify-center" data-no-expand>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchOpen(true);
-                    setTimeout(() => searchInputRef.current?.focus(), 0);
-                  }}
-                  className="relative z-[1] h-12 w-12 overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/60 hover:bg-white/80 active:bg-white dark:bg-white/10 dark:hover:bg-white/15 shadow-soft transition"
-                  aria-label={`Search (${isMac ? "⌘K" : "Ctrl+K"})`}
-                  title={`Search (${isMac ? "⌘K" : "Ctrl+K"})`}
-                >
-                  <SearchIcon className="mx-auto h-5 w-5" />
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchOpen(true);
-                  setTimeout(() => searchInputRef.current?.focus(), 0);
-                }}
-                className="relative z-[1] overflow-hidden w-full rounded-2xl bg-white/60 px-3 py-2 text-left transition hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/15 ring-1 ring-black/10 dark:ring-white/10 shadow-soft"
-                aria-label={`Search (${isMac ? "⌘K" : "Ctrl+K"})`}
-                title={`Search (${isMac ? "⌘K" : "Ctrl+K"})`}
-              >
-                <div className="flex items-center gap-2">
-                  <SearchIcon className="h-4 w-4" />
-                  <span className="text-sm font-medium">Search</span>
-                  <span className="ml-auto text-xs text-ink-subtle">
-                    ({isMac ? "⌘K" : "Ctrl+K"})
-                  </span>
-                </div>
-              </button>
-            )}
-          </div>
-
-          <Separator className="my-3" />
-
-          {/* Chats list */}
-          <div className="flex-1 overflow-hidden">
-            <div className={cn("h-full", isCollapsed ? "" : "px-2")}>
-              <ScrollArea className="h-[calc(100%-1px)] pr-1">
-                {isCollapsed ? (
-                  <ul className="flex flex-col items-center gap-2 pb-4">
-                    {pinnedList.map((c) => {
-                      const isActive = c.id === activeId;
-                      return (
-                        <li key={`p-${c.id}`}>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Link
-                                  href={`/chat/${c.id}`}
-                                  className={cn(
-                                    "flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition",
-                                    isActive &&
-                                      "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
-                                  )}
-                                >
-                                  <div className="h-5 w-5 rounded-md bg-black/20 dark:bg-white/20" />
-                                </Link>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" className="max-w-[220px]">
-                                📌 {c.title || "New chat"}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </li>
-                      );
-                    })}
-                    {recentList.map((c) => {
-                      const isActive = c.id === activeId;
-                      return (
-                        <li key={`r-${c.id}`}>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Link
-                                  href={`/chat/${c.id}`}
-                                  className={cn(
-                                    "flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-black/5 dark:hover:bg:white/5 transition",
-                                    isActive &&
-                                      "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
-                                  )}
-                                >
-                                  <div className="h-5 w-5 rounded-md bg-black/20 dark:bg-white/20" />
-                                </Link>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" className="max-w-[220px]">
-                                {c.title || "New chat"}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <div className="pb-4 space-y-3">
-                    {!!pinnedList.length && (
-                      <section>
-                        <div className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-ink-subtle">
-                          Pinned
-                        </div>
-                        <ul className="space-y-1">
-                          {pinnedList.map((c) => {
-                            const isActive = c.id === activeId;
-                            const pinned = isPinned(c.id);
-                            return (
-                              <SidebarRow
-                                key={c.id}
-                                chat={c}
-                                isActive={isActive}
-                                pinned={pinned}
-                                onPinToggle={() => togglePin(c.id)}
-                              />
-                            );
-                          })}
-                        </ul>
-                      </section>
-                    )}
-
-                    <section>
-                      <div className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-ink-subtle">
-                        Recent
-                      </div>
-                      <ul className="space-y-1">
-                        {recentList.map((c) => {
-                          const isActive = c.id === activeId;
-                          const pinned = isPinned(c.id);
-                          return (
-                            <SidebarRow
-                              key={c.id}
-                              chat={c}
-                              isActive={isActive}
-                              pinned={pinned}
-                              onPinToggle={() => togglePin(c.id)}
-                            />
-                          );
-                        })}
-                        {!recentList.length && !pinnedList.length && (
-                          <li className="px-2 py-2 text-xs text-ink-subtle">
-                            No chats yet
-                          </li>
-                        )}
-                      </ul>
-                    </section>
-                  </div>
-                )}
-              </ScrollArea>
-            </div>
-          </div>
-
-          <Separator className="my-3" />
-
-          {/* Bottom account (now opens popover) */}
-          <div className="px-2 pb-2">
-            <button
-              ref={accountAnchorRef}
-              type="button"
-              className={cn(
-                "flex w-full items-center rounded-2xl px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/10",
-                isCollapsed ? "justify-center" : "gap-2"
-              )}
-              onClick={() => setAccountOpen((v) => !v)}
-              aria-label="Account menu"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
-                <User className="h-5 w-5" />
-              </div>
-              {!isCollapsed && (
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-medium">You</div>
-                  <div className="text-xs text-ink-subtle">Free plan</div>
-                </div>
-              )}
-              {!isCollapsed && (
-                <Settings className="ml-auto h-4 w-4 opacity-50" aria-hidden />
-              )}
-            </button>
-
-            {/* Popover content */}
-            <AccountMenu
-              open={accountOpen}
-              onClose={() => setAccountOpen(false)}
-              anchorRef={accountAnchorRef}
-              email="jking4600@gmail.com"
-              onCustomize={() => {
-                setAccountOpen(false);
-                // Placeholder – hook up to your customize modal later
-              }}
-              onSettings={() => {
-                setAccountOpen(false);
-                setSettingsOpen(true);
-              }}
-              onHelp={() => {
-                setAccountOpen(false);
-                // Placeholder – route to /help or open a modal
-              }}
-              onLogout={() => {
-                setAccountOpen(false);
-                // Placeholder – wire auth later
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Search modal */}
-      <CenteredModal open={searchOpen} onOpenChange={setSearchOpen} ariaLabel="Search chats">
-        <div className="mb-2">
-          <h3 className="text-base font-semibold">Search chats</h3>
-        </div>
-        <input
-          ref={searchInputRef}
-          autoFocus
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={`Search chats… (${isMac ? "⌘K" : "Ctrl+K"})`}
-          className="w-full rounded-xl border-none ring-1 ring-black/10 dark:ring-white/10 bg-white/70 dark:bg-white/10 px-3 py-2 outline-none"
-        />
-        <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-1">
-          {filtered.map((c) => (
-            <Link
-              key={c.id}
-              href={`/chat/${c.id}`}
-              onClick={() => setSearchOpen(false)}
-              className="block rounded-2xl px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10 transition"
-            >
-              <div className="text-sm">{c.title || "New chat"}</div>
-              <div className="text-[11px] text-ink-subtle">{c.id}</div>
-            </Link>
-          ))}
-          {!filtered.length && (
-            <div className="rounded-2xl px-3 py-2 text-xs text-ink-subtle">
-              No results
-            </div>
-          )}
-        </div>
-      </CenteredModal>
-
-      {/* Settings sheet (re-used; opens from the account popover) */}
-      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-        {/* We don’t need a visible trigger; we toggle via state */}
-        <SheetContent className="w-[380px] sm:w-[480px] glass ring-1 ring-black/10 dark:ring-white/10">
-          <SheetHeader>
-            <SheetTitle>Settings</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4 space-y-6">
-            <Button variant="secondary" className="w-full justify-start gap-2 rounded-xl">
-              Manage account (placeholder)
-            </Button>
-            <Button variant="ghost" className="w-full justify-start gap-2 rounded-xl text-red-600 hover:text-red-700">
-              <LogOut className="h-4 w-4" />
-              Log out
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </aside>
-  );
-}
-
-/* ---------------------------- Row Component ---------------------------- */
-
-function SidebarRow({
-  chat,
-  isActive,
-  pinned,
-  onPinToggle,
-}: {
-  chat: ChatRow;
-  isActive: boolean;
-  pinned: boolean;
-  onPinToggle: () => void;
-}) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuAnchorRef = useRef<HTMLButtonElement>(null);
-
-  return (
-    <li>
-      <div
-        className={cn(
-          "group relative flex items-center gap-2 rounded-2xl px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/5 ring-1 ring-transparent hover:ring-black/10 dark:hover:ring-white/10",
-          isActive && "bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10"
-        )}
-      >
-        <Link href={`/chat/${chat.id}`} className="min-w-0 flex flex-1 items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10">
-            <span className="h-3 w-3 rounded-[4px] bg-black/30 dark:bg-white/30" />
-          </div>
-          <div className="truncate text-sm">{chat.title || "New chat"}</div>
-        </Link>
-
-        <div className="ml-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
+              <div className="flex items-center justify-center">
                 <button
-                  className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
-                  aria-label={pinned ? "Unpin chat" : "Pin chat"}
-                  onClick={onPinToggle}
+                  onClick={handleNewChat}
+                  className="rounded-xl border border-neutral-200 bg-white p-2 hover:bg-neutral-100 active:bg-neutral-200 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+                  aria-label="New chat"
+                  title="New chat"
                 >
-                  {pinned ? <Pin className="h-4 w-4 fill-current" /> : <Pin className="h-4 w-4" />}
+                  <Plus size={16} />
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{pinned ? "Unpin" : "Pin"}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+              </div>
+            )}
+          </div>
 
-          <div className="relative">
-            <button
-              ref={menuAnchorRef}
-              className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
-              aria-label="More actions"
-              onClick={() => setMenuOpen((v) => !v)}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
+          {/* Lists */}
+          <div className="min-h-0 flex-1 overflow-auto px-2 pb-2">
+            {/* Pinned */}
+            {!collapsed && filteredPinned.length > 0 && (
+              <div className="mb-2">
+                <div className="flex items-center justify-between px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  <span>Pinned</span>
+                </div>
+                <ul className="space-y-1">
+                  {filteredPinned.map((row) => (
+                    <ChatItem
+                      key={row.id}
+                      row={row}
+                      active={isActiveChat(pathname, row.id)}
+                      pinned={true}
+                      onPinToggle={togglePin}
+                      onDelete={handleDelete}
+                      onRename={handleRename}
+                    />
+                  ))}
+                </ul>
+              </div>
+            )}
 
-            {menuOpen && (
-              <TinyMenu
-                align="end"
-                onClose={() => setMenuOpen(false)}
-                items={[
-                  { label: "Rename (coming soon)", disabled: true },
-                  { label: "Duplicate (coming soon)", disabled: true },
-                  { label: "—", disabled: true },
-                  { label: "Delete (coming soon)", disabled: true, danger: true },
-                ]}
-              />
+            {/* Recent */}
+            <div className={!collapsed ? "mt-1" : ""}>
+              {!collapsed && (
+                <div className="flex items-center justify-between px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  <span>Recent</span>
+                </div>
+              )}
+              <ul className={cn("space-y-1", collapsed && "px-1")}>
+                {filteredRecent.length === 0 && !collapsed ? (
+                  <li className="px-3 py-2 text-sm text-neutral-500">No chats yet.</li>
+                ) : (
+                  filteredRecent.map((row) => (
+                    <ChatItem
+                      key={row.id}
+                      row={row}
+                      active={isActiveChat(pathname, row.id)}
+                      pinned={false}
+                      onPinToggle={togglePin}
+                      onDelete={handleDelete}
+                      onRename={handleRename}
+                    />
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-auto border-t border-black/5 px-2 py-2 text-xs text-neutral-500 dark:border-white/5">
+            {!collapsed ? (
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <User size={14} />
+                  Signed in
+                </div>
+                <div className="flex items-center gap-4">
+                  <Link href="/settings" className="flex items-center gap-1 hover:underline">
+                    <Settings size={14} />
+                    Settings
+                  </Link>
+                  <button className="flex items-center gap-1 hover:underline" title="Log out">
+                    <LogOut size={14} />
+                    Log out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-3">
+                <Link
+                  href="/settings"
+                  title="Settings"
+                  className="rounded-md p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                >
+                  <Settings size={16} />
+                </Link>
+                <button
+                  title="Log out"
+                  className="rounded-md p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
             )}
           </div>
         </div>
       </div>
-    </li>
+    </aside>
   );
 }
