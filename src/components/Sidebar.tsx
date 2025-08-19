@@ -38,6 +38,7 @@ type SidebarProps = {
 /* ----------------------------- Local constants ---------------------------- */
 
 const PIN_STORAGE_KEY = "careiq.pinnedChatIds.v1";
+const AUTOTITLE_MARK = "careiq.autotitle.done.v1"; // localStorage map of {chatId: ts}
 
 /* ------------------------------- Utilities -------------------------------- */
 
@@ -61,6 +62,31 @@ function savePinnedIds(ids: string[]) {
 function isActiveChat(pathname: string | null, id: string) {
   if (!pathname) return false;
   return pathname === `/chat/${id}`;
+}
+
+function getAutotitleMap(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(AUTOTITLE_MARK);
+    if (!raw) return {};
+    const map = JSON.parse(raw);
+    return map && typeof map === "object" ? map : {};
+  } catch {
+    return {};
+  }
+}
+
+function setAutotitleDone(id: string) {
+  try {
+    const map = getAutotitleMap();
+    map[id] = Date.now();
+    localStorage.setItem(AUTOTITLE_MARK, JSON.stringify(map));
+  } catch {}
+}
+
+function isLikelyUntitled(title: string | null | undefined) {
+  if (!title) return true;
+  const t = title.trim().toLowerCase();
+  return !t || t === "new chat";
 }
 
 /* --------------------------- Tiny popover menu ---------------------------- */
@@ -327,6 +353,89 @@ function ChatItem({
   );
 }
 
+/* -------------------------- Auto Title background ------------------------- */
+/** Sits quietly in the app, tries to title recent chats that look untitled. */
+function AutoTitleAgent() {
+  const supabase = getBrowserSupabase();
+
+  useEffect(() => {
+    let cancelled = false;
+    let ticking = false;
+
+    async function attempt() {
+      if (ticking) return;
+      ticking = true;
+      try {
+        // 1) pull recent chats
+        const { data: chats, error } = await supabase
+          .from("chats")
+          .select("id,title,created_at")
+          .order("created_at", { ascending: false })
+          .limit(25);
+
+        if (error || !chats) return;
+
+        const done = getAutotitleMap();
+
+        for (const c of chats) {
+          if (cancelled) break;
+          const id = c.id as string;
+          if (!isLikelyUntitled(c.title)) continue;
+          if (done[id]) continue; // already tried
+
+          // 2) check messages quickly
+          const { data: msgs, error: mErr } = await supabase
+            .from("messages")
+            .select("role,created_at")
+            .eq("chat_id", id)
+            .order("created_at", { ascending: true })
+            .limit(6);
+
+          if (mErr || !msgs || msgs.length < 2) continue;
+          const hasUser = msgs.some((m) => (m.role || "user") === "user");
+          const hasAssistant = msgs.some((m) => (m.role || "assistant") === "assistant");
+          if (!hasUser || !hasAssistant) continue;
+
+          // 3) call title API
+          try {
+            const res = await fetch(`/api/chats/${id}/title`, { method: "POST" });
+            // mark regardless to avoid hot-loop; realtime will refresh sidebar
+            setAutotitleDone(id);
+            // eslint-disable-next-line no-unused-vars
+            const _json = await res.json().catch(() => ({}));
+          } catch {
+            setAutotitleDone(id);
+          }
+        }
+      } finally {
+        ticking = false;
+      }
+    }
+
+    // Run immediately, then on an interval (gentle)
+    attempt();
+    const t = setInterval(attempt, 20000);
+
+    // Re-run on any new message via realtime (optional but snappy)
+    const channel = supabase
+      .channel("messages-autotitle")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        () => attempt()
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
+
+  return null;
+}
+
 /* --------------------------------- Sidebar -------------------------------- */
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
@@ -474,6 +583,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         collapsed ? "w-[76px]" : "w-[300px]"
       )}
     >
+      {/* Background agent that auto-generates titles after an exchange */}
+      <AutoTitleAgent />
+
       <div className="sticky top-0 h-svh p-2 sm:p-3">
         <div className="glass relative flex h-full flex-col overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10">
           {/* Top bar */}
@@ -543,13 +655,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           {/* Lists */}
           <div className="min-h-0 flex-1 overflow-auto px-2 pb-2">
             {/* Pinned */}
-            {!collapsed && filteredPinned.length > 0 && (
+            {!collapsed && pinned.length > 0 && (
               <div className="mb-2">
                 <div className="flex items-center justify-between px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
                   <span>Pinned</span>
                 </div>
                 <ul className="space-y-1">
-                  {filteredPinned.map((row) => (
+                  {pinned.map((row) => (
                     <ChatItem
                       key={row.id}
                       row={row}
@@ -572,10 +684,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </div>
               )}
               <ul className={cn("space-y-1", collapsed && "px-1")}>
-                {filteredRecent.length === 0 && !collapsed ? (
+                {recent.length === 0 && !collapsed ? (
                   <li className="px-3 py-2 text-sm text-neutral-500">No chats yet.</li>
                 ) : (
-                  filteredRecent.map((row) => (
+                  recent.map((row) => (
                     <ChatItem
                       key={row.id}
                       row={row}
