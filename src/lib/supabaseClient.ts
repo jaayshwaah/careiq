@@ -1,23 +1,33 @@
 // src/lib/supabaseClient.ts
-// Browser-only Supabase client (lazy init). Safe to import in client components.
+// Browser-only Supabase client (lazy init). Uses literal NEXT_PUBLIC_* keys
+// so Next.js can inline them into the client bundle.
+
+"use client";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let _client: SupabaseClient | null = null;
 
-function reqEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) throw new Error(`Missing ${name}`);
-  return v;
+// IMPORTANT: use literal env keys (no dynamic lookup)
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string | undefined;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string | undefined;
+
+function assertPublicEnv() {
+  if (!SUPABASE_URL) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
+  }
+  if (!SUPABASE_ANON_KEY) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  }
 }
 
 export function getBrowserSupabase(): SupabaseClient {
   if (typeof window === "undefined") {
-    // Guard against accidental server usage.
+    // Guard against accidental server usage
     const handler: ProxyHandler<any> = {
       get() {
         throw new Error(
-          "getBrowserSupabase() used on the server. Use a server client instead."
+          "getBrowserSupabase() used on the server. Use a server-side client instead."
         );
       },
     };
@@ -27,14 +37,13 @@ export function getBrowserSupabase(): SupabaseClient {
 
   if (_client) return _client;
 
-  const url = reqEnv("NEXT_PUBLIC_SUPABASE_URL");
-  const anon = reqEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  assertPublicEnv();
 
-  _client = createClient(url, anon, {
+  _client = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true, // handles magic links / password reset
+      detectSessionInUrl: true,
     },
     global: { headers: { "X-Client-Info": "careiq-browser" } },
   });
