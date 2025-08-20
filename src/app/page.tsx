@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import RequireAuth from "@/components/RequireAuth";
 import Composer from "@/components/Composer";
 import MessageList from "@/components/MessageList";
 
@@ -62,7 +64,37 @@ function StaticHeading({ phrases }: { phrases: string[] }) {
   );
 }
 
+/** Small chips for attachments */
+function AttachmentBar({ atts, onRemove }: { atts: Attachment[]; onRemove: (id: string) => void }) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {atts.map((a) => (
+        <span
+          key={a.id}
+          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-2 py-1 text-xs"
+          title={a.name}
+        >
+          <span className="truncate max-w-[24ch]">{a.name}</span>
+          {a.status === "pending" && <span className="text-neutral-400">extracting…</span>}
+          {a.status === "error" && <span className="text-red-500">error</span>}
+          <button
+            type="button"
+            className="rounded hover:bg-neutral-100 px-1"
+            onClick={() => onRemove(a.id)}
+            aria-label={`Remove ${a.name}`}
+            title="Remove"
+          >
+            ×
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function HomePage() {
+  const router = useRouter();
+
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -117,8 +149,6 @@ export default function HomePage() {
   };
 
   /** Attachment handling */
-  const handleAttachClick = () => fileInputRef.current?.click();
-
   const handleFilesChosen = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
@@ -226,7 +256,9 @@ export default function HomePage() {
       const handleEvent = (evt: SseEvent) => {
         switch (evt.type) {
           case "token":
-            setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, content: (m.content || "") + evt.text } : m)));
+            setMessages((prev) =>
+              prev.map((m) => (m.id === asstId ? { ...m, content: (m.content || "") + evt.text } : m))
+            );
             break;
           case "status":
             // optionally show in UI; our spinner already covers "thinking"
@@ -245,6 +277,7 @@ export default function HomePage() {
         }
       };
 
+      // Stream loop
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -287,138 +320,114 @@ export default function HomePage() {
   const showHero = messages.length === 0;
 
   return (
-    <div className="h-[100dvh] w-full flex flex-col">
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        onChange={(e) => handleFilesChosen(e.target.files)}
-        className="hidden"
-        accept=".txt,.md,.csv,.json,.pdf,.docx"
-      />
+    <RequireAuth>
+      <div className="h-[100dvh] w-full flex flex-col">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          onChange={(e) => handleFilesChosen(e.target.files)}
+          className="hidden"
+          accept=".txt,.md,.csv,.json,.pdf,.docx"
+        />
 
-      {/* HERO: before first message */}
-      {showHero ? (
-        <main className="flex-1 grid place-content-center px-6 py-10">
-          <div className="mx-auto w-full max-w-2xl">
-            <StaticHeading phrases={headlinePhrases} />
+        {/* HERO: before first message */}
+        {showHero ? (
+          <main className="flex-1 px-6 py-10">
+            <div className="mx-auto w-full max-w-2xl min-h-[60vh] grid place-content-center">
+              <div className="w-full">
+                <StaticHeading phrases={headlinePhrases} />
 
-            <Composer
-              value={input}
-              onChange={setInput}
-              onSend={() => handleSend()}
-              disabled={isStreaming}
-              isStreaming={isStreaming}
-              onStop={handleStop}
-              onAttachClick={() => fileInputRef.current?.click()}
-              placeholder="Message CareIQ..."
-              size="lg"
-              className="shadow-soft"
-            />
+                <Composer
+                  value={input}
+                  onChange={setInput}
+                  onSend={() => handleSend()}
+                  disabled={isStreaming}
+                  isStreaming={isStreaming}
+                  onStop={handleStop}
+                  onAttachClick={() => fileInputRef.current?.click()}
+                  placeholder="Message CareIQ..."
+                  size="lg"
+                  className="shadow-soft"
+                />
 
-            {/* Attached files preview */}
-            {attachments.length > 0 && <AttachmentBar atts={attachments} onRemove={removeAttachment} />}
+                {/* Attached files preview */}
+                {attachments.length > 0 && <AttachmentBar atts={attachments} onRemove={removeAttachment} />}
 
-            {/* Suggestions */}
-            <div className="relative mt-6">
-              <span
-                className="pointer-events-none absolute inset-x-8 -top-3 bottom-0 z-10 rounded-[28px] blur-2xl opacity-60"
-                style={{
-                  background:
-                    "linear-gradient(120deg, rgba(139,176,255,.8), rgba(255,214,165,.7), rgba(193,255,215,.8))",
-                }}
-                aria-hidden
-              />
-              <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
-                {suggestions.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => handleSend(t)}
-                    className="rounded-2xl bg-white/60 px-3 py-1.5 text-sm hover:bg-white/80 transition-colors"
-                    disabled={isStreaming}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </main>
-      ) : (
-        // CHAT VIEW: after first message
-        <>
-          <main className="flex-1 flex flex-col">
-            <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col min-h-0 px-4">
-              <div
-                ref={listRef}
-                className="flex-1 overflow-y-auto overscroll-contain pt-6 pb-32"
-                aria-live="polite"
-                aria-busy={isStreaming ? "true" : "false"}
-              >
-                <MessageList messages={messages} isStreaming={isStreaming} streamingId={streamingId} />
+                {/* Suggestions */}
+                <div className="relative mt-6">
+                  <span
+                    className="pointer-events-none absolute inset-x-8 -top-3 bottom-0 z-10 rounded-[28px] blur-2xl opacity-60"
+                    style={{
+                      background:
+                        "linear-gradient(120deg, rgba(139,176,255,.8), rgba(255,214,165,.7), rgba(193,255,215,.8))",
+                    }}
+                    aria-hidden
+                  />
+                  <div className="relative flex flex-wrap items-center justify-center gap-2 md:gap-3">
+                    {suggestions.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => handleSend(t)}
+                        className="rounded-2xl bg-white/60 px-3 py-1.5 text-sm hover:bg-white/80 transition-colors"
+                        disabled={isStreaming}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </main>
+        ) : (
+          // CHAT VIEW: after first message
+          <>
+            <main className="flex-1 flex flex-col">
+              <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col min-h-0 px-4">
+                <div
+                  ref={listRef}
+                  className="flex-1 overflow-y-auto overscroll-contain pt-6 pb-32"
+                  aria-live="polite"
+                  aria-busy={isStreaming ? "true" : "false"}
+                >
+                  <MessageList messages={messages} isStreaming={isStreaming} streamingId={streamingId} />
+                </div>
+              </div>
+            </main>
 
-          {/* Sticky composer */}
-          <div className="sticky bottom-0 w-full border-t border-neutral-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-            <div className="mx-auto max-w-3xl px-4 py-3">
-              <Composer
-                value={input}
-                onChange={setInput}
-                onSend={() => handleSend()}
-                disabled={isStreaming}
-                isStreaming={isStreaming}
-                onStop={handleStop}
-                onAttachClick={() => fileInputRef.current?.click()}
-                placeholder="Message CareIQ..."
-              />
-              {/* Attached files preview */}
-              {attachments.length > 0 && <AttachmentBar atts={attachments} onRemove={removeAttachment} />}
+            {/* Sticky composer */}
+            <div className="sticky bottom-0 w-full border-t border-neutral-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+              <div className="mx-auto max-w-3xl px-4 py-3">
+                <Composer
+                  value={input}
+                  onChange={setInput}
+                  onSend={() => handleSend()}
+                  disabled={isStreaming}
+                  isStreaming={isStreaming}
+                  onStop={handleStop}
+                  onAttachClick={() => fileInputRef.current?.click()}
+                  placeholder="Message CareIQ..."
+                />
+                {/* Attached files preview */}
+                {attachments.length > 0 && <AttachmentBar atts={attachments} onRemove={removeAttachment} />}
 
-              {/* Optional: show usage if provided by SSE */}
-              {lastUsage && (lastUsage.input || lastUsage.output) ? (
-                <p className="mt-2 text-[11px] text-neutral-400 text-center">
-                  tokens — in: {lastUsage.input ?? "?"} • out: {lastUsage.output ?? "?"}
-                </p>
-              ) : (
-                <p className="mt-2 text-[11px] text-neutral-400 text-center">
-                  CareIQ can make mistakes. Check important info.
-                </p>
-              )}
+                {/* Optional: show usage if provided by SSE */}
+                {lastUsage && (lastUsage.input || lastUsage.output) ? (
+                  <p className="mt-2 text-[11px] text-neutral-400 text-center">
+                    tokens — in: {lastUsage.input ?? "?"} • out: {lastUsage.output ?? "?"}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-[11px] text-neutral-400 text-center">
+                    CareIQ can make mistakes. Check important info.
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-/** Small chips for attachments */
-function AttachmentBar({ atts, onRemove }: { atts: Attachment[]; onRemove: (id: string) => void }) {
-  return (
-    <div className="mt-3 flex flex-wrap gap-2">
-      {atts.map((a) => (
-        <span
-          key={a.id}
-          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-2 py-1 text-xs"
-          title={a.name}
-        >
-          <span className="truncate max-w-[24ch]">{a.name}</span>
-          {a.status === "pending" && <span className="text-neutral-400">extracting…</span>}
-          {a.status === "error" && <span className="text-red-500">error</span>}
-          <button
-            type="button"
-            className="rounded hover:bg-neutral-100 px-1"
-            onClick={() => onRemove(a.id)}
-            aria-label={`Remove ${a.name}`}
-            title="Remove"
-          >
-            ×
-          </button>
-        </span>
-      ))}
-    </div>
+          </>
+        )}
+      </div>
+    </RequireAuth>
   );
 }

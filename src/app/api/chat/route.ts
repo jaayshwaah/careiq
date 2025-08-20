@@ -1,14 +1,15 @@
-// src/app/api/chat/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "node:crypto";
 import { providerFromEnv } from "@/lib/ai/providers";
 import { scrubPHI, likelyPHI } from "@/lib/privacy/scrub";
 import { encryptPHI } from "@/lib/crypto/phi";
 import { recordAudit } from "@/lib/audit";
 import { supabaseServerWithAuth, supabaseService } from "@/lib/supabase/server";
 import { buildRagContext } from "@/lib/ai/buildRagContext";
+import { logInfo, logError } from "@/lib/logging";
 
 function bad(status: number, message: string) {
   return NextResponse.json({ ok: false, error: message }, { status });
@@ -17,6 +18,8 @@ function bad(status: number, message: string) {
 export async function POST(req: NextRequest) {
   const hipaa = process.env.HIPAA_MODE === "true";
   const requestId = crypto.randomUUID();
+  const t0 = Date.now();
+
   try {
     const body = await req.json().catch(() => ({}));
     const { chatId, content, facilityId = null, category = null } = body || {};
@@ -28,11 +31,12 @@ export async function POST(req: NextRequest) {
     const supa = supabaseServerWithAuth(token);
     const svc = supabaseService();
 
-    // Get user
+    // Auth check
     const { data: userRes } = await supa.auth.getUser();
     const userId = userRes?.user?.id ?? null;
+    if (!userId) return bad(401, "Unauthorized");
 
-    // Encrypt and store user message
+    // Store user message (encrypted)
     const enc = encryptPHI(text);
     const isPhi = hipaa ? true : likelyPHI(text);
     const { data: userMsg, error: insErr } = await supa
@@ -62,7 +66,7 @@ export async function POST(req: NextRequest) {
       metadata: { role: "user", chatId, is_phi: isPhi },
     });
 
-    // Build minimal history (don’t decrypt/send PHI if HIPAA mode)
+    // Build minimal history and scrub before egress
     const { data: hist } = await supa
       .from("messages")
       .select("role, content_enc, content_iv, content_tag")
@@ -70,28 +74,25 @@ export async function POST(req: NextRequest) {
       .order("created_at", { ascending: true })
       .limit(20);
 
-    // Scrub PHI prior to model egress
     const toProvider = [];
     for (const m of hist || []) {
-      // We *only* send scrubbed text, not decrypted raw PHI.
-      const bundle = { ciphertext: Buffer.from(m.content_enc, "base64"), iv: Buffer.from(m.content_iv, "base64"), tag: Buffer.from(m.content_tag, "base64") };
-      let decrypted: string = "";
+      const bundle = {
+        ciphertext: Buffer.from(m.content_enc, "base64"),
+        iv: Buffer.from(m.content_iv, "base64"),
+        tag: Buffer.from(m.content_tag, "base64"),
+      };
+      let decrypted = "";
       try {
-        // Decrypt in memory (this is still on your server)
         const { decryptPHI } = await import("@/lib/crypto/phi");
         decrypted = decryptPHI(bundle);
-      } catch {
-        decrypted = "";
-      }
+      } catch {}
       const { cleaned } = scrubPHI(decrypted);
       toProvider.push({ role: (m.role as "user" | "assistant") ?? "user", content: cleaned });
     }
 
-    // RAG context (facility/category aware)
     const rag = await buildRagContext({ query: text, facilityId, category, topK: 6, accessToken: token });
     const system = `You are CareIQ, an HR/healthcare assistant. If you use the context below, cite sources by number.\n\n${rag || ""}`.trim();
 
-    // HIPAA provider enforcement
     const provider = providerFromEnv();
     if (hipaa && provider.name === "local-echo") {
       return bad(400, "HIPAA mode requires a HIPAA-eligible AI_PROVIDER (e.g., azure-openai).");
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
     const messages = [{ role: "system" as const, content: system }, ...toProvider];
     const answer = await provider.complete(messages, { temperature: 0.2, max_tokens: 1200 });
 
-    // Save assistant reply (encrypt too)
+    // Save assistant reply encrypted
     const encA = encryptPHI(answer);
     const { data: assistMsg, error: saveErr } = await supa
       .from("messages")
@@ -129,16 +130,27 @@ export async function POST(req: NextRequest) {
       metadata: { provider: provider.name, scrubbed: true },
     });
 
-    // We only return the assistant text to the client; client never sees raw ciphertext.
+    const ms = Date.now() - t0;
+    logInfo("api.chat.post.ok", { route: "/api/chat", method: "POST", status: 200, requestId, userId, duration_ms: ms });
+
     return NextResponse.json({ ok: true, content: answer });
   } catch (err: any) {
-    // Do not log body/content
+    const ms = Date.now() - t0;
+    logError("api.chat.post.error", {
+      route: "/api/chat",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: undefined,
+      duration_ms: ms,
+      error: String(err?.message || err),
+    });
     await recordAudit({
       action: "error",
       route: "/api/chat",
       request_id: requestId,
-      metadata: { message: String(err?.message || err) },
+      metadata: { message: "Internal error" }, // don't echo err.message if it might contain sensitive data
     });
-    return bad(500, "Internal error");
+    return NextResponse.json({ ok: false, error: "Internal error" }, { status: 500 });
   }
 }
