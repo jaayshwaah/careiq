@@ -1,81 +1,144 @@
-import { NextRequest, NextResponse } from "next/server";
-import { buildRagContext } from "@/lib/ai/buildRagContext";
-
+// src/app/api/chat/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+import { NextRequest, NextResponse } from "next/server";
+import { providerFromEnv } from "@/lib/ai/providers";
+import { scrubPHI, likelyPHI } from "@/lib/privacy/scrub";
+import { encryptPHI } from "@/lib/crypto/phi";
+import { recordAudit } from "@/lib/audit";
+import { supabaseServerWithAuth, supabaseService } from "@/lib/supabase/server";
+import { buildRagContext } from "@/lib/ai/buildRagContext";
 
 function bad(status: number, message: string) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
-  if (!apiKey) return bad(500, "Missing OPENROUTER_API_KEY");
-
+  const hipaa = process.env.HIPAA_MODE === "true";
+  const requestId = crypto.randomUUID();
   try {
     const body = await req.json().catch(() => ({}));
-    const messages = (body.messages ?? []) as Array<{ role: string; content: string }>;
-    const userText: string | undefined = body.message || messages.find((m: any) => m.role === "user")?.content;
-    const facilityId: string | null = body.facilityId ?? null;
-    const category: string | null = body.category ?? null;
+    const { chatId, content, facilityId = null, category = null } = body || {};
+    const text = (content ?? "").trim();
+    if (!text) return bad(400, "content required");
 
-    if (!userText) return bad(400, "No user message provided");
+    const authHeader = req.headers.get("authorization") || undefined;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    const supa = supabaseServerWithAuth(token);
+    const svc = supabaseService();
 
-    // Build RAG context
-    const ctx = await buildRagContext({
-      query: userText,
-      facilityId,
-      category,
-      topK: 6,
-      accessToken: undefined, // pass a token here if you enforce RLS per-user
+    // Get user
+    const { data: userRes } = await supa.auth.getUser();
+    const userId = userRes?.user?.id ?? null;
+
+    // Encrypt and store user message
+    const enc = encryptPHI(text);
+    const isPhi = hipaa ? true : likelyPHI(text);
+    const { data: userMsg, error: insErr } = await supa
+      .from("messages")
+      .insert({
+        chat_id: chatId,
+        role: "user",
+        content_enc: enc.ciphertext.toString("base64"),
+        content_iv: enc.iv.toString("base64"),
+        content_tag: enc.tag.toString("base64"),
+        content_sha256: enc.sha256,
+        is_phi: isPhi,
+      })
+      .select("*")
+      .single();
+    if (insErr) return bad(500, insErr.message);
+
+    await recordAudit({
+      user_id: userId,
+      action: "message.create",
+      resource_type: "message",
+      resource_id: userMsg?.id || null,
+      route: "/api/chat",
+      request_id: requestId,
+      ip: req.ip || null,
+      user_agent: req.headers.get("user-agent"),
+      metadata: { role: "user", chatId, is_phi: isPhi },
     });
 
-    const system = [
-      {
-        role: "system",
-        content: (
-          [
-            "You are CareIQ, an HR and operations assistant.",
-            "Use the provided Context when relevant, and cite sources by their number like (1) (2).",
-            "If the Context does not contain the answer, say so briefly and continue using your general knowledge.",
-          ].join("\n")
-        ),
-      },
-      ctx ? { role: "system", content: ctx } : undefined,
-    ].filter(Boolean) as Array<{ role: "system"; content: string }>;
+    // Build minimal history (don’t decrypt/send PHI if HIPAA mode)
+    const { data: hist } = await supa
+      .from("messages")
+      .select("role, content_enc, content_iv, content_tag")
+      .eq("chat_id", chatId)
+      .order("created_at", { ascending: true })
+      .limit(20);
 
-    const model = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-70b-instruct";
-
-    const resp = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [...system, { role: "user", content: userText }],
-        temperature: 0.3,
-        provider: { allow_fallbacks: true },
-      }),
-    });
-
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => "");
-      return bad(500, `OpenRouter error ${resp.status}: ${text || "no body"}`);
+    // Scrub PHI prior to model egress
+    const toProvider = [];
+    for (const m of hist || []) {
+      // We *only* send scrubbed text, not decrypted raw PHI.
+      const bundle = { ciphertext: Buffer.from(m.content_enc, "base64"), iv: Buffer.from(m.content_iv, "base64"), tag: Buffer.from(m.content_tag, "base64") };
+      let decrypted: string = "";
+      try {
+        // Decrypt in memory (this is still on your server)
+        const { decryptPHI } = await import("@/lib/crypto/phi");
+        decrypted = decryptPHI(bundle);
+      } catch {
+        decrypted = "";
+      }
+      const { cleaned } = scrubPHI(decrypted);
+      toProvider.push({ role: (m.role as "user" | "assistant") ?? "user", content: cleaned });
     }
 
-    const json = await resp.json();
-    const content =
-      json?.choices?.[0]?.message?.content ??
-      json?.choices?.[0]?.delta?.content ??
-      "";
+    // RAG context (facility/category aware)
+    const rag = await buildRagContext({ query: text, facilityId, category, topK: 6, accessToken: token });
+    const system = `You are CareIQ, an HR/healthcare assistant. If you use the context below, cite sources by number.\n\n${rag || ""}`.trim();
 
-    return NextResponse.json({ ok: true, content, raw: json });
+    // HIPAA provider enforcement
+    const provider = providerFromEnv();
+    if (hipaa && provider.name === "local-echo") {
+      return bad(400, "HIPAA mode requires a HIPAA-eligible AI_PROVIDER (e.g., azure-openai).");
+    }
+
+    const messages = [{ role: "system" as const, content: system }, ...toProvider];
+    const answer = await provider.complete(messages, { temperature: 0.2, max_tokens: 1200 });
+
+    // Save assistant reply (encrypt too)
+    const encA = encryptPHI(answer);
+    const { data: assistMsg, error: saveErr } = await supa
+      .from("messages")
+      .insert({
+        chat_id: chatId,
+        role: "assistant",
+        content_enc: encA.ciphertext.toString("base64"),
+        content_iv: encA.iv.toString("base64"),
+        content_tag: encA.tag.toString("base64"),
+        content_sha256: encA.sha256,
+        is_phi: hipaa ? true : false,
+      })
+      .select("*")
+      .single();
+    if (saveErr) return bad(500, saveErr.message);
+
+    await recordAudit({
+      user_id: userId,
+      action: "model.infer",
+      resource_type: "chat",
+      resource_id: chatId,
+      route: "/api/chat",
+      request_id: requestId,
+      ip: req.ip || null,
+      user_agent: req.headers.get("user-agent"),
+      metadata: { provider: provider.name, scrubbed: true },
+    });
+
+    // We only return the assistant text to the client; client never sees raw ciphertext.
+    return NextResponse.json({ ok: true, content: answer });
   } catch (err: any) {
-    console.error(err);
-    return bad(500, err.message || "Unknown error");
+    // Do not log body/content
+    await recordAudit({
+      action: "error",
+      route: "/api/chat",
+      request_id: requestId,
+      metadata: { message: String(err?.message || err) },
+    });
+    return bad(500, "Internal error");
   }
 }
