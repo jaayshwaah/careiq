@@ -1,3 +1,4 @@
+// src/components/NewChatClient.tsx
 "use client";
 
 import React from "react";
@@ -14,23 +15,25 @@ type Message = {
   error?: boolean;
 };
 
+/* ---------- Layout helpers (unchanged) ---------- */
+
 function useSidebarOffset() {
-  const [left, setLeft] = React.useState(0);
+  const [left, setLeft] = React.useState<number>(0);
 
   React.useEffect(() => {
-    const aside = document.querySelector("aside") as HTMLElement | null;
-    if (!aside) return;
+    const el = document.querySelector<HTMLElement>('[data-sidebar="root"]');
+    if (!el) return;
 
-    const update = () => {
-      const w = aside.getBoundingClientRect().width;
-      setLeft(Math.max(0, Math.floor(w)));
+    const ro = new ResizeObserver(() => {
+      const rect = el.getBoundingClientRect();
+      setLeft(Math.max(0, rect.width));
+    });
+    ro.observe(el);
+
+    const onResize = () => {
+      const rect = el.getBoundingClientRect();
+      setLeft(Math.max(0, rect.width));
     };
-
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(aside);
-
-    const onResize = () => update();
     window.addEventListener("resize", onResize);
 
     return () => {
@@ -45,6 +48,7 @@ function useSidebarOffset() {
 export default function NewChatClient() {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [chatId, setChatId] = React.useState<string | null>(null);
+  const [draft, setDraft] = React.useState<string>(""); // <— NEW
   const endRef = React.useRef<HTMLDivElement | null>(null);
   const leftOffset = useSidebarOffset();
 
@@ -71,60 +75,65 @@ export default function NewChatClient() {
     }
 
     const data = await res.json();
-    const id = (data?.conversation?.id as string | undefined) ?? (data?.id as string | undefined);
-    if (!id) throw new Error("Conversation was created but no id was returned");
+    const id =
+      (data?.conversation?.id as string | undefined) ??
+      (data?.id as string | undefined);
+
+    if (!id) throw new Error("No conversation id returned");
     setChatId(id);
     return id;
   }
 
   async function handleSend(text: string) {
-    const conversationId = await ensureConversationId();
+    const id = await ensureConversationId();
 
-    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text };
+    // Optimistic user -> assistant shells
+    const user: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: text,
+    };
     const pendingAssist: Message = {
-      id: `pending-${Date.now()}`,
+      id: crypto.randomUUID(),
       role: "assistant",
-      content: "Thinking…",
+      content: "",
       pending: true,
     };
-    setMessages((m) => [...m, userMsg, pendingAssist]);
+    setMessages((m) => [...m, user, pendingAssist]);
+    setDraft(""); // clear composer
 
     try {
-      const res = await fetch("/api/messages", {
+      const res = await fetch(`/api/chat/${encodeURIComponent(id)}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        // Our /api/messages expects { conversation_id, role, content }
-        body: JSON.stringify({ conversation_id: conversationId, role: "user", content: text }),
+        body: JSON.stringify({ content: text }),
       });
 
-      let assistant: Message;
-      if (res.ok) {
-        const data = await res.json();
-        const apiMsg = data?.message;
-        assistant = apiMsg
-          ? {
-              id: apiMsg.id ?? crypto.randomUUID(),
-              role: (apiMsg.role as Role) ?? "assistant",
-              content: apiMsg.content ?? "",
-            }
-          : { id: crypto.randomUUID(), role: "assistant", content: "No reply returned." };
-      } else {
+      if (!res.ok) {
         const err = await tryJson(res);
-        assistant = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: err?.error || "I had trouble generating a reply just now. Try again?",
-        };
+        throw new Error(err?.error || `Chat failed (${res.status})`);
       }
 
-      setMessages((m) => m.map((msg) => (msg.id === pendingAssist.id ? assistant : msg)));
+      const data = await res.json();
+      const assistantText = (data?.content as string) ?? "";
+
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === pendingAssist.id
+            ? { ...msg, content: assistantText, pending: false }
+            : msg
+        )
+      );
     } catch (e) {
       setMessages((m) =>
         m.map((msg) =>
           msg.id === pendingAssist.id
             ? {
                 ...msg,
-                content: e instanceof Error ? e.message : "Something went wrong. Please try again.",
+                content:
+                  e instanceof Error
+                    ? e.message
+                    : "Something went wrong. Please try again.",
                 pending: false,
                 error: true,
               }
@@ -141,90 +150,71 @@ export default function NewChatClient() {
       {!hasMessages ? (
         <>
           <HeaderBanner />
-          <div className="mx-auto w-full max-w-3xl px-4">
-            <Suggestions targetId="composer-input" />
+
+          {/* Centered composer (empty state) */}
+          <div className="mx-auto w-full max-w-3xl px-4 mt-4 mb-3">
+            <Composer
+              id="composer-input"
+              value={draft}
+              onChange={setDraft}
+              onSend={handleSend}
+              positioning="flow"
+              placeholder="Message CareIQ"
+            />
           </div>
-          <div className="mx-auto w-full max-w-3xl px-4 mt-4 mb-16">
-            <Composer id="composer-input" onSend={handleSend} positioning="flow" />
+
+          {/* Move suggestions BELOW composer & only prefill (not send) */}
+          <div className="mx-auto w-full max-w-3xl px-4 mb-16">
+            <Suggestions
+              onPick={(t) => setDraft(t)}
+              targetId="composer-input"
+            />
           </div>
         </>
       ) : (
         <>
-          {/* Messages */}
-          <div
-            className="mx-auto w-full max-w-3xl flex-1 px-4 md:px-6"
-            aria-live="polite"
-            aria-relevant="additions"
-          >
-            <div className="pt-3 pb-36 space-y-4">
+          {/* Thread */}
+          <div className="mx-auto w-full max-w-3xl px-4 flex-1">
+            <div className="flex flex-col gap-4">
               {messages.map((m) => (
-                <MessageBubble key={m.id} m={m} />
+                <div key={m.id} className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="text-xs mb-1 opacity-60">{m.role}</div>
+                  <div className={m.pending ? "opacity-60 italic" : ""}>
+                    {m.content || (m.pending ? "Thinking…" : "")}
+                  </div>
+                  {m.error && (
+                    <div className="mt-2 text-xs text-red-600">
+                      Error generating reply. Try again.
+                    </div>
+                  )}
+                </div>
               ))}
               <div ref={endRef} />
             </div>
           </div>
 
-          {/* Fixed, content-aligned composer (stays out from under the sidebar) */}
+          {/* Footer composer */}
           <div
-            className="fixed bottom-0"
-            style={{
-              left: leftOffset,
-              right: 0,
-              background: "transparent",
-              pointerEvents: "none",
-              paddingBottom: "max(0px, env(safe-area-inset-bottom))",
-            }}
+            className="sticky bottom-0 left-0 right-0"
+            style={{ marginLeft: leftOffset }}
           >
-            <div className="mx-auto max-w-3xl px-4 py-4 md:px-6" style={{ pointerEvents: "auto" }}>
-              <Composer id="composer-input" onSend={handleSend} positioning="static" />
+            <div className="mx-auto w-full max-w-3xl px-4 py-3 bg-gradient-to-t from-background to-background/50 backdrop-blur">
+              <Composer
+                id="composer-input"
+                value={draft}
+                onChange={setDraft}
+                onSend={handleSend}
+                placeholder="Message CareIQ"
+              />
+              {/* Suggestions below footer composer as well (optional). 
+                  If you only want them on empty state, remove this block. */}
+              <div className="mt-3">
+                <Suggestions onPick={setDraft} targetId="composer-input" />
+              </div>
             </div>
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-/* ---------- Presentational subcomponents ---------- */
-
-function MessageBubble({ m }: { m: Message }) {
-  const isUser = m.role === "user";
-
-  // Match ChatWindow bubble styles (light-first, dark ready)
-  const bubble =
-    isUser
-      ? "bg-black text-white dark:bg-white dark:text-black"
-      : "bg-black/[0.05] text-gray-900 dark:bg-white/10 dark:text-white";
-
-  const meta =
-    isUser
-      ? "text-white/70 dark:text-black/60"
-      : m.pending
-      ? "text-gray-500 dark:text-white/50"
-      : "text-gray-600 dark:text-white/60";
-
-  if (isUser) {
-    return (
-      <div className="flex justify-end">
-        <div className={`max-w-[78%] rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-soft ${bubble}`}>
-          <div className="whitespace-pre-wrap">{m.content}</div>
-          <div className={`mt-1 text-[11px] ${meta}`}>You</div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex justify-start">
-      <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-soft ${bubble}`}>
-        <div
-          className="whitespace-pre-wrap"
-          style={{ opacity: m.pending ? 0.88 : 1 }}
-        >
-          {m.content}
-        </div>
-        <div className={`mt-1 text-[11px] ${meta}`}>{m.pending ? "Thinking…" : "Assistant"}</div>
-      </div>
     </div>
   );
 }
