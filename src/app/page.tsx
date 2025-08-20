@@ -105,7 +105,6 @@ export default function HomePage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
-  const [lastUsage, setLastUsage] = useState<{ input?: number; output?: number } | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -113,10 +112,9 @@ export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Signals for MessageList behavior
-  const [followNowSignal, setFollowNowSignal] = useState(0);      // bump when user sends
-  const [assistantTick, setAssistantTick] = useState(0);          // bump per assistant token
+  const [followNowSignal, setFollowNowSignal] = useState(0);
+  const [assistantTick, setAssistantTick] = useState(0);
 
-  // TODO: wire to auth user later
   const userName = "Josh";
 
   const suggestions = useMemo(
@@ -219,12 +217,10 @@ export default function HomePage() {
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setInput("");
     setStreamingId(asstId);
-    setLastUsage(null);
 
     // Signal MessageList to auto-resume and pin to bottom on send
     setFollowNowSignal((n) => n + 1);
 
-    // Open SSE stream (via fetch; we'll parse "data: {...}\n\n" frames)
     const controller = new AbortController();
     abortRef.current = controller;
     setIsStreaming(true);
@@ -250,7 +246,6 @@ export default function HomePage() {
         return;
       }
 
-      // Parse SSE frames
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -261,14 +256,7 @@ export default function HomePage() {
             setMessages((prev) =>
               prev.map((m) => (m.id === asstId ? { ...m, content: (m.content || "") + evt.text } : m))
             );
-            // bump assistant token tick for toast/auto-follow logic
             setAssistantTick((t) => t + 1);
-            break;
-          case "status":
-            // optional: surface in UI
-            break;
-          case "usage":
-            setLastUsage({ input: evt.input, output: evt.output });
             break;
           case "error":
             setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, content: evt.message } : m)));
@@ -278,10 +266,13 @@ export default function HomePage() {
             setStreamingId(null);
             abortRef.current = null;
             break;
+          case "usage":
+          case "status":
+            // Ignored for UI now
+            break;
         }
       };
 
-      // Stream loop
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -314,7 +305,6 @@ export default function HomePage() {
       setIsStreaming(false);
       setStreamingId(null);
       abortRef.current = null;
-      // Clear attachments after send
       setAttachments([]);
     }
   }
@@ -334,13 +324,11 @@ export default function HomePage() {
           accept=".txt,.md,.csv,.json,.pdf,.docx"
         />
 
-        {/* HERO: before first message */}
         {showHero ? (
           <main className="flex-1 px-6 py-10">
             <div className="mx-auto w-full max-w-2xl min-h-[60vh] grid place-content-center">
               <div className="w-full">
-                <StaticHeading phrases={[`Good to see you, ${userName}.`, "Ask me anything", "Summarize this", "Draft an email", "Brainstorm ideas", "Explain a topic", "Create a plan"]} />
-
+                <StaticHeading phrases={headlinePhrases} />
                 <Composer
                   value={input}
                   onChange={setInput}
@@ -353,11 +341,7 @@ export default function HomePage() {
                   size="lg"
                   className="shadow-soft"
                 />
-
-                {/* Attached files preview */}
                 {attachments.length > 0 && <AttachmentBar atts={attachments} onRemove={removeAttachment} />}
-
-                {/* Suggestions */}
                 <div className="relative mt-6">
                   <span
                     className="pointer-events-none absolute inset-x-8 -top-3 bottom-0 z-10 rounded-[28px] blur-2xl opacity-60"
@@ -368,7 +352,7 @@ export default function HomePage() {
                     aria-hidden
                   />
                   <div className="relative flex flex-wrap items-center justify-center gap-2 md:gap-3">
-                    {["Summarize this", "Draft an email", "Explain a topic", "Create a plan"].map((t) => (
+                    {suggestions.map((t) => (
                       <button
                         key={t}
                         onClick={() => handleSend(t)}
@@ -384,12 +368,9 @@ export default function HomePage() {
             </div>
           </main>
         ) : (
-          // CHAT VIEW: after first message
           <>
             <main className="flex-1 flex flex-col">
-              {/* IMPORTANT: min-h-0 ensures the inner flex child can measure and scroll */}
               <div className="mx-auto w-full max-w-3xl flex-1 min-h-0 px-4">
-                {/* MessageList owns scrolling; no other vertical overflow containers */}
                 <div className="flex h-full flex-col">
                   <MessageList
                     messages={messages}
@@ -414,19 +395,7 @@ export default function HomePage() {
                   onAttachClick={() => fileInputRef.current?.click()}
                   placeholder="Message CareIQ..."
                 />
-                {/* Attached files preview */}
                 {attachments.length > 0 && <AttachmentBar atts={attachments} onRemove={removeAttachment} />}
-
-                {/* Optional: show usage if provided by SSE */}
-                {lastUsage && (lastUsage.input || lastUsage.output) ? (
-                  <p className="mt-2 text-[11px] text-neutral-400 text-center">
-                    tokens — in: {lastUsage.input ?? "?"} • out: {lastUsage.output ?? "?"}
-                  </p>
-                ) : (
-                  <p className="mt-2 text-[11px] text-neutral-400 text-center">
-                    CareIQ can make mistakes. Check important info.
-                  </p>
-                )}
               </div>
             </div>
           </>
