@@ -1,7 +1,7 @@
+// src/app/page.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import Composer from "@/components/Composer";
 import MessageList from "@/components/MessageList";
@@ -65,7 +65,13 @@ function StaticHeading({ phrases }: { phrases: string[] }) {
 }
 
 /** Small chips for attachments */
-function AttachmentBar({ atts, onRemove }: { atts: Attachment[]; onRemove: (id: string) => void }) {
+function AttachmentBar({
+  atts,
+  onRemove,
+}: {
+  atts: Attachment[];
+  onRemove: (id: string) => void;
+}) {
   return (
     <div className="mt-3 flex flex-wrap gap-2">
       {atts.map((a) => (
@@ -75,11 +81,13 @@ function AttachmentBar({ atts, onRemove }: { atts: Attachment[]; onRemove: (id: 
           title={a.name}
         >
           <span className="truncate max-w-[24ch]">{a.name}</span>
-          {a.status === "pending" && <span className="text-neutral-400">extracting…</span>}
+          {a.status === "pending" && (
+            <span className="text-neutral-400">extracting…</span>
+          )}
           {a.status === "error" && <span className="text-red-500">error</span>}
           <button
             type="button"
-            className="rounded hover:bg-neutral-100 px-1"
+            className="rounded px-1 hover:bg-neutral-100"
             onClick={() => onRemove(a.id)}
             aria-label={`Remove ${a.name}`}
             title="Remove"
@@ -93,8 +101,6 @@ function AttachmentBar({ atts, onRemove }: { atts: Attachment[]; onRemove: (id: 
 }
 
 export default function HomePage() {
-  const router = useRouter();
-
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -105,6 +111,10 @@ export default function HomePage() {
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Signals for MessageList behavior
+  const [followNowSignal, setFollowNowSignal] = useState(0);      // bump when user sends
+  const [assistantTick, setAssistantTick] = useState(0);          // bump per assistant token
 
   // TODO: wire to auth user later
   const userName = "Josh";
@@ -126,19 +136,6 @@ export default function HomePage() {
     ],
     [userName]
   );
-
-  const listRef = useRef<HTMLDivElement | null>(null);
-
-  const scrollToBottom = () => {
-    const el = listRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length]);
 
   /** Stop streaming mid-reply */
   const handleStop = () => {
@@ -181,7 +178,9 @@ export default function HomePage() {
       );
     } catch {
       setAttachments((prev) =>
-        prev.map((a) => (a.status === "pending" ? { ...a, status: "error", error: "Failed to extract" } : a))
+        prev.map((a) =>
+          a.status === "pending" ? { ...a, status: "error", error: "Failed to extract" } : a
+        )
       );
     }
   };
@@ -222,6 +221,9 @@ export default function HomePage() {
     setStreamingId(asstId);
     setLastUsage(null);
 
+    // Signal MessageList to auto-resume and pin to bottom on send
+    setFollowNowSignal((n) => n + 1);
+
     // Open SSE stream (via fetch; we'll parse "data: {...}\n\n" frames)
     const controller = new AbortController();
     abortRef.current = controller;
@@ -259,9 +261,11 @@ export default function HomePage() {
             setMessages((prev) =>
               prev.map((m) => (m.id === asstId ? { ...m, content: (m.content || "") + evt.text } : m))
             );
+            // bump assistant token tick for toast/auto-follow logic
+            setAssistantTick((t) => t + 1);
             break;
           case "status":
-            // optionally show in UI; our spinner already covers "thinking"
+            // optional: surface in UI
             break;
           case "usage":
             setLastUsage({ input: evt.input, output: evt.output });
@@ -295,9 +299,8 @@ export default function HomePage() {
           try {
             const json = JSON.parse(data) as SseEvent;
             handleEvent(json);
-            scrollToBottom();
           } catch {
-            // ignore keep-alive lines
+            // ignore keep-alives
           }
         }
       }
@@ -311,7 +314,6 @@ export default function HomePage() {
       setIsStreaming(false);
       setStreamingId(null);
       abortRef.current = null;
-      requestAnimationFrame(scrollToBottom);
       // Clear attachments after send
       setAttachments([]);
     }
@@ -337,7 +339,7 @@ export default function HomePage() {
           <main className="flex-1 px-6 py-10">
             <div className="mx-auto w-full max-w-2xl min-h-[60vh] grid place-content-center">
               <div className="w-full">
-                <StaticHeading phrases={headlinePhrases} />
+                <StaticHeading phrases={[`Good to see you, ${userName}.`, "Ask me anything", "Summarize this", "Draft an email", "Brainstorm ideas", "Explain a topic", "Create a plan"]} />
 
                 <Composer
                   value={input}
@@ -366,7 +368,7 @@ export default function HomePage() {
                     aria-hidden
                   />
                   <div className="relative flex flex-wrap items-center justify-center gap-2 md:gap-3">
-                    {suggestions.map((t) => (
+                    {["Summarize this", "Draft an email", "Explain a topic", "Create a plan"].map((t) => (
                       <button
                         key={t}
                         onClick={() => handleSend(t)}
@@ -385,14 +387,16 @@ export default function HomePage() {
           // CHAT VIEW: after first message
           <>
             <main className="flex-1 flex flex-col">
-              <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col min-h-0 px-4">
-                <div
-                  ref={listRef}
-                  className="flex-1 overflow-y-auto overscroll-contain pt-6 pb-32"
-                  aria-live="polite"
-                  aria-busy={isStreaming ? "true" : "false"}
-                >
-                  <MessageList messages={messages} isStreaming={isStreaming} streamingId={streamingId} />
+              {/* IMPORTANT: min-h-0 ensures the inner flex child can measure and scroll */}
+              <div className="mx-auto w-full max-w-3xl flex-1 min-h-0 px-4">
+                {/* MessageList owns scrolling; no other vertical overflow containers */}
+                <div className="flex h-full flex-col">
+                  <MessageList
+                    messages={messages}
+                    isStreaming={isStreaming}
+                    followNowSignal={followNowSignal}
+                    newAssistantTokenTick={assistantTick}
+                  />
                 </div>
               </div>
             </main>

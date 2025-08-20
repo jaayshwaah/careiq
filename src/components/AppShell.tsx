@@ -5,7 +5,12 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 
-const AUTH_PATHS = new Set(["/login", "/register", "/reset-password", "/update-password"]);
+const AUTH_PATHS = new Set([
+  "/login",
+  "/register",
+  "/reset-password",
+  "/update-password",
+]);
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";
@@ -14,22 +19,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("careiq_sidebar_collapsed");
-      if (saved) setCollapsed(saved === "1");
-    } catch {}
+    const mql = window.matchMedia("(max-width: 1024px)");
+    const handler = () => setCollapsed(mql.matches);
+    handler();
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
   }, []);
-  useEffect(() => {
-    try {
-      localStorage.setItem("careiq_sidebar_collapsed", collapsed ? "1" : "0");
-    } catch {}
-  }, [collapsed]);
 
   if (onAuthRoute) {
-    // Minimal page chrome on auth routes
     return (
-      <div className="min-h-svh">
-        <main className="mx-auto w-full max-w-md px-5 py-10">{children}</main>
+      <div className="min-h-svh w-full">
+        <main className="mx-auto w-full max-w-3xl px-4 py-8">{children}</main>
       </div>
     );
   }
@@ -37,8 +37,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-svh">
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="mx-auto w-full max-w-3xl flex-1 overflow-hidden px-4 pb-8 pt-4 sm:pt-6 lg:pt-8 animate-fadeUp">
+
+      {/* Leave the central column NOT scrollable; children manage their own scroll (MessageList). */}
+      <main className="flex min-w-0 flex-1">
+        <div className="mx-auto w-full max-w-3xl flex min-h-0 flex-1 flex-col px-4 pb-8 pt-4 sm:pt-6 lg:pt-8 animate-fadeUp">
           {children}
         </div>
       </main>

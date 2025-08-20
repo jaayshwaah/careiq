@@ -1,137 +1,139 @@
+// src/components/MessageList.tsx
 "use client";
 
-import {
-  Copy,
-  ThumbsUp,
-  ThumbsDown,
-  Volume2,
-  Wand2,
-  RotateCcw,
-  Loader2,
-} from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { useAutoScroll } from "@/lib/useAutoScroll";
 import { cn } from "@/lib/utils";
 
+/** Types (align with your app) */
 type ChatRole = "system" | "user" | "assistant";
-type ChatMessage = {
+export type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
-  createdAt: string; // ISO
+  createdAt?: string; // ISO
 };
-
-function ActionIcon({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick?: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      className="h-7 w-7 grid place-content-center rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700"
-    >
-      {children}
-    </button>
-  );
-}
 
 export default function MessageList({
   messages,
-  isStreaming,
-  streamingId,
+  isStreaming = false,
+  /** Increment this every time you send a new user message to auto-resume follow. */
+  followNowSignal = 0,
+  /** Increment this for each assistant token chunk to power the "New reply" toast when scrolled up. */
+  newAssistantTokenTick = 0,
 }: {
   messages: ChatMessage[];
   isStreaming?: boolean;
-  streamingId: string | null;
+  followNowSignal?: number;
+  newAssistantTokenTick?: number;
 }) {
-  const copy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // ignore
+  const {
+    ref,
+    isAtBottom,
+    paused,
+    hasUnseen,
+    handleScroll,
+    notifyNewContent,
+    resumeAutoFollow,
+    clearUnseen,
+  } = useAutoScroll<HTMLDivElement>(72);
+
+  // Follow now when parent signals (user sent a message).
+  useEffect(() => {
+    if (followNowSignal > 0) {
+      resumeAutoFollow("auto"); // snap to bottom on send
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [followNowSignal]);
+
+  // Notify hook when assistant tokens arrive (to show toast if scrolled up & paused).
+  useEffect(() => {
+    if (newAssistantTokenTick > 0) {
+      notifyNewContent("assistant");
+    }
+  }, [newAssistantTokenTick, notifyNewContent]);
+
+  // Also notify on message length changes (covers non-stream inserts, edits, etc.)
+  useEffect(() => {
+    notifyNewContent("assistant");
+  }, [messages.length, notifyNewContent]);
+
+  const rendered = useMemo(
+    () => messages.map((m) => <Bubble key={m.id} role={m.role} content={m.content} />),
+    [messages]
+  );
 
   return (
-    <div className="flex flex-col gap-6">
-      {messages.map((m, i) => {
-        const isStreamingThis = isStreaming && streamingId === m.id;
-        const noContentYet = isStreamingThis && m.content.length === 0;
+    <div className="relative flex-1 min-h-0">
+      {/* Scrollable region (single vertical scroller in the app) */}
+      <div
+        ref={ref}
+        onScroll={handleScroll}
+        className="flex h-full w-full flex-col gap-3 overflow-y-auto pr-1"
+        aria-live="polite"
+        aria-busy={isStreaming ? "true" : "false"}
+      >
+        <div className="flex flex-col gap-3 pt-2 pb-20">{rendered}</div>
+      </div>
 
-        if (m.role === "user") {
-          // Right-aligned, pill bubble
-          return (
-            <div key={m.id} className="flex justify-end">
-              <div
-                className={cn(
-                  "max-w-[65ch] rounded-2xl px-3 py-1.5",
-                  "bg-violet-100 text-violet-900"
-                )}
+      {/* Floating controls when scrolled up */}
+      {!isAtBottom && (
+        <>
+          {/* Jump to latest FAB */}
+          <button
+            onClick={() => resumeAutoFollow("smooth")}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-zinc-200 bg-white/90 px-4 py-1.5 text-sm shadow-md hover:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-300"
+          >
+            Jump to latest ↓
+          </button>
+
+          {/* New reply toast (appears slightly above the FAB) */}
+          {hasUnseen && (
+            <div
+              className="absolute bottom-14 left-1/2 -translate-x-1/2 rounded-md border border-zinc-200 bg-white/95 px-3 py-1.5 text-xs shadow-sm"
+              role="status"
+            >
+              New reply
+              <button
+                onClick={() => {
+                  clearUnseen();
+                  resumeAutoFollow("smooth");
+                }}
+                className="ml-2 underline underline-offset-2 hover:opacity-80"
               >
-                <p className="whitespace-pre-wrap text-[15px] leading-6">{m.content}</p>
-              </div>
+                View
+              </button>
             </div>
-          );
-        }
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
-        // Assistant — left aligned
-        return (
-          <div key={m.id} className="flex">
-            <div className="min-w-0">
-              {/* If we're waiting on the first token: show spinner + 'Thinking…' */}
-              {noContentYet ? (
-                <div className="flex items-center gap-2 text-neutral-500">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Thinking…</span>
-                </div>
-              ) : (
-                <>
-                  <div className="max-w-[65ch] text-[15px] md:text-[16px] leading-7 text-neutral-900">
-                    <p className="whitespace-pre-wrap">
-                      {m.content}
-                      {/* Blinking caret while streaming */}
-                      {isStreamingThis && (
-                        <span
-                          className="inline-block align-[-0.2em] w-[1px] h-[1.2em] bg-neutral-500 ml-0.5 animate-pulse"
-                          aria-hidden
-                        />
-                      )}
-                    </p>
-                  </div>
+function Bubble({ role, content }: { role: ChatRole; content: string }) {
+  const isUser = role === "user";
+  const isAssistant = role === "assistant";
+  const isSystem = role === "system";
 
-                  {/* Action bar */}
-                  <div className="mt-3 flex items-center gap-1.5 text-neutral-500">
-                    <ActionIcon label="Copy" onClick={() => copy(m.content)}>
-                      <Copy className="h-4 w-4" />
-                    </ActionIcon>
-                    <ActionIcon label="Good response">
-                      <ThumbsUp className="h-4 w-4" />
-                    </ActionIcon>
-                    <ActionIcon label="Bad response">
-                      <ThumbsDown className="h-4 w-4" />
-                    </ActionIcon>
-                    <ActionIcon label="Listen">
-                      <Volume2 className="h-4 w-4" />
-                    </ActionIcon>
-                    <ActionIcon label="Improve writing">
-                      <Wand2 className="h-4 w-4" />
-                    </ActionIcon>
-                    <ActionIcon label="Regenerate">
-                      <RotateCcw className="h-4 w-4" />
-                    </ActionIcon>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        );
-      })}
+  return (
+    <div
+      className={cn(
+        "w-full",
+        isUser && "flex justify-end",
+        (isAssistant || isSystem) && "flex justify-start"
+      )}
+    >
+      <div
+        className={cn(
+          "max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-sm",
+          isUser && "bg-zinc-900 text-white",
+          isAssistant && "bg-white text-zinc-900 border border-zinc-200",
+          isSystem && "bg-amber-50 text-amber-900 border border-amber-200"
+        )}
+      >
+        {content}
+      </div>
     </div>
   );
 }
