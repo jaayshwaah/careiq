@@ -8,11 +8,19 @@ import MessageList from "@/components/MessageList";
 
 /** Types */
 type ChatRole = "system" | "user" | "assistant";
+type AttachmentPayload = {
+  name: string;
+  type: string;
+  size: number;
+  text: string;
+};
 type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
   createdAt: string; // ISO
+  /** Snapshot of attachments used when this user message was sent (for regenerate). */
+  attachments?: AttachmentPayload[];
 };
 
 type Attachment = {
@@ -112,8 +120,8 @@ export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Signals for MessageList behavior
-  const [followNowSignal, setFollowNowSignal] = useState(0);
-  const [assistantTick, setAssistantTick] = useState(0);
+  const [followNowSignal, setFollowNowSignal] = useState(0); // bump when user sends
+  const [assistantTick, setAssistantTick] = useState(0); // bump per assistant token
 
   const userName = "Josh";
 
@@ -171,74 +179,64 @@ export default function HomePage() {
           const match = data.files.find((f) => f.name === a.name);
           if (!match) return a;
           if (match.error) return { ...a, status: "error", error: match.error };
-          return { ...a, status: "ready", text: (match.text || "").slice(0, 150_000) };
+          return {
+            ...a,
+            status: "ready",
+            text: (match.text || "").slice(0, 150_000),
+          };
         })
       );
     } catch {
       setAttachments((prev) =>
         prev.map((a) =>
-          a.status === "pending" ? { ...a, status: "error", error: "Failed to extract" } : a
+          a.status === "pending"
+            ? { ...a, status: "error", error: "Failed to extract" }
+            : a
         )
       );
     }
   };
 
-  const removeAttachment = (id: string) => setAttachments((prev) => prev.filter((a) => a.id !== id));
+  const removeAttachment = (id: string) =>
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
 
-  /** Send a message and stream SSE reply (tokens/status/usage/errors) */
-  async function handleSend(text?: string) {
-    const content = (text ?? input).trim();
-    if (!content || isStreaming) return;
-
-    // Build attachments payload to send
-    const ready = attachments.filter((a) => a.status === "ready" && a.text?.trim());
-    const attsPayload = ready.map((a) => ({
-      name: a.name,
-      type: a.type,
-      size: a.size,
-      text: (a.text || "").slice(0, 60_000),
-    }));
-
-    // Append user message + placeholder assistant
-    const userMsg: ChatMessage = {
-      id: uid("user"),
-      role: "user",
-      content,
-      createdAt: new Date().toISOString(),
-    };
-    const asstId = uid("asst");
-    const assistantMsg: ChatMessage = {
-      id: asstId,
-      role: "assistant",
-      content: "",
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, userMsg, assistantMsg]);
-    setInput("");
-    setStreamingId(asstId);
-
-    // Signal MessageList to auto-resume and pin to bottom on send
-    setFollowNowSignal((n) => n + 1);
+  /** Core streaming helper used by both Send and Regenerate */
+  async function streamAssistant({
+    baseMessages,
+    targetAssistantId,
+    attachmentsSnapshot,
+  }: {
+    baseMessages: { role: ChatRole; content: string }[];
+    targetAssistantId: string;
+    attachmentsSnapshot?: AttachmentPayload[];
+  }) {
+    // cancel any current stream first
+    abortRef.current?.abort();
 
     const controller = new AbortController();
     abortRef.current = controller;
     setIsStreaming(true);
+    setStreamingId(targetAssistantId);
 
     try {
       const res = await fetch("/api/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...messages, userMsg].map(({ role, content }) => ({ role, content })),
-          attachments: attsPayload,
-        }),
+        body: JSON.stringify(
+          attachmentsSnapshot && attachmentsSnapshot.length > 0
+            ? { messages: baseMessages, attachments: attachmentsSnapshot }
+            : { messages: baseMessages }
+        ),
         signal: controller.signal,
       });
 
       if (!res.ok || !res.body) {
         setMessages((prev) =>
-          prev.map((m) => (m.id === asstId ? { ...m, content: "Error starting stream. Check server logs." } : m))
+          prev.map((m) =>
+            m.id === targetAssistantId
+              ? { ...m, content: "Error starting stream. Check server logs." }
+              : m
+          )
         );
         setIsStreaming(false);
         setStreamingId(null);
@@ -254,12 +252,20 @@ export default function HomePage() {
         switch (evt.type) {
           case "token":
             setMessages((prev) =>
-              prev.map((m) => (m.id === asstId ? { ...m, content: (m.content || "") + evt.text } : m))
+              prev.map((m) =>
+                m.id === targetAssistantId
+                  ? { ...m, content: (m.content || "") + evt.text }
+                  : m
+              )
             );
             setAssistantTick((t) => t + 1);
             break;
           case "error":
-            setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, content: evt.message } : m)));
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === targetAssistantId ? { ...m, content: evt.message } : m
+              )
+            );
             break;
           case "done":
             setIsStreaming(false);
@@ -268,7 +274,7 @@ export default function HomePage() {
             break;
           case "usage":
           case "status":
-            // Ignored for UI now
+            // not surfaced
             break;
         }
       };
@@ -298,15 +304,110 @@ export default function HomePage() {
     } catch (err) {
       if ((err as any)?.name !== "AbortError") {
         setMessages((prev) =>
-          prev.map((m) => (m.id === asstId ? { ...m, content: "Network error while streaming reply." } : m))
+          prev.map((m) =>
+            m.id === targetAssistantId
+              ? { ...m, content: "Network error while streaming reply." }
+              : m
+          )
         );
       }
     } finally {
       setIsStreaming(false);
       setStreamingId(null);
       abortRef.current = null;
-      setAttachments([]);
     }
+  }
+
+  /** Send a new message and create a fresh assistant reply */
+  async function handleSend(text?: string) {
+    const content = (text ?? input).trim();
+    if (!content || isStreaming) return;
+
+    // Build attachments payload to send
+    const ready = attachments.filter(
+      (a) => a.status === "ready" && a.text?.trim()
+    );
+    const attsPayload: AttachmentPayload[] = ready.map((a) => ({
+      name: a.name,
+      type: a.type,
+      size: a.size,
+      text: (a.text || "").slice(0, 60_000),
+    }));
+
+    // Append user message + placeholder assistant
+    const userMsg: ChatMessage = {
+      id: uid("user"),
+      role: "user",
+      content,
+      createdAt: new Date().toISOString(),
+      attachments: attsPayload.length ? attsPayload : undefined, // snapshot for regenerate
+    };
+    const asstId = uid("asst");
+    const assistantMsg: ChatMessage = {
+      id: asstId,
+      role: "assistant",
+      content: "",
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setInput("");
+
+    // Signal MessageList to auto-resume and pin to bottom on send
+    setFollowNowSignal((n) => n + 1);
+
+    // Stream using full context up through the new user message
+    await streamAssistant({
+      baseMessages: [...messages, userMsg].map(({ role, content }) => ({
+        role,
+        content,
+      })),
+      targetAssistantId: asstId,
+      attachmentsSnapshot: attsPayload,
+    });
+
+    // Clear UI attachments after send (we stored a snapshot on the user message)
+    setAttachments([]);
+  }
+
+  /** Regenerate the given assistant message (using the user message immediately before it, reusing its attachments) */
+  async function handleRegenerate(assistantMessageId: string) {
+    if (isStreaming) return; // prevent overlapping streams
+
+    const idx = messages.findIndex((m) => m.id === assistantMessageId);
+    if (idx === -1) return;
+
+    // Find the nearest preceding user message
+    let userIdx = -1;
+    for (let i = idx - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        userIdx = i;
+        break;
+      }
+    }
+    if (userIdx === -1) return; // nothing to regenerate against
+
+    const userMsg = messages[userIdx];
+
+    // Base context is everything up to and including that user message
+    const base = messages.slice(0, userIdx + 1).map(({ role, content }) => ({
+      role,
+      content,
+    }));
+
+    // Clear current assistant content so we stream into the same bubble
+    setMessages((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, content: "" } : m))
+    );
+
+    // Resume follow on regenerate as well (nice UX)
+    setFollowNowSignal((n) => n + 1);
+
+    await streamAssistant({
+      baseMessages: base,
+      targetAssistantId: assistantMessageId,
+      attachmentsSnapshot: userMsg.attachments, // <— re-send the same attachments
+    });
   }
 
   const showHero = messages.length === 0;
@@ -341,7 +442,9 @@ export default function HomePage() {
                   size="lg"
                   className="shadow-soft"
                 />
-                {attachments.length > 0 && <AttachmentBar atts={attachments} onRemove={removeAttachment} />}
+                {attachments.length > 0 && (
+                  <AttachmentBar atts={attachments} onRemove={removeAttachment} />
+                )}
                 <div className="relative mt-6">
                   <span
                     className="pointer-events-none absolute inset-x-8 -top-3 bottom-0 z-10 rounded-[28px] blur-2xl opacity-60"
@@ -375,8 +478,10 @@ export default function HomePage() {
                   <MessageList
                     messages={messages}
                     isStreaming={isStreaming}
+                    streamingId={streamingId}
                     followNowSignal={followNowSignal}
                     newAssistantTokenTick={assistantTick}
+                    onRegenerate={handleRegenerate}
                   />
                 </div>
               </div>
@@ -395,7 +500,9 @@ export default function HomePage() {
                   onAttachClick={() => fileInputRef.current?.click()}
                   placeholder="Message CareIQ..."
                 />
-                {attachments.length > 0 && <AttachmentBar atts={attachments} onRemove={removeAttachment} />}
+                {attachments.length > 0 && (
+                  <AttachmentBar atts={attachments} onRemove={removeAttachment} />
+                )}
               </div>
             </div>
           </>
