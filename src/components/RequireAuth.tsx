@@ -1,13 +1,9 @@
+// src/components/RequireAuth.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getBrowserSupabase } from "@/lib/supabaseClient";
 
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -15,22 +11,22 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     let cancelled = false;
+    const supabase = getBrowserSupabase();
 
-    async function check() {
+    async function ensureSession() {
       const { data } = await supabase.auth.getSession();
-      if (!cancelled) {
-        if (!data.session) {
-          router.replace("/login");
-        } else {
-          setReady(true);
-        }
+      if (!data.session) {
+        router.replace("/login");
+        return;
       }
+      if (!cancelled) setReady(true);
     }
-    check();
 
-    // Keep reacting to auth changes (e.g., logout)
+    ensureSession();
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) router.replace("/login");
+      else setReady(true);
     });
 
     return () => {
@@ -39,6 +35,6 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
     };
   }, [router]);
 
-  if (!ready) return null; // or a spinner
+  if (!ready) return null; // could render a spinner
   return <>{children}</>;
 }

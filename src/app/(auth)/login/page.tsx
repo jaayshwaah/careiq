@@ -1,38 +1,126 @@
 // src/app/(auth)/login/page.tsx
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { getBrowserSupabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [pass, setPass] = useState('');
+  const router = useRouter();
+  const supabase = getBrowserSupabase();
+
+  const [mode, setMode] = useState<"password" | "magic">("password");
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function signInWithPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null); setMsg(null); setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+      if (error) throw error;
+      router.replace("/");
+    } catch (e: any) {
+      setErr(e?.message ?? "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function sendMagicLink(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null); setMsg(null); setLoading(true);
+    try {
+      const appUrl =
+        process.env.NEXT_PUBLIC_APP_URL ??
+        (typeof window !== "undefined" ? window.location.origin : "");
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: appUrl ? `${appUrl}/login` : undefined },
+      });
+      if (error) throw error;
+      setMsg("Magic link sent! Check your inbox.");
+    } catch (e: any) {
+      setErr(e?.message ?? "Could not send magic link");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <main className="mx-auto max-w-md p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Login</h1>
-      <p className="text-sm opacity-70">Mock auth for now — no backend calls.</p>
-      <div className="space-y-3">
-        <input
-          className="w-full border rounded-lg px-3 py-2"
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          className="w-full border rounded-lg px-3 py-2"
-          type="password"
-          placeholder="Password"
-          value={pass}
-          onChange={(e) => setPass(e.target.value)}
-        />
-        <button
-          className="w-full px-4 py-2 rounded-lg bg-blue-600 text-white"
-          onClick={() => alert('Mock login only.')}
-        >
-          Sign in
-        </button>
+    <main className="mx-auto max-w-md">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
+        <p className="mt-2 text-sm text-neutral-600">Sign in to continue</p>
       </div>
+
+      <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+        <div className="mb-4 flex gap-2">
+          <button
+            className={`flex-1 rounded-xl border px-3 py-2 text-sm ${mode === "password" ? "border-neutral-800 dark:border-neutral-200" : "border-neutral-200 dark:border-neutral-800"}`}
+            onClick={() => setMode("password")}
+            type="button"
+          >
+            Password
+          </button>
+          <button
+            className={`flex-1 rounded-xl border px-3 py-2 text-sm ${mode === "magic" ? "border-neutral-800 dark:border-neutral-200" : "border-neutral-200 dark:border-neutral-800"}`}
+            onClick={() => setMode("magic")}
+            type="button"
+          >
+            Magic link
+          </button>
+        </div>
+
+        <form
+          onSubmit={mode === "password" ? signInWithPassword : sendMagicLink}
+          className="space-y-3"
+        >
+          <input
+            type="email"
+            required
+            placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-800 dark:bg-neutral-900"
+          />
+
+          {mode === "password" && (
+            <input
+              type="password"
+              required
+              placeholder="Password"
+              value={pass}
+              onChange={(e) => setPass(e.target.value)}
+              className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-800 dark:bg-neutral-900"
+            />
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-black px-4 py-2 text-white transition hover:opacity-90 disabled:opacity-60 dark:bg-white dark:text-black"
+          >
+            {loading ? "Working…" : mode === "password" ? "Sign in" : "Send magic link"}
+          </button>
+        </form>
+
+        <div className="mt-3 text-center text-sm">
+          <a href="/reset-password" className="text-neutral-600 hover:underline">
+            Forgot password?
+          </a>
+        </div>
+      </div>
+
+      {err && <p className="mt-3 text-sm text-red-600">{err}</p>}
+      {msg && <p className="mt-3 text-sm text-emerald-600">{msg}</p>}
+
+      <p className="mt-6 text-center text-sm text-neutral-600">
+        New here? <a className="underline" href="/register">Create an account</a>
+      </p>
     </main>
   );
 }

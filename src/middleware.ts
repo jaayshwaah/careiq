@@ -1,9 +1,11 @@
 // src/middleware.ts
 import { NextResponse, type NextRequest } from "next/server";
 
+// Avoid static assets
 export const config = {
-  // Run on everything except static assets
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|images/|fonts/).*)",
+  ],
 };
 
 const PROTECTED_API_PREFIXES = [
@@ -11,23 +13,15 @@ const PROTECTED_API_PREFIXES = [
   "/api/chat",
   "/api/messages",
   "/api/ingest",
+  // add more paths if needed
 ];
 
 export function middleware(req: NextRequest) {
-  const url = req.nextUrl;
+  const { pathname } = req.nextUrl;
 
-  // Security headers on all responses
-  const res = NextResponse.next();
-  res.headers.set("X-Content-Type-Options", "nosniff");
-  res.headers.set("X-Frame-Options", "DENY");
-  res.headers.set("Referrer-Policy", "no-referrer");
-  res.headers.set("Permissions-Policy", "geolocation=()");
-  res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
-
-  // Only enforce Authorization on selected API routes (let /api/auth or public endpoints pass)
-  if (url.pathname.startsWith("/api/")) {
-    const protectedMatch = PROTECTED_API_PREFIXES.some((p) => url.pathname.startsWith(p));
-    if (protectedMatch) {
+  if (pathname.startsWith("/api/")) {
+    const needsAuth = PROTECTED_API_PREFIXES.some((p) => pathname.startsWith(p));
+    if (needsAuth) {
       const auth = req.headers.get("authorization") || "";
       if (!auth.startsWith("Bearer ")) {
         return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
@@ -35,5 +29,5 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  return res;
+  return NextResponse.next();
 }

@@ -28,9 +28,10 @@ build/
 # --- Vercel ---
 .vercel/
 
-# --- Supabase local artifacts (safe to ignore) ---
+# --- Supabase local artifacts ---
 supabase/.temp
 supabase/.branches
+supabase/.local/*   # add this (contains local dev DB/secrets if you ever run `supabase start`)
 
 # --- Env files: NEVER commit secrets ---
 .env
@@ -38,7 +39,7 @@ supabase/.branches
 !.env.example
 !.env*.example
 
-# If you use dotenv files per env:
+# Explicitly ignore common variations
 .env.local
 .env.development
 .env.development.local
@@ -46,3 +47,7 @@ supabase/.branches
 .env.production.local
 .env.test
 .env.test.local
+
+# --- Misc ---
+*.tgz
+*.zip
