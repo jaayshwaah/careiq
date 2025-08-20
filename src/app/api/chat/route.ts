@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { buildRagContext } from "@/lib/ai/buildRagContext";
 
 export const runtime = "nodejs";
@@ -10,82 +10,72 @@ function bad(status: number, message: string) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
-export async function POST(req: Request) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+export async function POST(req: NextRequest) {
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
   if (!apiKey) return bad(500, "Missing OPENROUTER_API_KEY");
 
-  let payload: any;
   try {
-    payload = await req.json();
-  } catch {
-    return bad(400, "Invalid JSON body");
-  }
+    const body = await req.json().catch(() => ({}));
+    const messages = (body.messages ?? []) as Array<{ role: string; content: string }>;
+    const userText: string | undefined = body.message || messages.find((m: any) => m.role === "user")?.content;
+    const facilityId: string | null = body.facilityId ?? null;
+    const category: string | null = body.category ?? null;
 
-  const {
-    messages,
-    model = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-8b-instruct",
-    useRag = true,
-    facilityId = null,
-    category = null,
-  } = payload || {};
+    if (!userText) return bad(400, "No user message provided");
 
-  if (!Array.isArray(messages) || !messages.length) {
-    return bad(400, "messages[] required");
-  }
-
-  const lastUser = [...messages].reverse().find((m: any) => m.role === "user");
-  const queryText = lastUser?.content || "";
-
-  const authHeader = req.headers.get("authorization") || undefined;
-  const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
-
-  let systemWithContext: any | null = null;
-  if (useRag) {
+    // Build RAG context
     const ctx = await buildRagContext({
-      query: queryText,
+      query: userText,
       facilityId,
       category,
       topK: 6,
-      accessToken,
+      accessToken: undefined, // pass a token here if you enforce RLS per-user
     });
-    if (ctx) {
-      systemWithContext = {
+
+    const system = [
+      {
         role: "system",
-        content:
-          `You are CareIQ, an assistant for skilled nursing facilities. Use the provided context when relevant and cite it like (1), (2), etc.\n\n${ctx}`,
-      };
+        content: (
+          [
+            "You are CareIQ, an HR and operations assistant.",
+            "Use the provided Context when relevant, and cite sources by their number like (1) (2).",
+            "If the Context does not contain the answer, say so briefly and continue using your general knowledge.",
+          ].join("\n")
+        ),
+      },
+      ctx ? { role: "system", content: ctx } : undefined,
+    ].filter(Boolean) as Array<{ role: "system"; content: string }>;
+
+    const model = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-70b-instruct";
+
+    const resp = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [...system, { role: "user", content: userText }],
+        temperature: 0.3,
+        provider: { allow_fallbacks: true },
+      }),
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => "");
+      return bad(500, `OpenRouter error ${resp.status}: ${text || "no body"}`);
     }
+
+    const json = await resp.json();
+    const content =
+      json?.choices?.[0]?.message?.content ??
+      json?.choices?.[0]?.delta?.content ??
+      "";
+
+    return NextResponse.json({ ok: true, content, raw: json });
+  } catch (err: any) {
+    console.error(err);
+    return bad(500, err.message || "Unknown error");
   }
-
-  const finalMessages = systemWithContext
-    ? [systemWithContext, ...messages]
-    : messages;
-
-  const resp = await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-      "X-Title": process.env.OPENROUTER_SITE_NAME || "CareIQ",
-    },
-    body: JSON.stringify({
-      model,
-      messages: finalMessages,
-      stream: false,
-    }),
-  });
-
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    return bad(500, `OpenRouter error ${resp.status}: ${text || "no body"}`);
-  }
-
-  const json = await resp.json();
-  const content =
-    json?.choices?.[0]?.message?.content ??
-    json?.choices?.[0]?.delta?.content ??
-    "";
-
-  return NextResponse.json({ ok: true, content, raw: json });
 }

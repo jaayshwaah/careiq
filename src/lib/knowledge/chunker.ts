@@ -17,14 +17,14 @@ export function cleanText(s: string): string {
 }
 
 export function chunkText(
-  title: string,
   text: string,
-  {
-    chunkSize = DEFAULT_CHARS,
-    overlap = DEFAULT_OVERLAP,
-    metadata = {}
-  }: { chunkSize?: number; overlap?: number; metadata?: Record<string, any> } = {}
+  opts?: { title?: string; chunkSize?: number; overlap?: number; metadata?: Record<string, any> }
 ): Chunk[] {
+  const title = opts?.title ?? "Untitled";
+  const chunkSize = Math.max(256, Math.min(opts?.chunkSize ?? DEFAULT_CHARS, 4000));
+  const overlap = Math.max(0, Math.min(opts?.overlap ?? DEFAULT_OVERLAP, Math.floor(chunkSize / 2)));
+  const metadata = opts?.metadata ?? {};
+
   const t = cleanText(text);
   if (t.length <= chunkSize) return [{ title, content: t, metadata }];
 

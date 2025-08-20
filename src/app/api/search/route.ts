@@ -1,12 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { embedQuery } from "@/lib/knowledge/embed";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { query, topK = 8, category, facilityId } = await req.json();
+    const { query, topK = 8, category = null, facilityId = null } = await req.json();
     if (!query || typeof query !== "string") {
       return NextResponse.json({ ok: false, error: "query is required" }, { status: 400 });
     }
@@ -15,16 +16,16 @@ export async function POST(req: Request) {
     const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
     const supa = supabaseServerWithAuth(accessToken);
 
-    const qEmbedding = await embedQuery(query);
-
-    const { data: vectorHits, error: vErr } = await supa.rpc("search_knowledge", {
-      query_embedding: qEmbedding,
-      in_category: category ?? null,
-      in_facility: facilityId ?? null,
-      k: Math.max(1, Math.min(50, topK)),
+    const embedding = await embedQuery(query);
+    const { data: vectorHits, error: vErr } = await supa.rpc("match_knowledge", {
+      query_embedding: embedding,
+      match_count: topK,
+      p_facility_id: facilityId,
+      p_category: category,
     });
 
     if (vErr) {
+      // FTS fallback
       const { data: ftsHits, error: fErr } = await supa
         .from("knowledge_base")
         .select("id, facility_id, category, title, content, metadata, source_url, last_updated")
