@@ -1,44 +1,54 @@
 // src/components/RequireAuth.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { ReactNode, useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
-export default function RequireAuth({ children }: { children: React.ReactNode }) {
+/**
+ * Waits for Supabase to restore session from localStorage before redirecting.
+ * Prevents "forced login every refresh" behavior.
+ */
+export default function RequireAuth({ children }: { children: ReactNode }) {
+  const supabase = getBrowserSupabase();
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const pathname = usePathname();
+  const [checked, setChecked] = useState(false);
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const supabase = getBrowserSupabase();
-    let unsub: (() => void) | null = null;
-    let cancelled = false;
+    let mounted = true;
 
     (async () => {
-      // Fast path: do we already have a session cached?
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session) {
-        if (!cancelled) setReady(true);
-      } else {
-        // If no session, ensure we listen for auth events (e.g. magic link callback)
-        const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
-          if (!sess) router.replace("/login");
-          else setReady(true);
-        });
-        unsub = () => sub.subscription.unsubscribe();
-
-        // Also redirect immediately if clearly unauthenticated
-        router.replace("/login");
-      }
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setHasSession(!!data.session);
+      setChecked(true);
     })();
 
-    return () => {
-      cancelled = true;
-      if (unsub) unsub();
-    };
-  }, [router]);
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      setHasSession(!!session);
+    });
 
-  if (!ready) return null; // replace with a small spinner if you want
+    return () => {
+      sub.subscription.unsubscribe();
+      mounted = false;
+    };
+  }, [supabase]);
+
+  // While restoring, don't kick user out.
+  if (!checked) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-neutral-500">
+        Loading…
+      </div>
+    );
+  }
+
+  if (!hasSession) {
+    if (pathname !== "/login") router.replace("/login");
+    return null;
+  }
+
   return <>{children}</>;
 }

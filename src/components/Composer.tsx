@@ -5,13 +5,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Plus, SendHorizontal } from "lucide-react";
 
 type Props = {
-  /** Parent handler. If omitted, we DO NOT clear the input so text is never lost. */
   onSend?: (text: string, files: File[]) => Promise<void> | void;
-  /** Disable input (e.g., while sending) */
   disabled?: boolean;
-  /** Placeholder override */
   placeholder?: string;
-  /** AutoFocus on mount */
   autoFocus?: boolean;
 };
 
@@ -27,12 +23,10 @@ export default function Composer({
 
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const formRef = useRef<HTMLFormElement | null>(null);
 
-  // ===== Autosize config =====
-  // Thin default; expands as needed.
-  const MIN_HEIGHT = 40;  // ~44px overall pill height
-  const MAX_HEIGHT = 160;
+  // Thin default; grow with content
+  const MIN_H = 40;   // ~44px visual
+  const MAX_H = 160;
 
   useEffect(() => {
     if (autoFocus && taRef.current) taRef.current.focus();
@@ -48,54 +42,44 @@ export default function Composer({
     const el = taRef.current;
     if (!el) return;
     el.style.height = "0px";
-    const next = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, el.scrollHeight));
+    const next = Math.min(MAX_H, Math.max(MIN_H, el.scrollHeight));
     el.style.height = `${next}px`;
   };
 
-  // ===== Attachments =====
-  const handleChooseFiles = () => fileInputRef.current?.click();
-
-  const handleFilesPicked = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    const list = ev.target.files;
-    if (!list || list.length === 0) return;
-    setFiles(prev => [...prev, ...Array.from(list)]);
-    ev.target.value = ""; // allow re-picking same file
+  // Attachments
+  const chooseFiles = () => fileInputRef.current?.click();
+  const filesPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    if (!list) return;
+    setFiles((prev) => [...prev, ...Array.from(list)]);
+    e.target.value = "";
   };
-
   const clearAttachments = (idx?: number) => {
-    if (typeof idx === "number") {
-      setFiles(prev => prev.filter((_, i) => i !== idx));
-    } else {
-      setFiles([]);
-    }
+    if (typeof idx === "number") setFiles((prev) => prev.filter((_, i) => i !== idx));
+    else setFiles([]);
   };
 
-  // ===== Send =====
+  // Send
   const actuallySend = useCallback(
     async (text: string) => {
       if (!text.trim() && files.length === 0) return;
 
-      let sentOk = false;
+      let ok = false;
       try {
         setIsSending(true);
-
         if (onSend) {
           await onSend(text.trim(), files);
-          sentOk = true;
+          ok = true;
         } else {
-          // No handler wired — do NOT clear the input.
-          // Emit a DOM event so app code can optionally listen.
-          const evt = new CustomEvent("composer:send", {
-            detail: { text: text.trim(), files },
-          });
+          // Fallback event; DO NOT clear text so nothing is lost if no handler
+          const evt = new CustomEvent("composer:send", { detail: { text: text.trim(), files } });
           window.dispatchEvent(evt);
-          // Leave sentOk=false so we keep the text (prevents “message disappeared”).
         }
       } catch {
-        sentOk = false; // keep text on failure
+        ok = false;
       } finally {
         setIsSending(false);
-        if (sentOk) {
+        if (ok) {
           setValue("");
           clearAttachments();
         }
@@ -107,8 +91,7 @@ export default function Composer({
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSending || disabled) return;
-    void actuallySend(value);
+    if (!isSending && !disabled) void actuallySend(value);
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -118,48 +101,34 @@ export default function Composer({
     }
   };
 
-  // ===== Liquid-glass button styles (Apple vibe) =====
-  const glassBtnLight: React.CSSProperties = {
-    backdropFilter: "saturate(180%) blur(14px)",
-    WebkitBackdropFilter: "saturate(180%) blur(14px)",
-    background:
-      "linear-gradient(180deg, rgba(255,255,255,0.70), rgba(255,255,255,0.55))",
-    border: "1px solid rgba(0,0,0,0.10)",
-    boxShadow:
-      "inset 0 1px 0 rgba(255,255,255,0.65), 0 8px 24px rgba(0,0,0,0.08)",
-  };
-  const glassBtnDark: React.CSSProperties = {
-    backdropFilter: "saturate(180%) blur(14px)",
-    WebkitBackdropFilter: "saturate(180%) blur(14px)",
-    background:
-      "linear-gradient(180deg, rgba(30,30,30,0.70), rgba(30,30,30,0.55))",
-    border: "1px solid rgba(255,255,255,0.12)",
-    boxShadow:
-      "inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.32)",
-  };
-
-  // Use CSS prefers-color-scheme to choose initial style without reading document
-  const [isDark, setIsDark] = useState(false);
+  // Liquid glass button (light/dark)
+  const [dark, setDark] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
-    const update = () => setIsDark(!!mq?.matches);
+    const update = () => setDark(!!mq?.matches);
     update();
     mq?.addEventListener?.("change", update);
     return () => mq?.removeEventListener?.("change", update);
   }, []);
 
-  // Pill container min height follows the textarea height + padding
-  const pillStyle: React.CSSProperties = {
-    minHeight: MIN_HEIGHT + 12, // ~ visual 44px bar
-  };
+  const glassBtn = dark
+    ? {
+        backdropFilter: "saturate(180%) blur(14px)",
+        WebkitBackdropFilter: "saturate(180%) blur(14px)",
+        background: "linear-gradient(180deg, rgba(30,30,30,0.70), rgba(30,30,30,0.55))",
+        border: "1px solid rgba(255,255,255,0.12)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.32)",
+      }
+    : {
+        backdropFilter: "saturate(180%) blur(14px)",
+        WebkitBackdropFilter: "saturate(180%) blur(14px)",
+        background: "linear-gradient(180deg, rgba(255,255,255,0.70), rgba(255,255,255,0.55))",
+        border: "1px solid rgba(0,0,0,0.10)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.65), 0 8px 24px rgba(0,0,0,0.08)",
+      };
 
   return (
-    <form
-      ref={formRef}
-      onSubmit={onSubmit}
-      className="w-full"
-      aria-label="Chat composer"
-    >
+    <form onSubmit={onSubmit} className="w-full">
       {/* Attachment chips */}
       {files.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
@@ -168,8 +137,8 @@ export default function Composer({
               key={`${f.name}-${i}`}
               type="button"
               onClick={() => clearAttachments(i)}
-              className="group max-w-full truncate rounded-xl border border-default/70 bg-white/70 px-3 py-1.5 text-xs text-neutral-700 hover:bg-white shadow-sm dark:bg-neutral-900/60 dark:text-neutral-200 dark:hover:bg-neutral-900"
               title="Click to remove"
+              className="group max-w-full truncate rounded-xl border border-default/70 bg-white/70 px-3 py-1.5 text-xs text-neutral-700 shadow-sm hover:bg-white dark:bg-neutral-900/60 dark:text-neutral-200 dark:hover:bg-neutral-900"
             >
               📎 {f.name}
               <span className="ml-2 rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 group-hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:group-hover:bg-neutral-700">
@@ -180,28 +149,31 @@ export default function Composer({
         </div>
       )}
 
-      {/* Pill input */}
+      {/* Pill */}
       <div
         className={[
           "relative flex w-full items-center gap-2 sm:gap-3 rounded-full px-3 sm:px-4",
-          "border border-default bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)]",
-          "dark:bg-[rgba(20,20,20,0.65)]",
+          "border border-default shadow-[0_8px_24px_rgba(0,0,0,0.06)]",
+          "bg-white dark:bg-[rgba(20,20,20,0.65)]",
+          // subtle soft gradient sheen for the “liquid” vibe
+          "before:pointer-events-none before:absolute before:inset-0 before:rounded-full",
+          "before:bg-[radial-gradient(120%_140%_at_10%_10%,rgba(255,255,255,0.8),rgba(255,255,255,0)_60%),linear-gradient(90deg,rgba(255,255,255,0.3),rgba(255,255,255,0))]",
         ].join(" ")}
-        style={pillStyle}
+        style={{ minHeight: MIN_H + 12 }}
       >
-        {/* Left plus (attachments) */}
+        {/* Left + */}
         <button
           type="button"
-          onClick={handleChooseFiles}
-          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full border border-transparent hover:bg-neutral-100 focus:outline-none dark:hover:bg-neutral-800"
+          onClick={chooseFiles}
           aria-label="Add attachment"
           title="Add attachment"
           disabled={disabled || isSending}
+          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full hover:bg-neutral-100 focus:outline-none dark:hover:bg-neutral-800"
         >
           <Plus className="h-[18px] w-[18px]" />
         </button>
 
-        {/* Text area wrapper: make sure the text (placeholder and typed) is vertically centered */}
+        {/* Textarea (centered placeholder/text) */}
         <div className="flex min-w-0 flex-1 items-center py-1">
           <textarea
             ref={taRef}
@@ -210,21 +182,22 @@ export default function Composer({
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={placeholder}
-            className={[
-              "w-full resize-none bg-transparent outline-none",
-              "placeholder:text-neutral-400",
-              // Slightly taller line-height for better vertical centering within thin pill
-              "text-[15px] leading-[22px]",
-            ].join(" ")}
             spellCheck
             disabled={disabled || isSending}
             aria-label="Message"
+            className={[
+              "w-full resize-none bg-transparent outline-none",
+              "placeholder:text-neutral-400",
+              "text-[15px] leading-[22px]",
+            ].join(" ")}
           />
         </div>
 
-        {/* Right: Liquid-glass Send (no paperclip) */}
+        {/* Send (liquid glass) */}
         <button
           type="submit"
+          aria-label="Send message"
+          title="Send"
           disabled={disabled || isSending || (!value.trim() && files.length === 0)}
           className={[
             "ml-1 inline-flex h-[32px] min-w-[32px] items-center justify-center rounded-full px-3 text-sm font-medium transition ease-ios",
@@ -234,23 +207,13 @@ export default function Composer({
               : "hover:opacity-95",
             "text-black dark:text-white",
           ].join(" ")}
-          style={isDark ? glassBtnDark : glassBtnLight}
-          aria-label="Send message"
-          title="Send"
+          style={glassBtn}
         >
           <SendHorizontal className="h-[16px] w-[16px]" />
         </button>
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          multiple
-          onChange={handleFilesPicked}
-        />
+        <input ref={fileInputRef} type="file" className="hidden" multiple onChange={filesPicked} />
       </div>
-      {/* Footer helper row removed per request */}
     </form>
   );
 }
