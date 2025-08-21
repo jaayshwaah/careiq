@@ -1,27 +1,27 @@
 // src/app/(auth)/login/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getBrowserSupabase, setAuthPersistence } from "@/lib/supabaseClient";
 
-export default function LoginPage() {
+/** Prevent SSG/ISR so Next won't try to prerender this route. */
+export const dynamic = "force-dynamic";
+
+function LoginClient() {
   const router = useRouter();
-  const params = useSearchParams();
   const supabase = getBrowserSupabase();
 
   const [mode, setMode] = useState<"password" | "magic">("password");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
-  const [keepSignedIn, setKeepSignedIn] = useState(true); // remember me default
+  const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // If we arrive from a magic link, Supabase handles the hash and sets the session.
-  // We can then bounce the user to the app.
+  // If there's already a session, skip this screen.
   useEffect(() => {
-    // If there's already a session, skip this screen
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) router.replace("/");
@@ -148,5 +148,13 @@ export default function LoginPage() {
         <p className={`mt-4 text-sm ${err ? "text-red-600" : "text-green-600"}`}>{msg || err}</p>
       )}
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-neutral-500">Loading…</div>}>
+      <LoginClient />
+    </Suspense>
   );
 }
