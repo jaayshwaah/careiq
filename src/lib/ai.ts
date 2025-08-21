@@ -1,9 +1,9 @@
 type Role = "system" | "user" | "assistant";
 type Msg = { role: Role; content: string };
 
-// Default to 70B Instruct; allow override via env
+// Default to GPT-5 Chat; allow override via env
 const DEFAULT_MODEL =
-  process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-70b-instruct";
+  process.env.OPENROUTER_MODEL || "openai/gpt-5-chat";
 
 // Server-side completion helper
 export async function complete(messages: Msg[]): Promise<string> {
@@ -17,22 +17,19 @@ export async function complete(messages: Msg[]): Promise<string> {
   }
 
   try {
-    // Prefer OpenRouter (OpenAI-compatible schema)
     const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-        "X-Title": "CareIQ",
+        "Authorization": `Bearer ${key}`,
+        "HTTP-Referer": (process.env.OPENROUTER_SITE_URL || "https://careiq-eight.vercel.app").replace(/\/+$/, ""),
+        "X-Title": process.env.OPENROUTER_SITE_NAME || "CareIQ",
       },
       body: JSON.stringify({
         model: DEFAULT_MODEL,
         messages,
-        stream: false,
-        // Reasonable defaults; adjust as you like
-        temperature: 0.7,
-        max_tokens: 1024,
+        temperature: 0.6,
+        max_tokens: 1200,
       }),
     });
 
@@ -47,6 +44,6 @@ export async function complete(messages: Msg[]): Promise<string> {
     return text ?? "The model returned no content.";
   } catch {
     const last = messages.filter((m) => m.role === "user").slice(-1)[0]?.content ?? "";
-    return `There was a network error talking to the model. I still got your message: “${last}”.`;
+    return `There was a network error talking to the model. Still with you — “${last}”.`;
   }
 }

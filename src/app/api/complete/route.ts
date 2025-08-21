@@ -14,10 +14,10 @@ export async function POST(req: Request) {
     }
 
     const apiKey = process.env.OPENROUTER_API_KEY;
-    const model = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-8b-instruct";
-    const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    // Force GPT-5 unless OPENROUTER_MODEL is explicitly set
+    const model = process.env.OPENROUTER_MODEL || "openai/gpt-5-chat";
+    const site = (process.env.OPENROUTER_SITE_URL || "https://careiq-eight.vercel.app").replace(/\/+$/, "");
 
-    // Create SSE stream
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
           // Prepare messages with attachments
           let contextMessages = [...messages];
-          
+
           // Add attachment content to the last user message if present
           if (attachments.length > 0) {
             const lastMessage = contextMessages[contextMessages.length - 1];
@@ -49,9 +49,8 @@ export async function POST(req: Request) {
 
           if (!apiKey) {
             // Mock streaming response
-            const mockText = "Mock response: I received your message and attachments. Set OPENROUTER_API_KEY to get real AI responses.";
-            const words = mockText.split(/(\s+)/);
-            
+            const demo = "Mock reply: Set OPENROUTER_API_KEY to get real AI responses.";
+            const words = demo.split(" ");
             for (const word of words) {
               sendEvent({ type: "token", text: word });
               await new Promise(r => setTimeout(r, 30));
@@ -90,53 +89,37 @@ export async function POST(req: Request) {
 
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
+
           let buffer = "";
-
           while (true) {
-            const { value, done } = await reader.read();
+            const { done, value } = await reader.read();
             if (done) break;
-
             buffer += decoder.decode(value, { stream: true });
+
             const lines = buffer.split("\n");
             buffer = lines.pop() || "";
-
             for (const line of lines) {
               const trimmed = line.trim();
               if (!trimmed.startsWith("data:")) continue;
-              
-              const data = trimmed.slice(5).trim();
-              if (data === "[DONE]") continue;
-              if (!data) continue;
+              const payload = trimmed.slice(5).trim();
+              if (!payload || payload === "[DONE]") continue;
 
               try {
-                const parsed = JSON.parse(data);
-                const delta = parsed?.choices?.[0]?.delta?.content;
-                if (delta) {
-                  sendEvent({ type: "token", text: delta });
+                const json = JSON.parse(payload);
+                const token = json?.choices?.[0]?.delta?.content ?? "";
+                if (token) {
+                  sendEvent({ type: "token", text: token });
                 }
-                
-                // Handle usage info if present
-                if (parsed?.usage) {
-                  sendEvent({ 
-                    type: "usage", 
-                    input: parsed.usage.prompt_tokens,
-                    output: parsed.usage.completion_tokens 
-                  });
-                }
-              } catch (e) {
-                // Ignore JSON parse errors
+              } catch {
+                // ignore partial frames
               }
             }
           }
 
           sendEvent({ type: "done" });
           controller.close();
-
-        } catch (error: any) {
-          sendEvent({ 
-            type: "error", 
-            message: error?.message || "Streaming failed" 
-          });
+        } catch (err: any) {
+          sendEvent({ type: "error", message: err?.message || "Unknown error" });
           sendEvent({ type: "done" });
           controller.close();
         }
@@ -154,8 +137,8 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error("Complete API error:", err);
     return NextResponse.json({ 
-      ok: false, 
-      error: err?.message || "Unknown error" 
+      ok: false,
+      error: err?.message || "Unexpected server error"
     }, { status: 500 });
   }
 }
