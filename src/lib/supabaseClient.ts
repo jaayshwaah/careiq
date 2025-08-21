@@ -1,57 +1,99 @@
 // src/lib/supabaseClient.ts
-// Browser-only Supabase client (lazy init). Uses literal NEXT_PUBLIC_* keys
-// so Next.js can inline them into the client bundle.
+// Browser-only Supabase client with persistent sessions & auto refresh.
+// Also supports switching between localStorage (remember me) and sessionStorage.
 
 "use client";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let _client: SupabaseClient | null = null;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// IMPORTANT: use literal env keys (no dynamic lookup)
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string | undefined;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string | undefined;
+// Where we store the user's preference for persistence ("local" | "session")
+const AUTH_PERSIST_KEY = "careiq.auth.persist"; // change key name if you like
 
-function assertPublicEnv() {
-  if (!SUPABASE_URL) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
-  }
-  if (!SUPABASE_ANON_KEY) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  }
+type PersistMode = "local" | "session";
+
+let client: SupabaseClient | null = null;
+let currentPersistMode: PersistMode | null = null;
+
+// Safely read the persistence preference. Default to "local" (remember me).
+function readPersistMode(): PersistMode {
+  if (typeof window === "undefined") return "local";
+  try {
+    const v = window.localStorage.getItem(AUTH_PERSIST_KEY);
+    if (v === "session" || v === "local") return v;
+  } catch {}
+  return "local";
 }
 
-export function getBrowserSupabase(): SupabaseClient {
+function getStorageForMode(mode: PersistMode): Storage {
   if (typeof window === "undefined") {
-    // Guard against accidental server usage
-    const handler: ProxyHandler<any> = {
-      get() {
-        throw new Error(
-          "getBrowserSupabase() used on the server. Use a server-side client instead."
-        );
-      },
+    // No-op storage to satisfy types during SSR (shouldn't be called on server)
+    // @ts-expect-error minimal shim
+    return {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
     };
-    // @ts-expect-error proxy trap
-    return new Proxy({}, handler);
   }
+  return mode === "session" ? window.sessionStorage : window.localStorage;
+}
 
-  if (_client) return _client;
+function createBrowserClient(mode: PersistMode): SupabaseClient {
+  const storage = getStorageForMode(mode);
 
-  assertPublicEnv();
-
-  _client = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      // important for magic link / oauth callback handling
       detectSessionInUrl: true,
+      storage,
+      // optional: set a custom storage key prefix
+      storageKey: "careiq.auth.token",
     },
-    global: { headers: { "X-Client-Info": "careiq-browser" } },
+    // optional: attach fetch to avoid edge cases
+    global: {
+      fetch: (...args) => fetch(...args),
+    },
   });
-
-  return _client;
 }
 
-// Convenience default export proxy
+/**
+ * Get a singleton browser Supabase client honoring the persisted preference.
+ * Default is "local" (remember me). You can call setAuthPersistence() to switch.
+ */
+export function getBrowserSupabase(): SupabaseClient {
+  if (typeof window === "undefined") {
+    // Guard against server usage
+    throw new Error("getBrowserSupabase() called on the server");
+  }
+
+  const desiredMode = readPersistMode();
+  if (!client || currentPersistMode !== desiredMode) {
+    client = createBrowserClient(desiredMode);
+    currentPersistMode = desiredMode;
+  }
+  return client!;
+}
+
+/**
+ * Allow the app to switch persistence mode at runtime, e.g. from a login checkbox.
+ * - "local": persists across browser restarts (remember me)
+ * - "session": clears when the tab/browser is closed
+ */
+export function setAuthPersistence(mode: PersistMode) {
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(AUTH_PERSIST_KEY, mode);
+    } catch {}
+  }
+  // Recreate client with new storage backing:
+  client = null;
+}
+
+/** Convenience default export proxy so you can `import supabase from "@/lib/supabaseClient"` */
 const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
   get(_t, prop) {
     const c = getBrowserSupabase() as any;
@@ -59,5 +101,6 @@ const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
     return typeof v === "function" ? v.bind(c) : v;
   },
 });
+
 export default supabase;
 export { supabase };

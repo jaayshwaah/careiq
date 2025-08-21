@@ -1,22 +1,39 @@
 // src/app/(auth)/login/page.tsx
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { getBrowserSupabase } from "@/lib/supabaseClient";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getBrowserSupabase, setAuthPersistence } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
+  const params = useSearchParams();
   const supabase = getBrowserSupabase();
 
   const [mode, setMode] = useState<"password" | "magic">("password");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
+  const [keepSignedIn, setKeepSignedIn] = useState(true); // remember me default
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  async function signInWithPassword(e: React.FormEvent) {
+  // If we arrive from a magic link, Supabase handles the hash and sets the session.
+  // We can then bounce the user to the app.
+  useEffect(() => {
+    // If there's already a session, skip this screen
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) router.replace("/");
+    })();
+  }, [router, supabase]);
+
+  // Keep persistence in sync with the checkbox
+  useEffect(() => {
+    setAuthPersistence(keepSignedIn ? "local" : "session");
+  }, [keepSignedIn]);
+
+  async function loginWithPassword(e: React.FormEvent) {
     e.preventDefault();
     setErr(null); setMsg(null); setLoading(true);
     try {
@@ -24,7 +41,7 @@ export default function LoginPage() {
       if (error) throw error;
       router.replace("/");
     } catch (e: any) {
-      setErr(e?.message ?? "Login failed");
+      setErr(e?.message ?? "Could not sign in.");
     } finally {
       setLoading(false);
     }
@@ -44,83 +61,92 @@ export default function LoginPage() {
       if (error) throw error;
       setMsg("Magic link sent! Check your inbox.");
     } catch (e: any) {
-      setErr(e?.message ?? "Could not send magic link");
+      setErr(e?.message ?? "Could not send magic link.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="mx-auto max-w-md">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
-        <p className="mt-2 text-sm text-neutral-600">Sign in to continue</p>
+    <div className="mx-auto max-w-md px-6 py-12">
+      <h1 className="text-2xl font-semibold mb-6">Sign in to CareIQ</h1>
+
+      <div className="mb-4 flex gap-2">
+        <button
+          className={`px-3 py-1 rounded border ${mode === "password" ? "bg-black text-white" : ""}`}
+          onClick={() => setMode("password")}
+        >
+          Password
+        </button>
+        <button
+          className={`px-3 py-1 rounded border ${mode === "magic" ? "bg-black text-white" : ""}`}
+          onClick={() => setMode("magic")}
+        >
+          Magic link
+        </button>
       </div>
 
-      <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-        <div className="mb-4 flex gap-2">
-          <button
-            className={`flex-1 rounded-xl border px-3 py-2 text-sm ${mode === "password" ? "border-neutral-800 dark:border-neutral-200" : "border-neutral-200 dark:border-neutral-800"}`}
-            onClick={() => setMode("password")}
-            type="button"
-          >
-            Password
-          </button>
-          <button
-            className={`flex-1 rounded-xl border px-3 py-2 text-sm ${mode === "magic" ? "border-neutral-800 dark:border-neutral-200" : "border-neutral-200 dark:border-neutral-800"}`}
-            onClick={() => setMode("magic")}
-            type="button"
-          >
-            Magic link
-          </button>
-        </div>
+      <label className="mb-4 flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={keepSignedIn}
+          onChange={(e) => setKeepSignedIn(e.target.checked)}
+        />
+        <span>Keep me signed in</span>
+      </label>
 
-        <form
-          onSubmit={mode === "password" ? signInWithPassword : sendMagicLink}
-          className="space-y-3"
-        >
+      {mode === "password" ? (
+        <form onSubmit={loginWithPassword} className="space-y-3">
           <input
+            className="w-full rounded border px-3 py-2"
             type="email"
-            required
             placeholder="you@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-800 dark:bg-neutral-900"
+            required
+            autoComplete="email"
           />
-
-          {mode === "password" && (
-            <input
-              type="password"
-              required
-              placeholder="Password"
-              value={pass}
-              onChange={(e) => setPass(e.target.value)}
-              className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-800 dark:bg-neutral-900"
-            />
-          )}
-
+          <input
+            className="w-full rounded border px-3 py-2"
+            type="password"
+            placeholder="••••••••"
+            value={pass}
+            onChange={(e) => setPass(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
           <button
-            type="submit"
+            className="w-full rounded bg-black text-white py-2 disabled:opacity-50"
             disabled={loading}
-            className="w-full rounded-xl bg-black px-4 py-2 text-white transition hover:opacity-90 disabled:opacity-60 dark:bg-white dark:text-black"
+            type="submit"
           >
-            {loading ? "Working…" : mode === "password" ? "Sign in" : "Send magic link"}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+      ) : (
+        <form onSubmit={sendMagicLink} className="space-y-3">
+          <input
+            className="w-full rounded border px-3 py-2"
+            type="email"
+            placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
+          <button
+            className="w-full rounded bg-black text-white py-2 disabled:opacity-50"
+            disabled={loading}
+            type="submit"
+          >
+            {loading ? "Sending..." : "Send magic link"}
+          </button>
+        </form>
+      )}
 
-        <div className="mt-3 text-center text-sm">
-          <a href="/reset-password" className="text-neutral-600 hover:underline">
-            Forgot password?
-          </a>
-        </div>
-      </div>
-
-      {err && <p className="mt-3 text-sm text-red-600">{err}</p>}
-      {msg && <p className="mt-3 text-sm text-emerald-600">{msg}</p>}
-
-      <p className="mt-6 text-center text-sm text-neutral-600">
-        New here? <a className="underline" href="/register">Create an account</a>
-      </p>
-    </main>
+      {(msg || err) && (
+        <p className={`mt-4 text-sm ${err ? "text-red-600" : "text-green-600"}`}>{msg || err}</p>
+      )}
+    </div>
   );
 }

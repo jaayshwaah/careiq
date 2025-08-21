@@ -10,31 +10,35 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
     const supabase = getBrowserSupabase();
+    let unsub: (() => void) | null = null;
+    let cancelled = false;
 
-    async function ensureSession() {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
+    (async () => {
+      // Fast path: do we already have a session cached?
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        if (!cancelled) setReady(true);
+      } else {
+        // If no session, ensure we listen for auth events (e.g. magic link callback)
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+          if (!sess) router.replace("/login");
+          else setReady(true);
+        });
+        unsub = () => sub.subscription.unsubscribe();
+
+        // Also redirect immediately if clearly unauthenticated
         router.replace("/login");
-        return;
       }
-      if (!cancelled) setReady(true);
-    }
-
-    ensureSession();
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) router.replace("/login");
-      else setReady(true);
-    });
+    })();
 
     return () => {
       cancelled = true;
-      sub.subscription.unsubscribe();
+      if (unsub) unsub();
     };
   }, [router]);
 
-  if (!ready) return null; // could render a spinner
+  if (!ready) return null; // replace with a small spinner if you want
   return <>{children}</>;
 }
