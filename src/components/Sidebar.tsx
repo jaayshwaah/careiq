@@ -180,7 +180,7 @@ function ChatItem({
   pinned: boolean;
   onPinToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onRename: (id: string, newTitle: string) => void; // fire & forget; optimistic
+  onRename: (id: string, newTitle: string) => void; // optimistic
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -197,7 +197,6 @@ function ChatItem({
     if (!renaming) setTitleInput(row.title || "New chat");
   }, [row.title, renaming]);
 
-  // Optimistic rename: update parent state immediately, close editor, then fire API
   const submitRename = () => {
     const trimmed = titleInput.trim();
     if (!trimmed || trimmed === (row.title || "New chat")) {
@@ -205,8 +204,8 @@ function ChatItem({
       return;
     }
     setSavingRename(true);
-    onRename(row.id, trimmed); // updates list instantly
-    setRenaming(false); // reflect new title right away
+    onRename(row.id, trimmed); // optimistic update
+    setRenaming(false);
     setSavingRename(false);
   };
 
@@ -353,12 +352,6 @@ function ChatItem({
 }
 
 /* -------------------------- Auto Title background ------------------------- */
-/**
- * Auto‑titles recent chats that are still "New chat" by:
- *  1) Fetching the first user message for each chat
- *  2) Calling /api/title (cheap model) to generate a short title
- *  3) PATCHing /api/chats/:id with the new title
- */
 function AutoTitleAgent() {
   const supabase = getBrowserSupabase();
   useEffect(() => {
@@ -382,7 +375,6 @@ function AutoTitleAgent() {
           if (!isLikelyUntitled(c.title)) continue;
           if (done[id]) continue;
 
-          // get first user message
           const { data: msgs } = await supabase
             .from("messages")
             .select("role,content,created_at")
@@ -396,7 +388,7 @@ function AutoTitleAgent() {
 
           const seed = firstUser?.content?.trim();
           if (!seed) {
-            setAutotitleDone(id); // nothing to title off; skip next time
+            setAutotitleDone(id);
             continue;
           }
 
@@ -409,9 +401,7 @@ function AutoTitleAgent() {
             });
             const tj = await tr.json();
             title = (tj?.title || "New chat").slice(0, 60);
-          } catch {
-            // ignore
-          }
+          } catch {}
 
           try {
             await fetch(`/api/chats/${id}`, {
@@ -419,9 +409,7 @@ function AutoTitleAgent() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ title }),
             });
-          } catch {
-            // ignore network error; we'll try once only
-          }
+          } catch {}
 
           setAutotitleDone(id);
         }
@@ -504,7 +492,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     router.push(`/chat/${newId}`);
   }
 
-  // Optimistic, fire-and-forget rename (instant reflection in UI)
   const handleRename = useCallback((id: string, newTitle: string) => {
     setChats((prev) => prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c)));
     fetch(`/api/chats/${id}`, {
@@ -584,39 +571,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             )}
           </div>
 
-          {/* Modules */}
-          <div className={cn("px-2", collapsed && "px-1")}>
-            {!collapsed && (
-              <div className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                Modules
-              </div>
-            )}
-            <div className={cn("flex flex-col gap-1", collapsed && "items-center")}>
-              <Link
-                href="/calendar"
-                className={cn(
-                  "flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm shadow-sm hover:bg-white",
-                  collapsed && "justify-center px-2"
-                )}
-                title="Compliance Calendar"
-              >
-                <CalendarDays className="h-4 w-4" />
-                {!collapsed && <span>Compliance Calendar</span>}
-              </Link>
-              <Link
-                href="/settings"
-                className={cn(
-                  "flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm shadow-sm hover:bg-white",
-                  collapsed && "justify-center px-2"
-                )}
-                title="Settings"
-              >
-                <Settings className="h-4 w-4" />
-                {!collapsed && <span>Settings</span>}
-              </Link>
-            </div>
-          </div>
-
           {/* Lists */}
           <div className="min-h-0 flex-1 overflow-auto px-2 pb-2">
             {!collapsed && pinned.length > 0 && (
@@ -665,8 +619,41 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </div>
           </div>
 
+          {/* Modules at the bottom */}
+          <div className={cn("mt-auto px-2 pb-2")}>
+            {!collapsed && (
+              <div className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Modules
+              </div>
+            )}
+            <div className={cn("flex flex-col gap-1", collapsed && "items-center")}>
+              <Link
+                href="/calendar"
+                className={cn(
+                  "flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm shadow-sm hover:bg-white",
+                  collapsed && "justify-center px-2"
+                )}
+                title="Compliance Calendar"
+              >
+                <CalendarDays className="h-4 w-4" />
+                {!collapsed && <span>Compliance Calendar</span>}
+              </Link>
+              <Link
+                href="/settings"
+                className={cn(
+                  "flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm shadow-sm hover:bg-white",
+                  collapsed && "justify-center px-2"
+                )}
+                title="Settings"
+              >
+                <Settings className="h-4 w-4" />
+                {!collapsed && <span>Settings</span>}
+              </Link>
+            </div>
+          </div>
+
           {/* Footer */}
-          <div className="mt-auto border-t border-black/5 px-2 py-2 text-xs text-neutral-500 dark:border-white/5">
+          <div className="border-t border-black/5 px-2 py-2 text-xs text-neutral-500 dark:border-white/5">
             {!collapsed ? (
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">

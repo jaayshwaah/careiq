@@ -21,33 +21,6 @@ export default function Page() {
   const [followNow, setFollowNow] = useState(0);
   const lastUserRef = useRef<string>("");
 
-  // Export MD
-  const exportMarkdown = () => {
-    const md = messages
-      .map((m) => (m.role === "user" ? `**You:** ${m.content}` : `**CareIQ:** ${m.content}`))
-      .join("\n\n");
-    const blob = new Blob([md], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `careiq-chat-${new Date().toISOString().slice(0, 10)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Export JSON (audit-style)
-  const exportJSON = () => {
-    const blob = new Blob([JSON.stringify({ messages }, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `careiq-chat-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   // Export PDF (server-generated)
   const exportPDF = async () => {
     const r = await fetch("/api/export/pdf", {
@@ -88,10 +61,8 @@ export default function Page() {
       const j = await r.json();
       const title = j?.title || "New chat";
       document.title = `${title} • CareIQ`;
-      // If you have a chats DB row, PATCH it here.
-    } catch {
-      // ignore
-    }
+      // Optional: PATCH your /api/chats/:id here if you track chat ids on this page.
+    } catch {}
   };
 
   const onSend = async (text: string, files: File[]) => {
@@ -119,7 +90,6 @@ export default function Page() {
     setStreamingId(asstMsg.id);
     setFollowNow((v) => v + 1);
 
-    // Auto-title on first prompt
     if (isFirst) callAutoTitle(text);
 
     const history = [
@@ -169,6 +139,7 @@ export default function Page() {
               setMessages((prev) =>
                 prev.map((m) => (m.id === asstMsg.id ? { ...m, content: assistantBuf } : m))
               );
+              setNewTokenTick((t) => t + 1);
             }
           } catch {
             // ignore keepalives
@@ -185,22 +156,8 @@ export default function Page() {
   return (
     <RequireAuth>
       <div className="flex w-full flex-col gap-4">
-        {/* Top actions */}
+        {/* Top actions (PDF only) */}
         <div className="flex items-center justify-end gap-2 print:hidden">
-          <button
-            onClick={exportMarkdown}
-            className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
-            title="Export as Markdown"
-          >
-            Export MD
-          </button>
-          <button
-            onClick={exportJSON}
-            className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
-            title="Export JSON (audit trail)"
-          >
-            Export JSON
-          </button>
           <button
             onClick={exportPDF}
             className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
@@ -221,11 +178,11 @@ export default function Page() {
         {/* Conversation / Hero */}
         <div className="relative flex min-h-[60svh] flex-1">
           {showHero ? (
-            <div className="mx-auto my-12 flex w-full max-w-3xl flex-col items-center gap-6 text-center">
-              <QuickAccess onPick={(t) => onSend(t, [])} />
-              <div className="w-full">
-                <Composer onSend={onSend} placeholder="How can I help today?" autoFocus />
-              </div>
+            <div className="mx-auto my-12 flex w-full max-w-3xl flex-col items-stretch gap-4">
+              {/* Composer first */}
+              <Composer onSend={onSend} placeholder="How can I help today?" autoFocus />
+              {/* Suggestions BELOW the composer */}
+              <QuickAccess onPick={(t) => onSend(t, [])} max={4} compact />
             </div>
           ) : (
             <div className="flex h-full w-full flex-col">
@@ -240,9 +197,11 @@ export default function Page() {
                 />
               </div>
 
+              {/* Sticky composer with suggestions below */}
               <div className="sticky bottom-0 z-10 w-full bg-gradient-to-b from-[color-mix(in_oklab,var(--bg),transparent_40%)] to-[var(--bg)] px-4 pb-5 pt-3 print:hidden">
-                <div className="mx-auto w-full max-w-3xl">
+                <div className="mx-auto w-full max-w-3xl space-y-3">
                   <Composer onSend={onSend} placeholder="How can I help today?" />
+                  <QuickAccess onPick={(t) => onSend(t, [])} max={3} compact />
                 </div>
               </div>
             </div>
