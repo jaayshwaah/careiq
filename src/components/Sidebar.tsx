@@ -180,7 +180,7 @@ function ChatItem({
   pinned: boolean;
   onPinToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onRename: (id: string, newTitle: string) => Promise<void>;
+  onRename: (id: string, newTitle: string) => void; // fire & forget; optimistic
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -197,19 +197,17 @@ function ChatItem({
     if (!renaming) setTitleInput(row.title || "New chat");
   }, [row.title, renaming]);
 
-  const submitRename = async () => {
+  // Optimistic rename: update parent state immediately, close editor, then fire API
+  const submitRename = () => {
     const trimmed = titleInput.trim();
     if (!trimmed || trimmed === (row.title || "New chat")) {
       setRenaming(false);
       return;
     }
-    try {
-      setSavingRename(true);
-      await onRename(row.id, trimmed);
-      setRenaming(false);
-    } finally {
-      setSavingRename(false);
-    }
+    setSavingRename(true);
+    onRename(row.id, trimmed); // updates list instantly
+    setRenaming(false); // reflect new title right away
+    setSavingRename(false);
   };
 
   return (
@@ -487,7 +485,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   async function handleDelete(id: string) {
     setChats((prev) => prev.filter((c) => c.id !== id));
     setPinnedIds((prev) => prev.filter((p) => p !== id));
-    await fetch(`/api/chats/${id}`, { method: "DELETE" });
+    fetch(`/api/chats/${id}`, { method: "DELETE" }).catch(() => {});
     if (isActiveChat(pathname, id)) router.push("/chat/new");
   }
 
@@ -506,17 +504,15 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     router.push(`/chat/${newId}`);
   }
 
-  const handleRename = useCallback(
-    async (id: string, newTitle: string) => {
-      setChats((prev) => prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c)));
-      await fetch(`/api/chats/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle }),
-      });
-    },
-    []
-  );
+  // Optimistic, fire-and-forget rename (instant reflection in UI)
+  const handleRename = useCallback((id: string, newTitle: string) => {
+    setChats((prev) => prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c)));
+    fetch(`/api/chats/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTitle }),
+    }).catch((err) => console.error("Rename sync failed", err));
+  }, []);
 
   return (
     <aside
