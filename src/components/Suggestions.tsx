@@ -4,12 +4,9 @@
 import React from "react";
 
 export type SuggestionsProps = {
-  /** Called when a chip is clicked. Parent decides what to do with the text. */
-  onPick?: (text: string) => void;
-  /** (Optional) Provide your own list. If omitted, defaults to nursing-home set. */
+  onPick?: (text: string) => void;   // just prefill, parent decides to send
   items?: string[];
-  /** (Optional) id of a textarea to focus after picking (nice UX on desktop). */
-  targetId?: string;
+  targetId?: string;                 // focus hint (composer textarea id)
   className?: string;
 };
 
@@ -32,18 +29,9 @@ export default function Suggestions({
 }: SuggestionsProps) {
   const list = items?.length ? items : DEFAULT_SUGGESTIONS;
 
-  const handleClick = (s: string) => {
-    // Put text in parent state (not sent).
+  const choose = (s: string) => {
     onPick?.(s);
-
-    // Optional: focus composer control by id (if provided).
-    if (targetId) {
-      const el = document.getElementById(targetId) as HTMLTextAreaElement | null;
-      if (el) {
-        // Append or replace? We’ll replace for clarity; tweak as desired.
-        el.focus();
-      }
-    }
+    if (targetId) document.getElementById(targetId)?.focus();
   };
 
   return (
@@ -60,8 +48,12 @@ export default function Suggestions({
         {list.map((s, i) => (
           <button
             key={i}
-            type="button"
-            onClick={() => handleClick(s)}
+            type="button"                       // <- prevents form submit
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();               // <- belt & suspenders
+              choose(s);
+            }}
             className={[
               "truncate max-w-full",
               "rounded-full px-3 py-2 text-sm",

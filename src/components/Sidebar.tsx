@@ -38,7 +38,7 @@ type SidebarProps = {
 /* ----------------------------- Local constants ---------------------------- */
 
 const PIN_STORAGE_KEY = "careiq.pinnedChatIds.v1";
-const AUTOTITLE_MARK = "careiq.autotitle.done.v1"; // localStorage map of {chatId: ts}
+const AUTOTITLE_MARK = "careiq.autotitle.done.v1";
 
 /* ------------------------------- Utilities -------------------------------- */
 
@@ -354,55 +354,30 @@ function ChatItem({
 }
 
 /* -------------------------- Auto Title background ------------------------- */
-/** Sits quietly in the app, tries to title recent chats that look untitled. */
+
 function AutoTitleAgent() {
   const supabase = getBrowserSupabase();
-
   useEffect(() => {
     let cancelled = false;
     let ticking = false;
-
     async function attempt() {
       if (ticking) return;
       ticking = true;
       try {
-        // 1) pull recent chats
-        const { data: chats, error } = await supabase
+        const { data: chats } = await supabase
           .from("chats")
           .select("id,title,created_at")
           .order("created_at", { ascending: false })
           .limit(25);
-
-        if (error || !chats) return;
-
         const done = getAutotitleMap();
-
-        for (const c of chats) {
+        for (const c of chats || []) {
           if (cancelled) break;
           const id = c.id as string;
           if (!isLikelyUntitled(c.title)) continue;
-          if (done[id]) continue; // already tried
-
-          // 2) check messages quickly
-          const { data: msgs, error: mErr } = await supabase
-            .from("messages")
-            .select("role,created_at")
-            .eq("chat_id", id)
-            .order("created_at", { ascending: true })
-            .limit(6);
-
-          if (mErr || !msgs || msgs.length < 2) continue;
-          const hasUser = msgs.some((m) => (m.role || "user") === "user");
-          const hasAssistant = msgs.some((m) => (m.role || "assistant") === "assistant");
-          if (!hasUser || !hasAssistant) continue;
-
-          // 3) call title API
+          if (done[id]) continue;
           try {
-            const res = await fetch(`/api/chats/${id}/title`, { method: "POST" });
-            // mark regardless to avoid hot-loop; realtime will refresh sidebar
+            await fetch(`/api/chats/${id}/title`, { method: "POST" });
             setAutotitleDone(id);
-            // eslint-disable-next-line no-unused-vars
-            const _json = await res.json().catch(() => ({}));
           } catch {
             setAutotitleDone(id);
           }
@@ -411,28 +386,13 @@ function AutoTitleAgent() {
         ticking = false;
       }
     }
-
-    // Run immediately, then on an interval (gentle)
     attempt();
     const t = setInterval(attempt, 20000);
-
-    // Re-run on any new message via realtime (optional but snappy)
-    const channel = supabase
-      .channel("messages-autotitle")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
-        () => attempt()
-      )
-      .subscribe();
-
     return () => {
       cancelled = true;
       clearInterval(t);
-      supabase.removeChannel(channel);
     };
   }, [supabase]);
-
   return null;
 }
 
@@ -444,11 +404,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-
-  // load/save pins
-  useEffect(() => setPinnedIds(loadPinnedIds()), []);
-  useEffect(() => savePinnedIds(pinnedIds), [pinnedIds]);
-
   const supabase = getBrowserSupabase();
 
   const fetchChats = useCallback(async () => {
@@ -457,82 +412,24 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       .select("id,title,created_at")
       .order("created_at", { ascending: false })
       .limit(500);
-    if (error) {
-      console.error("Failed to load chats:", error.message);
-      setChats([]);
-      return;
-    }
-    setChats((data || []) as ChatRow[]);
+    if (!error) setChats((data || []) as ChatRow[]);
   }, [supabase]);
 
   useEffect(() => {
     fetchChats();
   }, [fetchChats]);
 
-  // Realtime sync: reflect inserts/updates/deletes
-  useEffect(() => {
-    const channel = supabase
-      .channel("chats-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "chats" },
-        (payload: any) => {
-          fetchChats();
-          if (payload.eventType === "DELETE") {
-            const deletedId = payload.old?.id as string | undefined;
-            if (deletedId && isActiveChat(pathname, deletedId)) {
-              router.push("/chat/new");
-            }
-            if (deletedId) {
-              setPinnedIds((prev) => prev.filter((p) => p !== deletedId));
-            }
-          }
-        }
-      )
-      .subscribe();
+  useEffect(() => setPinnedIds(loadPinnedIds()), []);
+  useEffect(() => savePinnedIds(pinnedIds), [pinnedIds]);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, fetchChats, pathname, router]);
-
-  const pinned = useMemo(
-    () => chats.filter((c) => pinnedIds.includes(c.id)),
-    [chats, pinnedIds]
-  );
-  const recent = useMemo(
-    () => chats.filter((c) => !pinnedIds.includes(c.id)),
-    [chats, pinnedIds]
-  );
-
-  const filteredPinned = useMemo(() => {
-    if (!query) return pinned;
-    const q = query.toLowerCase();
-    return pinned.filter((c) => (c.title || "New chat").toLowerCase().includes(q));
-  }, [pinned, query]);
-
-  const filteredRecent = useMemo(() => {
-    if (!query) return recent;
-    const q = query.toLowerCase();
-    return recent.filter((c) => (c.title || "New chat").toLowerCase().includes(q));
-  }, [recent, query]);
+  const pinned = useMemo(() => chats.filter((c) => pinnedIds.includes(c.id)), [chats, pinnedIds]);
+  const recent = useMemo(() => chats.filter((c) => !pinnedIds.includes(c.id)), [chats, pinnedIds]);
 
   async function handleDelete(id: string) {
-    try {
-      // optimistic
-      setChats((prev) => prev.filter((c) => c.id !== id));
-      setPinnedIds((prev) => prev.filter((p) => p !== id));
-
-      const res = await fetch(`/api/chats/${id}`, { method: "DELETE" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || json?.ok === false) throw new Error(json?.error || `HTTP ${res.status}`);
-
-      if (isActiveChat(pathname, id)) router.push("/chat/new");
-    } catch (e: any) {
-      console.error("Delete failed:", e?.message || e);
-      alert(`Could not delete chat: ${e?.message || "Unknown error"}`);
-      fetchChats(); // rollback
-    }
+    setChats((prev) => prev.filter((c) => c.id !== id));
+    setPinnedIds((prev) => prev.filter((p) => p !== id));
+    await fetch(`/api/chats/${id}`, { method: "DELETE" });
+    if (isActiveChat(pathname, id)) router.push("/chat/new");
   }
 
   function togglePin(id: string) {
@@ -540,40 +437,23 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }
 
   async function handleNewChat() {
-    try {
-      const res = await fetch("/api/chats", { method: "POST" });
-      const json = await res.json();
-      if (!res.ok || json?.ok === false) throw new Error(json?.error || `HTTP ${res.status}`);
-      const newId = json.id as string;
-      setChats((prev) => [
-        { id: newId, title: "New chat", created_at: new Date().toISOString() },
-        ...prev,
-      ]);
-      router.push(`/chat/${newId}`);
-    } catch (e: any) {
-      console.error("New chat failed:", e?.message || e);
-      alert(`Could not create chat: ${e?.message || "Unknown error"}`);
-    }
+    const res = await fetch("/api/chats", { method: "POST" });
+    const json = await res.json();
+    const newId = json.id as string;
+    setChats((prev) => [{ id: newId, title: "New chat", created_at: new Date().toISOString() }, ...prev]);
+    router.push(`/chat/${newId}`);
   }
 
   const handleRename = useCallback(
     async (id: string, newTitle: string) => {
       setChats((prev) => prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c)));
-      try {
-        const res = await fetch(`/api/chats/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: newTitle }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || json?.ok === false) throw new Error(json?.error || `HTTP ${res.status}`);
-      } catch (e: any) {
-        console.error("Rename failed:", e?.message || e);
-        alert(`Could not rename chat: ${e?.message || "Unknown error"}`);
-        fetchChats();
-      }
+      await fetch(`/api/chats/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle }),
+      });
     },
-    [fetchChats]
+    []
   );
 
   return (
@@ -583,9 +463,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         collapsed ? "w-[76px]" : "w-[300px]"
       )}
     >
-      {/* Background agent that auto-generates titles after an exchange */}
       <AutoTitleAgent />
-
       <div className="sticky top-0 h-svh p-2 sm:p-3">
         <div className="glass relative flex h-full flex-col overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10">
           {/* Top bar */}
@@ -598,16 +476,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             >
               <PanelsTopLeft size={18} />
             </button>
-
             {!collapsed && (
               <Link href="/" className="flex items-center gap-2 px-2 py-1">
-                <div className="relative h-6 w-6 overflow-hidden rounded">
-                  <Image alt="CareIQ" fill src="/logo.svg" />
-                </div>
+                <Image alt="CareIQ" src="/logo.svg" width={24} height={24} priority />
                 <span className="text-sm font-semibold tracking-tight">CareIQ</span>
               </Link>
             )}
-
             <div className="ml-auto">
               <AccountMenu />
             </div>
@@ -624,13 +498,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Search chats…"
-                      className="w-full rounded-xl border border-neutral-200 bg-white py-2 pl-8 pr-3 text-sm outline-none ring-0 transition placeholder:text-neutral-400 focus:border-neutral-300 focus:bg-white focus:ring-0 dark:border-neutral-800 dark:bg-neutral-950 dark:focus:border-neutral-700"
+                      className="w-full rounded-xl border border-neutral-200 bg-white py-2 pl-8 pr-3 text-sm outline-none dark:border-neutral-800 dark:bg-neutral-950"
                     />
                   </div>
                 </div>
                 <button
                   onClick={handleNewChat}
-                  className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-100 active:bg-neutral-200 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+                  className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
                 >
                   <div className="flex items-center gap-1">
                     <Plus size={16} />
@@ -642,7 +516,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <div className="flex items-center justify-center">
                 <button
                   onClick={handleNewChat}
-                  className="rounded-xl border border-neutral-200 bg-white p-2 hover:bg-neutral-100 active:bg-neutral-200 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+                  className="rounded-xl border border-neutral-200 bg-white p-2 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
                   aria-label="New chat"
                   title="New chat"
                 >
@@ -654,11 +528,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
           {/* Lists */}
           <div className="min-h-0 flex-1 overflow-auto px-2 pb-2">
-            {/* Pinned */}
             {!collapsed && pinned.length > 0 && (
               <div className="mb-2">
-                <div className="flex items-center justify-between px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                  <span>Pinned</span>
+                <div className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Pinned
                 </div>
                 <ul className="space-y-1">
                   {pinned.map((row) => (
@@ -666,7 +539,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       key={row.id}
                       row={row}
                       active={isActiveChat(pathname, row.id)}
-                      pinned={true}
+                      pinned
                       onPinToggle={togglePin}
                       onDelete={handleDelete}
                       onRename={handleRename}
@@ -675,12 +548,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </ul>
               </div>
             )}
-
-            {/* Recent */}
             <div className={!collapsed ? "mt-1" : ""}>
               {!collapsed && (
-                <div className="flex items-center justify-between px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                  <span>Recent</span>
+                <div className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Recent
                 </div>
               )}
               <ul className={cn("space-y-1", collapsed && "px-1")}>
