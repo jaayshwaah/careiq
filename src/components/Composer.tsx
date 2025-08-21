@@ -5,20 +5,20 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Plus, SendHorizontal } from "lucide-react";
 
 type Props = {
-  /** Optional: parent handler. If omitted, we dispatch a DOM CustomEvent('composer:send'). */
+  /** Parent handler. If omitted, we DO NOT clear the input so text is never lost. */
   onSend?: (text: string, files: File[]) => Promise<void> | void;
-  /** Optional: disable input (e.g., while sending) */
+  /** Disable input (e.g., while sending) */
   disabled?: boolean;
-  /** Optional: placeholder override */
+  /** Placeholder override */
   placeholder?: string;
-  /** Optional: autoFocus on mount */
+  /** AutoFocus on mount */
   autoFocus?: boolean;
 };
 
 export default function Composer({
   onSend,
   disabled = false,
-  placeholder = "Ask anything",
+  placeholder = "How can I help today?",
   autoFocus = true,
 }: Props) {
   const [value, setValue] = useState("");
@@ -27,12 +27,12 @@ export default function Composer({
 
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const containerRef = useRef<HTMLFormElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   // ===== Autosize config =====
-  // Default thin height; expand up to a cap as the user types.
-  const MIN_HEIGHT = 40;  // thin default (approx 44px total pill)
-  const MAX_HEIGHT = 160; // prevent runaway
+  // Thin default; expands as needed.
+  const MIN_HEIGHT = 40;  // ~44px overall pill height
+  const MAX_HEIGHT = 160;
 
   useEffect(() => {
     if (autoFocus && taRef.current) taRef.current.focus();
@@ -52,14 +52,14 @@ export default function Composer({
     el.style.height = `${next}px`;
   };
 
-  // ===== Attachments (left + button) =====
+  // ===== Attachments =====
   const handleChooseFiles = () => fileInputRef.current?.click();
 
   const handleFilesPicked = (ev: React.ChangeEvent<HTMLInputElement>) => {
     const list = ev.target.files;
     if (!list || list.length === 0) return;
     setFiles(prev => [...prev, ...Array.from(list)]);
-    ev.target.value = ""; // allow picking the same file again
+    ev.target.value = ""; // allow re-picking same file
   };
 
   const clearAttachments = (idx?: number) => {
@@ -74,20 +74,31 @@ export default function Composer({
   const actuallySend = useCallback(
     async (text: string) => {
       if (!text.trim() && files.length === 0) return;
+
+      let sentOk = false;
       try {
         setIsSending(true);
+
         if (onSend) {
           await onSend(text.trim(), files);
+          sentOk = true;
         } else {
+          // No handler wired — do NOT clear the input.
+          // Emit a DOM event so app code can optionally listen.
           const evt = new CustomEvent("composer:send", {
             detail: { text: text.trim(), files },
           });
           window.dispatchEvent(evt);
+          // Leave sentOk=false so we keep the text (prevents “message disappeared”).
         }
+      } catch {
+        sentOk = false; // keep text on failure
       } finally {
         setIsSending(false);
-        setValue("");
-        clearAttachments();
+        if (sentOk) {
+          setValue("");
+          clearAttachments();
+        }
         taRef.current?.focus();
       }
     },
@@ -107,9 +118,8 @@ export default function Composer({
     }
   };
 
-  // ===== Liquid‑glass (iOS/macOS vibe) styles =====
-  const glassBtnStyle: React.CSSProperties = {
-    // Liquid glass: translucent, blurred, subtle inner highlight
+  // ===== Liquid-glass button styles (Apple vibe) =====
+  const glassBtnLight: React.CSSProperties = {
     backdropFilter: "saturate(180%) blur(14px)",
     WebkitBackdropFilter: "saturate(180%) blur(14px)",
     background:
@@ -118,8 +128,7 @@ export default function Composer({
     boxShadow:
       "inset 0 1px 0 rgba(255,255,255,0.65), 0 8px 24px rgba(0,0,0,0.08)",
   };
-
-  const glassBtnStyleDark: React.CSSProperties = {
+  const glassBtnDark: React.CSSProperties = {
     backdropFilter: "saturate(180%) blur(14px)",
     WebkitBackdropFilter: "saturate(180%) blur(14px)",
     background:
@@ -129,14 +138,24 @@ export default function Composer({
       "inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.32)",
   };
 
+  // Use CSS prefers-color-scheme to choose initial style without reading document
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const update = () => setIsDark(!!mq?.matches);
+    update();
+    mq?.addEventListener?.("change", update);
+    return () => mq?.removeEventListener?.("change", update);
+  }, []);
+
+  // Pill container min height follows the textarea height + padding
   const pillStyle: React.CSSProperties = {
-    // Thin default height, grows with textarea
-    minHeight: MIN_HEIGHT + 12, // padding + borders ~ visually ~44px
+    minHeight: MIN_HEIGHT + 12, // ~ visual 44px bar
   };
 
   return (
     <form
-      ref={containerRef}
+      ref={formRef}
       onSubmit={onSubmit}
       className="w-full"
       aria-label="Chat composer"
@@ -164,7 +183,7 @@ export default function Composer({
       {/* Pill input */}
       <div
         className={[
-          "relative flex w-full items-center gap-3 rounded-full px-3 sm:px-4",
+          "relative flex w-full items-center gap-2 sm:gap-3 rounded-full px-3 sm:px-4",
           "border border-default bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)]",
           "dark:bg-[rgba(20,20,20,0.65)]",
         ].join(" ")}
@@ -182,8 +201,8 @@ export default function Composer({
           <Plus className="h-[18px] w-[18px]" />
         </button>
 
-        {/* Text area (auto-expands) */}
-        <div className="flex-1 py-2">
+        {/* Text area wrapper: make sure the text (placeholder and typed) is vertically centered */}
+        <div className="flex min-w-0 flex-1 items-center py-1">
           <textarea
             ref={taRef}
             rows={1}
@@ -194,7 +213,8 @@ export default function Composer({
             className={[
               "w-full resize-none bg-transparent outline-none",
               "placeholder:text-neutral-400",
-              "text-[15px] leading-[20px]",
+              // Slightly taller line-height for better vertical centering within thin pill
+              "text-[15px] leading-[22px]",
             ].join(" ")}
             spellCheck
             disabled={disabled || isSending}
@@ -202,7 +222,7 @@ export default function Composer({
           />
         </div>
 
-        {/* Right: Liquid‑glass Send */}
+        {/* Right: Liquid-glass Send (no paperclip) */}
         <button
           type="submit"
           disabled={disabled || isSending || (!value.trim() && files.length === 0)}
@@ -214,12 +234,7 @@ export default function Composer({
               : "hover:opacity-95",
             "text-black dark:text-white",
           ].join(" ")}
-          style={{
-            ...(typeof window !== "undefined" &&
-            document.documentElement.classList.contains("dark")
-              ? glassBtnStyleDark
-              : glassBtnStyle),
-          }}
+          style={isDark ? glassBtnDark : glassBtnLight}
           aria-label="Send message"
           title="Send"
         >
@@ -235,18 +250,7 @@ export default function Composer({
           onChange={handleFilesPicked}
         />
       </div>
-
-      {/* Footer helper row (subtle) */}
-      <div className="mt-2 flex items-center justify-between px-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-        <div className="hidden sm:block">
-          Press <kbd className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">Enter</kbd> to send •
-          <span className="ml-1">
-            <kbd className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">Shift</kbd>+
-            <kbd className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">Enter</kbd> for a new line
-          </span>
-        </div>
-        {isSending && <div className="animate-pulse">Sending…</div>}
-      </div>
+      {/* Footer helper row removed per request */}
     </form>
   );
 }
