@@ -9,66 +9,67 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    // Simple admin guard
     const adminKey = process.env.ADMIN_INGEST_KEY;
     const hdr = req.headers.get("x-admin-token") || "";
     if (adminKey && hdr !== adminKey) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const form = await req.formData();
-    const facilityId = (form.get("facility_id") as string) || null;
-    const category = (form.get("category") as string) || "general";
-    const sourceUrl = (form.get("source_url") as string) || null;
-    const lastUpdatedStr = (form.get("last_updated") as string) || null;
-
-    if (!facilityId) {
-      return NextResponse.json({ ok: false, error: "facility_id is required" }, { status: 400 });
-    }
-
-    const files = form.getAll("files").filter((f): f is File => f instanceof File);
-    if (files.length === 0) {
-      return NextResponse.json({ ok: false, error: "No files provided" }, { status: 400 });
-    }
-
     const supa = supabaseService();
-    const toInsert: any[] = [];
+    const ctype = req.headers.get("content-type") || "";
+    const isJson = ctype.includes("application/json");
+    const isMultipart = ctype.includes("multipart/form-data");
 
-    for (const file of files) {
-      const buf = Buffer.from(await file.arrayBuffer());
-      const name = file.name || "Untitled";
-      const ext = name.toLowerCase().split(".").pop() || "";
+    let payload: any = {};
+    let file: File | null = null;
 
-      let text = "";
-      if (ext === "pdf") text = await parsePdfToText(buf);
-      else if (ext === "docx") text = await parseDocxToText(buf);
-      else text = buf.toString("utf8");
-
-      const chunks = chunkText(text, {
-        title: name.replace(/\.[^/.]+$/, ""),
-        metadata: { filename: name, mime: file.type },
-      });
-
-      // Embed in batches to avoid payload limits
-      const batchSize = 64;
-      for (let i = 0; i < chunks.length; i += batchSize) {
-        const slice = chunks.slice(i, i + batchSize);
-        const embeddings = await embedTexts(slice.map((c) => c.content));
-
-        slice.forEach((c, j) => {
-          toInsert.push({
-            facility_id: facilityId,
-            category,
-            title: c.title,
-            content: c.content,
-            metadata: c.metadata || {},
-            source_url: sourceUrl,
-            last_updated: lastUpdatedStr ? new Date(lastUpdatedStr).toISOString() : null,
-            embedding: embeddings[j],
-          });
-        });
-      }
+    if (isJson) {
+      payload = await req.json();
+    } else if (isMultipart) {
+      const form = await req.formData();
+      payload = JSON.parse(String(form.get("payload") || "{}"));
+      file = form.get("file") as unknown as File;
+    } else {
+      return NextResponse.json({ ok: false, error: "Unsupported content-type" }, { status: 400 });
     }
+
+    const {
+      title = null,
+      content = null,
+      source_url = null,
+      last_updated = null,
+      category = null,
+      facility_id = null,
+      state = null, // <-- NEW
+    } = payload;
+
+    let raw = content || "";
+    if (!raw && file) {
+      const buf = Buffer.from(await file.arrayBuffer());
+      const name = (file as any).name || "file";
+      if (name.toLowerCase().endsWith(".pdf")) raw = await parsePdfToText(buf);
+      else if (name.toLowerCase().endsWith(".docx")) raw = await parseDocxToText(buf);
+      else raw = buf.toString("utf8");
+    }
+
+    if (!raw) {
+      return NextResponse.json({ ok: false, error: "No content submitted" }, { status: 400 });
+    }
+
+    const chunks = chunkText(raw, { maxLen: 1200, overlap: 120 });
+    const embeddings = await embedTexts(chunks);
+
+    const toInsert = chunks.map((chunk, i) => ({
+      facility_id,
+      state,                 // <-- NEW
+      category,
+      title: title || `Doc chunk ${i + 1}`,
+      content: chunk,
+      source_url,
+      last_updated,
+      embedding: embeddings[i],
+      metadata: { seq: i, total: chunks.length, state, facility_id, category, source_url },
+    }));
 
     if (toInsert.length === 0) {
       return NextResponse.json({ ok: false, error: "No content extracted" }, { status: 400 });

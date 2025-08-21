@@ -4,23 +4,23 @@
 import { useEffect, useMemo } from "react";
 import { useAutoScroll } from "@/lib/useAutoScroll";
 import { cn } from "@/lib/utils";
+import { Bookmark } from "lucide-react";
 
-/** Types (align with your app) */
+/** Types */
 type ChatRole = "system" | "user" | "assistant";
 
 type AttachmentPayload = {
   name: string;
   type: string;
   size: number;
-  text: string; // stored on the user message; not displayed here
+  text: string;
 };
 
-export type ChatMessage = {
+type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
   createdAt?: string; // ISO
-  /** Present on user messages when attachments were used on send (for regenerate). */
   attachments?: AttachmentPayload[];
 };
 
@@ -28,11 +28,8 @@ export default function MessageList({
   messages,
   isStreaming = false,
   streamingId = null,
-  /** Increment this every time you send a new user message to auto-resume follow. */
   followNowSignal = 0,
-  /** Increment this for each assistant token chunk to power the "New reply" toast when scrolled up. */
   newAssistantTokenTick = 0,
-  /** Regenerate handler provided by page.tsx */
   onRegenerate,
 }: {
   messages: ChatMessage[];
@@ -52,43 +49,120 @@ export default function MessageList({
     clearUnseen,
   } = useAutoScroll<HTMLDivElement>(72);
 
-  // Follow now when parent signals (user sent a message).
+  // Follow on new send
   useEffect(() => {
     if (followNowSignal > 0) {
-      resumeAutoFollow("auto"); // snap to bottom on send
+      resumeAutoFollow("auto");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [followNowSignal]);
 
-  // Notify hook when assistant tokens arrive (to show toast if scrolled up & paused).
+  // Toast logic for streaming while scrolled up
   useEffect(() => {
     if (newAssistantTokenTick > 0) {
       notifyNewContent("assistant");
     }
-  }, [newAssistantTokenTick, notifyNewContent]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newAssistantTokenTick]);
 
-  // Also notify on message length changes (covers non-stream inserts, edits, etc.)
-  useEffect(() => {
-    notifyNewContent("assistant");
-  }, [messages.length, notifyNewContent]);
+  const rendered = useMemo(() => {
+    return messages.map((msg, idx) => {
+      const mine = msg.role === "user";
+      const bubble = (
+        <div
+          className={cn(
+            "max-w-full rounded-2xl px-4 py-2 shadow-sm ring-1",
+            mine
+              ? "ml-auto bg-white ring-zinc-200"
+              : "mr-auto bg-zinc-50 ring-zinc-200"
+          )}
+        >
+          <div className="prose prose-zinc dark:prose-invert max-w-none whitespace-pre-wrap">
+            {msg.content || (isStreaming && msg.id === streamingId ? "…" : "")}
+          </div>
 
-  const rendered = useMemo(
-    () =>
-      messages.map((m) => (
-        <MessageRow
-          key={m.id}
-          msg={m}
-          isStreaming={isStreaming && streamingId === m.id}
-          showActions={m.role === "assistant"}
-          onRegenerate={onRegenerate}
-        />
-      )),
-    [messages, isStreaming, streamingId, onRegenerate]
-  );
+          {/* Attachments bubble for user messages (regenerate context) */}
+          {!!msg.attachments?.length && mine && (
+            <details className="group mt-2">
+              <summary className="list-none">
+                <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs text-zinc-700 shadow-sm hover:bg-zinc-50 cursor-pointer">
+                  📎 Used {msg.attachments.length} file
+                  {msg.attachments.length > 1 ? "s" : ""}
+                  <svg
+                    className="h-3 w-3 transition-transform group-open:rotate-180"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </span>
+              </summary>
+              <div className="mt-2 space-y-1 text-xs text-zinc-600">
+                {msg.attachments.map((a, i) => (
+                  <div key={i} className="rounded border border-zinc-200 bg-white px-2 py-1">
+                    <div className="font-medium">{a.name}</div>
+                    <div className="text-[11px] opacity-70">{formatSize(a.size)} • {a.type}</div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      );
+
+      return (
+        <div key={msg.id} className={cn("flex flex-col gap-1", mine ? "items-end" : "items-start")}>
+          {/* Meta row: who & time & actions */}
+          <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+            <span>{mine ? "You" : "CareIQ"}</span>
+            {msg.createdAt && <span>• {timeAgo(msg.createdAt)}</span>}
+
+            {/* Bookmark action (client-side + server persistence optional) */}
+            <button
+              className="ml-2 inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700 hover:bg-zinc-50"
+              title="Bookmark"
+              onClick={async () => {
+                try {
+                  await fetch("/api/bookmarks", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: msg.content }),
+                  });
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              <Bookmark className="h-3 w-3" />
+              Save
+            </button>
+
+            {/* Regenerate only on assistant messages */}
+            {onRegenerate && msg.role === "assistant" && idx === messages.length - 1 && (
+              <button
+                className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700 hover:bg-zinc-50"
+                title="Regenerate"
+                onClick={() => onRegenerate(msg.id)}
+              >
+                ↻ Regenerate
+              </button>
+            )}
+          </div>
+
+          {bubble}
+        </div>
+      );
+    });
+  }, [messages, isStreaming, streamingId, onRegenerate]);
 
   return (
     <div className="relative flex-1 min-h-0">
-      {/* Scrollable region (single vertical scroller in the app) */}
+      {/* Single scroll container */}
       <div
         ref={ref}
         onScroll={handleScroll}
@@ -104,134 +178,26 @@ export default function MessageList({
         <>
           {/* Jump to latest FAB */}
           <button
-            onClick={() => resumeAutoFollow("smooth")}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-zinc-200 bg-white/90 px-4 py-1.5 text-sm shadow-md hover:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-300"
+            onClick={() => {
+              resumeAutoFollow("button");
+              clearUnseen();
+            }}
+            className={cn(
+              "absolute bottom-16 right-4 z-20 rounded-full border border-zinc-200 bg-white/90 px-3 py-1.5 text-xs shadow-md backdrop-blur",
+              "hover:bg-white"
+            )}
           >
-            Jump to latest ↓
+            Jump to latest
           </button>
 
-          {/* New reply toast (appears slightly above the FAB) */}
+          {/* "New reply" toast */}
           {hasUnseen && (
-            <div
-              className="absolute bottom-14 left-1/2 -translate-x-1/2 rounded-md border border-zinc-200 bg-white/95 px-3 py-1.5 text-xs shadow-sm"
-              role="status"
-            >
+            <div className="pointer-events-none absolute bottom-28 right-4 z-10 rounded-full bg-black/80 px-3 py-1.5 text-xs text-white shadow">
               New reply
-              <button
-                onClick={() => {
-                  clearUnseen();
-                  resumeAutoFollow("smooth");
-                }}
-                className="ml-2 underline underline-offset-2 hover:opacity-80"
-              >
-                View
-              </button>
             </div>
           )}
         </>
       )}
-    </div>
-  );
-}
-
-function MessageRow({
-  msg,
-  isStreaming,
-  showActions,
-  onRegenerate,
-}: {
-  msg: ChatMessage;
-  isStreaming: boolean;
-  showActions: boolean;
-  onRegenerate?: (assistantMessageId: string) => void;
-}) {
-  const isUser = msg.role === "user";
-
-  return (
-    <div className="w-full">
-      <Bubble role={msg.role} content={msg.content} />
-
-      {/* Attachments used pill (only for user messages with snapshots) */}
-      {isUser && msg.attachments && msg.attachments.length > 0 && (
-        <div className="mt-1 flex justify-end pr-1">
-          <details className="group">
-            <summary className="list-none">
-              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] text-zinc-600 shadow-sm hover:bg-zinc-50 cursor-pointer">
-                📎 Used {msg.attachments.length} file
-                {msg.attachments.length > 1 ? "s" : ""}
-                <svg
-                  className="h-3 w-3 transition-transform group-open:rotate-180"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </span>
-            </summary>
-            <div className="mt-1 rounded-lg border border-zinc-200 bg-white p-2 shadow-sm">
-              <ul className="max-h-48 w-[min(80vw,28rem)] overflow-y-auto text-xs text-zinc-700">
-                {msg.attachments.map((a, i) => (
-                  <li key={`${a.name}-${i}`} className="flex items-center justify-between gap-3 py-1">
-                    <span className="truncate" title={a.name}>
-                      {a.name}
-                    </span>
-                    <span className="shrink-0 tabular-nums text-zinc-400">{formatSize(a.size)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </details>
-        </div>
-      )}
-
-      {/* Row actions for assistant messages */}
-      {showActions && (
-        <div className="mt-1 flex items-center gap-2 pl-1">
-          <button
-            className={cn(
-              "rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs hover:bg-zinc-50 shadow-sm",
-              isStreaming && "opacity-50 cursor-not-allowed"
-            )}
-            onClick={() => onRegenerate?.(msg.id)}
-            disabled={isStreaming}
-            title="Try again / regenerate this reply"
-          >
-            ↻ Regenerate
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Bubble({ role, content }: { role: ChatRole; content: string }) {
-  const isUser = role === "user";
-  const isAssistant = role === "assistant";
-  const isSystem = role === "system";
-
-  return (
-    <div
-      className={cn(
-        "w-full",
-        isUser && "flex justify-end",
-        (isAssistant || isSystem) && "flex justify-start"
-      )}
-    >
-      <div
-        className={cn(
-          "max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2 text-[15px] leading-relaxed shadow-sm",
-          isUser && "bg-zinc-900 text-white",
-          isAssistant && "bg-white text-zinc-900 border border-zinc-200",
-          isSystem && "bg-amber-50 text-amber-900 border border-amber-200"
-        )}
-      >
-        {content || (isAssistant ? "…" : "")}
-      </div>
     </div>
   );
 }
@@ -246,4 +212,23 @@ function formatSize(bytes: number) {
     i++;
   }
   return `${n.toFixed(n >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function timeAgo(iso?: string) {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  const sec = Math.floor((Date.now() - t) / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d`;
+  const wk = Math.floor(day / 7);
+  if (wk < 4) return `${wk}w`;
+  const mo = Math.floor(day / 30);
+  if (mo < 12) return `${mo}mo`;
+  const yr = Math.floor(day / 365);
+  return `${yr}y`;
 }
