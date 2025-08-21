@@ -1,7 +1,7 @@
 // src/app/page.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
 import Composer from "@/components/Composer";
 import MessageList from "@/components/MessageList";
@@ -21,19 +21,7 @@ export default function Page() {
   const [followNow, setFollowNow] = useState(0);
   const lastUserRef = useRef<string>("");
 
-  // Header actions: export & print
-  const exportJSON = () => {
-    const blob = new Blob([JSON.stringify({ messages }, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `careiq-chat-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
+  // Export MD
   const exportMarkdown = () => {
     const md = messages
       .map((m) => (m.role === "user" ? `**You:** ${m.content}` : `**CareIQ:** ${m.content}`))
@@ -47,19 +35,63 @@ export default function Page() {
     URL.revokeObjectURL(url);
   };
 
-  const printIt = () => window.print();
+  // Export JSON (audit-style)
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify({ messages }, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `careiq-chat-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-  // Regenerate last assistant reply (uses the last user prompt)
+  // Export PDF (server-generated)
+  const exportPDF = async () => {
+    const r = await fetch("/api/export/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "CareIQ Chat Export",
+        messages,
+      }),
+    });
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `careiq-chat-${new Date().toISOString().slice(0, 10)}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const regenerate = async () => {
     if (!lastUserRef.current) return;
     const priorUser = lastUserRef.current;
-    // Remove the last assistant message if it's the last item
     setMessages((prev) => {
       const copy = [...prev];
       if (copy.at(-1)?.role === "assistant") copy.pop();
       return copy;
     });
-    await onSend(priorUser, []); // resend
+    await onSend(priorUser, []);
+  };
+
+  const callAutoTitle = async (text: string) => {
+    try {
+      const r = await fetch("/api/title", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const j = await r.json();
+      const title = j?.title || "New chat";
+      document.title = `${title} • CareIQ`;
+      // If you have a chats DB row, PATCH it here.
+    } catch {
+      // ignore
+    }
   };
 
   const onSend = async (text: string, files: File[]) => {
@@ -72,7 +104,7 @@ export default function Page() {
       role: "user",
       content: text,
       createdAt: now,
-      attachments: [], // (optional: include your extracted text for RAG)
+      attachments: [],
     };
     const asstMsg: Msg = {
       id: `${idBase}:a`,
@@ -81,30 +113,26 @@ export default function Page() {
       createdAt: now,
     };
 
+    const isFirst = messages.length === 0;
+
     setMessages((prev) => [...prev, userMsg, asstMsg]);
     setStreamingId(asstMsg.id);
     setFollowNow((v) => v + 1);
 
-    // Build history for the API
+    // Auto-title on first prompt
+    if (isFirst) callAutoTitle(text);
+
     const history = [
       ...messages.map((m) => ({ role: m.role, content: m.content })),
       { role: "user", content: text },
     ];
-
-    // You can surface role/state here or from user profile later
-    const role = null; // e.g., "Administrator"
-    const facilityState = null; // e.g., "MA"
-    const facilityId = null; // e.g., your Supabase facility uuid
 
     const res = await fetch("/api/complete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         messages: history,
-        attachments: [], // include [{name, text}] if you OCR/extract client-side
-        role,
-        facilityState,
-        facilityId,
+        attachments: [],
       }),
     });
 
@@ -118,17 +146,13 @@ export default function Page() {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-
     let assistantBuf = "";
 
-    // Read SSE frames
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
-
-      // Parse OpenRouter-style SSE frames
       const lines = chunk.split(/\r?\n/).filter(Boolean);
       for (const line of lines) {
         if (line.startsWith("data: ")) {
@@ -145,10 +169,9 @@ export default function Page() {
               setMessages((prev) =>
                 prev.map((m) => (m.id === asstMsg.id ? { ...m, content: assistantBuf } : m))
               );
-              setNewTokenTick((t) => t + 1);
             }
           } catch {
-            // ignore parse errors on keepalives
+            // ignore keepalives
           }
         }
       }
@@ -157,7 +180,6 @@ export default function Page() {
     setStreamingId(null);
   };
 
-  // Pre-chat hero: show quick topics + centered composer
   const showHero = messages.length === 0;
 
   return (
@@ -167,28 +189,28 @@ export default function Page() {
         <div className="flex items-center justify-end gap-2 print:hidden">
           <button
             onClick={exportMarkdown}
-            className="px-3 py-1.5 text-sm rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
+            className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
             title="Export as Markdown"
           >
             Export MD
           </button>
           <button
             onClick={exportJSON}
-            className="px-3 py-1.5 text-sm rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
+            className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
             title="Export JSON (audit trail)"
           >
             Export JSON
           </button>
           <button
-            onClick={printIt}
-            className="px-3 py-1.5 text-sm rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
-            title="Print"
+            onClick={exportPDF}
+            className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
+            title="Export PDF"
           >
-            Print
+            Export PDF
           </button>
           <button
             onClick={regenerate}
-            className="px-3 py-1.5 text-sm rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90 disabled:opacity-50"
+            className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90 disabled:opacity-50"
             disabled={!messages.some((m) => m.role === "assistant")}
             title="Regenerate last reply"
           >
@@ -200,12 +222,7 @@ export default function Page() {
         <div className="relative flex min-h-[60svh] flex-1">
           {showHero ? (
             <div className="mx-auto my-12 flex w-full max-w-3xl flex-col items-center gap-6 text-center">
-              <QuickAccess
-                onPick={(t) => {
-                  // Prefill then send
-                  onSend(t, []);
-                }}
-              />
+              <QuickAccess onPick={(t) => onSend(t, [])} />
               <div className="w-full">
                 <Composer onSend={onSend} placeholder="How can I help today?" autoFocus />
               </div>
@@ -214,13 +231,7 @@ export default function Page() {
             <div className="flex h-full w-full flex-col">
               <div className="flex-1 min-h-0">
                 <MessageList
-                  messages={messages.map((m) => ({
-                    id: m.id,
-                    role: m.role,
-                    content: m.content,
-                    createdAt: m.createdAt,
-                    attachments: m.attachments,
-                  }))}
+                  messages={messages}
                   isStreaming={Boolean(streamingId)}
                   streamingId={streamingId}
                   followNowSignal={followNow}
@@ -229,7 +240,6 @@ export default function Page() {
                 />
               </div>
 
-              {/* Sticky composer */}
               <div className="sticky bottom-0 z-10 w-full bg-gradient-to-b from-[color-mix(in_oklab,var(--bg),transparent_40%)] to-[var(--bg)] px-4 pb-5 pt-3 print:hidden">
                 <div className="mx-auto w-full max-w-3xl">
                   <Composer onSend={onSend} placeholder="How can I help today?" />

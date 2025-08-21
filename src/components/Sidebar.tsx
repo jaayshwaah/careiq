@@ -17,6 +17,7 @@ import {
   User,
   LogOut,
   PencilLine,
+  CalendarDays,
 } from "lucide-react";
 import { cn, timeAgo } from "@/lib/utils";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -121,7 +122,7 @@ function TinyMenu({
     <div
       ref={ref}
       className={cn(
-        "absolute z-50 mt-1 min-w-[200px] rounded-xl border border-black/10 bg-white p-1 text-sm shadow-lg dark:border-white/10 dark:bg-neutral-900",
+        "absolute z-50 mt-1 min-w-[200px] rounded-2xl border border-black/10 bg-white p-1 text-sm shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-white/10 dark:bg-neutral-900/90",
         align === "end" ? "right-0" : "left-0"
       )}
       role="menu"
@@ -150,7 +151,7 @@ function TinyMenuItem({
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition",
+        "flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left transition",
         disabled
           ? "cursor-not-allowed opacity-40"
           : "hover:bg-neutral-100 active:bg-neutral-200 dark:hover:bg-neutral-800 dark:active:bg-neutral-700",
@@ -214,10 +215,10 @@ function ChatItem({
   return (
     <li
       className={cn(
-        "group relative rounded-xl",
+        "group relative rounded-2xl",
         active
           ? "bg-neutral-100 ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-white/10"
-          : "hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
+          : "hover:bg-white/60 dark:hover:bg-neutral-900/60"
       )}
     >
       {!renaming ? (
@@ -241,17 +242,17 @@ function ChatItem({
               if (e.key === "Enter") submitRename();
               if (e.key === "Escape") setRenaming(false);
             }}
-            className="w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-950"
+            className="w-full rounded-xl border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-950"
           />
           <button
-            className="rounded-md px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            className="rounded-lg px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800"
             onClick={() => setRenaming(false)}
             disabled={savingRename}
           >
             Cancel
           </button>
           <button
-            className="rounded-md bg-neutral-900 px-2 py-1 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-black"
+            className="rounded-lg bg-neutral-900 px-2 py-1 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-black"
             onClick={submitRename}
             disabled={savingRename}
           >
@@ -354,12 +355,18 @@ function ChatItem({
 }
 
 /* -------------------------- Auto Title background ------------------------- */
-
+/**
+ * Auto‑titles recent chats that are still "New chat" by:
+ *  1) Fetching the first user message for each chat
+ *  2) Calling /api/title (cheap model) to generate a short title
+ *  3) PATCHing /api/chats/:id with the new title
+ */
 function AutoTitleAgent() {
   const supabase = getBrowserSupabase();
   useEffect(() => {
     let cancelled = false;
     let ticking = false;
+
     async function attempt() {
       if (ticking) return;
       ticking = true;
@@ -369,23 +376,62 @@ function AutoTitleAgent() {
           .select("id,title,created_at")
           .order("created_at", { ascending: false })
           .limit(25);
+
         const done = getAutotitleMap();
         for (const c of chats || []) {
           if (cancelled) break;
           const id = c.id as string;
           if (!isLikelyUntitled(c.title)) continue;
           if (done[id]) continue;
-          try {
-            await fetch(`/api/chats/${id}/title`, { method: "POST" });
-            setAutotitleDone(id);
-          } catch {
-            setAutotitleDone(id);
+
+          // get first user message
+          const { data: msgs } = await supabase
+            .from("messages")
+            .select("role,content,created_at")
+            .eq("chat_id", id)
+            .order("created_at", { ascending: true })
+            .limit(10);
+
+          const firstUser = (msgs || []).find((m: any) => m.role === "user") as
+            | { content: string }
+            | undefined;
+
+          const seed = firstUser?.content?.trim();
+          if (!seed) {
+            setAutotitleDone(id); // nothing to title off; skip next time
+            continue;
           }
+
+          let title = "New chat";
+          try {
+            const tr = await fetch("/api/title", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: seed }),
+            });
+            const tj = await tr.json();
+            title = (tj?.title || "New chat").slice(0, 60);
+          } catch {
+            // ignore
+          }
+
+          try {
+            await fetch(`/api/chats/${id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title }),
+            });
+          } catch {
+            // ignore network error; we'll try once only
+          }
+
+          setAutotitleDone(id);
         }
       } finally {
         ticking = false;
       }
     }
+
     attempt();
     const t = setInterval(attempt, 20000);
     return () => {
@@ -393,6 +439,7 @@ function AutoTitleAgent() {
       clearInterval(t);
     };
   }, [supabase]);
+
   return null;
 }
 
@@ -422,8 +469,20 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   useEffect(() => setPinnedIds(loadPinnedIds()), []);
   useEffect(() => savePinnedIds(pinnedIds), [pinnedIds]);
 
-  const pinned = useMemo(() => chats.filter((c) => pinnedIds.includes(c.id)), [chats, pinnedIds]);
-  const recent = useMemo(() => chats.filter((c) => !pinnedIds.includes(c.id)), [chats, pinnedIds]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return chats;
+    return chats.filter((c) => (c.title || "New chat").toLowerCase().includes(q));
+  }, [query, chats]);
+
+  const pinned = useMemo(
+    () => filtered.filter((c) => pinnedIds.includes(c.id)),
+    [filtered, pinnedIds]
+  );
+  const recent = useMemo(
+    () => filtered.filter((c) => !pinnedIds.includes(c.id)),
+    [filtered, pinnedIds]
+  );
 
   async function handleDelete(id: string) {
     setChats((prev) => prev.filter((c) => c.id !== id));
@@ -440,7 +499,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const res = await fetch("/api/chats", { method: "POST" });
     const json = await res.json();
     const newId = json.id as string;
-    setChats((prev) => [{ id: newId, title: "New chat", created_at: new Date().toISOString() }, ...prev]);
+    setChats((prev) => [
+      { id: newId, title: "New chat", created_at: new Date().toISOString() },
+      ...prev,
+    ]);
     router.push(`/chat/${newId}`);
   }
 
@@ -465,7 +527,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     >
       <AutoTitleAgent />
       <div className="sticky top-0 h-svh p-2 sm:p-3">
-        <div className="glass relative flex h-full flex-col overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10">
+        <div className="glass relative flex h-full flex-col overflow-hidden rounded-2xl ring-1 ring-black/10 backdrop-blur supports-[backdrop-filter]:bg-white/55 dark:ring-white/10 dark:backdrop-blur">
           {/* Top bar */}
           <div className="flex items-center justify-between px-2 py-2">
             <button
@@ -504,7 +566,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </div>
                 <button
                   onClick={handleNewChat}
-                  className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
+                  className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
                 >
                   <div className="flex items-center gap-1">
                     <Plus size={16} />
@@ -516,7 +578,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <div className="flex items-center justify-center">
                 <button
                   onClick={handleNewChat}
-                  className="rounded-xl border border-neutral-200 bg-white p-2 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
+                  className="rounded-xl border border-neutral-200 bg-white p-2 shadow-sm hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
                   aria-label="New chat"
                   title="New chat"
                 >
@@ -524,6 +586,39 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Modules */}
+          <div className={cn("px-2", collapsed && "px-1")}>
+            {!collapsed && (
+              <div className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Modules
+              </div>
+            )}
+            <div className={cn("flex flex-col gap-1", collapsed && "items-center")}>
+              <Link
+                href="/calendar"
+                className={cn(
+                  "flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm shadow-sm hover:bg-white",
+                  collapsed && "justify-center px-2"
+                )}
+                title="Compliance Calendar"
+              >
+                <CalendarDays className="h-4 w-4" />
+                {!collapsed && <span>Compliance Calendar</span>}
+              </Link>
+              <Link
+                href="/settings"
+                className={cn(
+                  "flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm shadow-sm hover:bg-white",
+                  collapsed && "justify-center px-2"
+                )}
+                title="Settings"
+              >
+                <Settings className="h-4 w-4" />
+                {!collapsed && <span>Settings</span>}
+              </Link>
+            </div>
           </div>
 
           {/* Lists */}
