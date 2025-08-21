@@ -25,7 +25,7 @@ export default function Composer({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Thin default; grow with content
-  const MIN_H = 40;   // ~44px visual
+  const MIN_H = 40; // ~44px visual
   const MAX_H = 160;
 
   useEffect(() => {
@@ -71,7 +71,6 @@ export default function Composer({
           await onSend(text.trim(), files);
           ok = true;
         } else {
-          // Fallback event; DO NOT clear text so nothing is lost if no handler
           const evt = new CustomEvent("composer:send", { detail: { text: text.trim(), files } });
           window.dispatchEvent(evt);
         }
@@ -127,6 +126,8 @@ export default function Composer({
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.65), 0 8px 24px rgba(0,0,0,0.08)",
       };
 
+  const isEmpty = value.trim().length === 0;
+
   return (
     <form onSubmit={onSubmit} className="w-full">
       {/* Attachment chips */}
@@ -155,7 +156,6 @@ export default function Composer({
           "relative flex w-full items-center gap-2 sm:gap-3 rounded-full px-3 sm:px-4",
           "border border-default shadow-[0_8px_24px_rgba(0,0,0,0.06)]",
           "bg-white dark:bg-[rgba(20,20,20,0.65)]",
-          // subtle soft gradient sheen for the “liquid” vibe
           "before:pointer-events-none before:absolute before:inset-0 before:rounded-full",
           "before:bg-[radial-gradient(120%_140%_at_10%_10%,rgba(255,255,255,0.8),rgba(255,255,255,0)_60%),linear-gradient(90deg,rgba(255,255,255,0.3),rgba(255,255,255,0))]",
         ].join(" ")}
@@ -173,7 +173,7 @@ export default function Composer({
           <Plus className="h-[18px] w-[18px]" />
         </button>
 
-        {/* Textarea (centered placeholder/text) */}
+        {/* Textarea (placeholder centered when empty) */}
         <div className="flex min-w-0 flex-1 items-center py-1">
           <textarea
             ref={taRef}
@@ -187,8 +187,12 @@ export default function Composer({
             aria-label="Message"
             className={[
               "w-full resize-none bg-transparent outline-none",
-              "placeholder:text-neutral-400",
               "text-[15px] leading-[22px]",
+              "placeholder:text-neutral-400",
+              // Center the placeholder text when empty; user text stays left-aligned
+              isEmpty ? "text-left placeholder:text-center" : "text-left",
+              // add a little extra vertical padding for visual centering
+              "py-3"
             ].join(" ")}
           />
         </div>

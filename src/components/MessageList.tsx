@@ -4,7 +4,7 @@
 import { useEffect, useMemo } from "react";
 import { useAutoScroll } from "@/lib/useAutoScroll";
 import { cn } from "@/lib/utils";
-import { Bookmark } from "lucide-react";
+import { Bookmark, RotateCcw } from "lucide-react";
 
 /** Types */
 type ChatRole = "system" | "user" | "assistant";
@@ -66,22 +66,36 @@ export default function MessageList({
   }, [newAssistantTokenTick]);
 
   const rendered = useMemo(() => {
-    return messages.map((msg, idx) => {
+    return messages.map((msg) => {
       const mine = msg.role === "user";
+      const isAssistant = msg.role === "assistant";
+
       const bubble = (
         <div
           className={cn(
             "max-w-full rounded-2xl px-4 py-2 shadow-sm ring-1",
-            mine
-              ? "ml-auto bg-white ring-zinc-200"
-              : "mr-auto bg-zinc-50 ring-zinc-200"
+            mine ? "ml-auto bg-white ring-zinc-200" : "mr-auto bg-zinc-50 ring-zinc-200"
           )}
         >
           <div className="prose prose-zinc dark:prose-invert max-w-none whitespace-pre-wrap">
             {msg.content || (isStreaming && msg.id === streamingId ? "…" : "")}
           </div>
 
-          {/* Attachments bubble for user messages (regenerate context) */}
+          {/* Inline tiny regenerate icon under EACH assistant message */}
+          {isAssistant && onRegenerate && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => onRegenerate(msg.id)}
+                title="Regenerate this response"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 shadow-sm hover:bg-zinc-50"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Attachments bubble for user messages */}
           {!!msg.attachments?.length && mine && (
             <details className="group mt-2">
               <summary className="list-none">
@@ -106,7 +120,9 @@ export default function MessageList({
                 {msg.attachments.map((a, i) => (
                   <div key={i} className="rounded border border-zinc-200 bg-white px-2 py-1">
                     <div className="font-medium">{a.name}</div>
-                    <div className="text-[11px] opacity-70">{formatSize(a.size)} • {a.type}</div>
+                    <div className="text-[11px] opacity-70">
+                      {formatSize(a.size)} • {a.type}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -117,12 +133,12 @@ export default function MessageList({
 
       return (
         <div key={msg.id} className={cn("flex flex-col gap-1", mine ? "items-end" : "items-start")}>
-          {/* Meta row: who & time & actions */}
+          {/* Meta row */}
           <div className="flex items-center gap-2 text-[11px] text-zinc-500">
             <span>{mine ? "You" : "CareIQ"}</span>
             {msg.createdAt && <span>• {timeAgo(msg.createdAt)}</span>}
 
-            {/* Bookmark action (client-side + server persistence optional) */}
+            {/* Bookmark action */}
             <button
               className="ml-2 inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700 hover:bg-zinc-50"
               title="Bookmark"
@@ -141,17 +157,6 @@ export default function MessageList({
               <Bookmark className="h-3 w-3" />
               Save
             </button>
-
-            {/* Regenerate only on assistant messages */}
-            {onRegenerate && msg.role === "assistant" && idx === messages.length - 1 && (
-              <button
-                className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700 hover:bg-zinc-50"
-                title="Regenerate"
-                onClick={() => onRegenerate(msg.id)}
-              >
-                ↻ Regenerate
-              </button>
-            )}
           </div>
 
           {bubble}

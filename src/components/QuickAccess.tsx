@@ -5,14 +5,15 @@ import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Profile = { role?: string | null };
+
 export default function QuickAccess({
   onPick,
   max = 4,
   compact = false,
 }: {
   onPick: (text: string) => void;
-  max?: number; // 3–4 suggestions
-  compact?: boolean; // for tighter spacing inside sticky composer
+  max?: number;
+  compact?: boolean;
 }) {
   const [role, setRole] = useState<string>("");
 
@@ -30,29 +31,28 @@ export default function QuickAccess({
   }, []);
 
   const base: string[] = [
-    "Summarize key compliance steps for my facility.",
     "What should I prep for the next survey?",
-    "Create a quick policy checklist for my team.",
-    "Explain today’s top risk areas briefly.",
-    "Outline training topics for this quarter.",
+    "Create a quick policy checklist.",
+    "Summarize today’s top risks.",
+    "Outline this quarter’s training.",
   ];
 
   const forAdmin: string[] = [
-    "Top 3 staffing compliance priorities this week?",
-    "Draft a brief QAPI update outline.",
-    "What’s due on our compliance calendar soon?",
+    "Top 3 staffing priorities this week?",
+    "Draft a brief QAPI update.",
+    "What’s due on the compliance calendar?",
   ];
 
   const forDON: string[] = [
-    "Quick med pass audit checklist.",
-    "Daily infection control checks summary.",
-    "Top items for CNA huddle today?",
+    "Quick med-pass audit checklist.",
+    "Infection control checks for today.",
+    "3 items for CNA huddle?",
   ];
 
   const forInfection: string[] = [
     "Daily infection surveillance checklist.",
     "PPE audit talking points.",
-    "Policy update: isolation precautions summary.",
+    "Update isolation precautions summary.",
   ];
 
   const extras =
@@ -65,7 +65,6 @@ export default function QuickAccess({
       ? forInfection
       : [];
 
-  // pick 3–4 unique prompts
   const list = useMemo(() => {
     const pool = [...extras, ...base];
     const seen = new Set<string>();
@@ -86,21 +85,25 @@ export default function QuickAccess({
         compact ? "mx-auto w-full max-w-3xl" : "mx-auto w-full max-w-3xl"
       )}
     >
-      {/* animated gradient glow */}
+      {/* Soft, feathered glow with mask so there is no hard edge */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-x-4 -inset-y-2 -z-10 opacity-60 blur-2xl"
+        className="pointer-events-none absolute -inset-x-6 -inset-y-4 -z-10 blur-3xl"
         style={{
           background:
-            "radial-gradient(1200px 300px at 50% 0%, rgba(99,102,241,0.18), transparent 60%), radial-gradient(800px 260px at 10% 80%, rgba(34,197,94,0.14), transparent 60%), radial-gradient(900px 260px at 90% 80%, rgba(244,63,94,0.14), transparent 60%)",
-          animation: "pulseGlow 6s ease-in-out infinite",
+            "radial-gradient(1200px 360px at 50% 0%, rgba(99,102,241,0.18), transparent 60%), radial-gradient(900px 300px at 10% 80%, rgba(34,197,94,0.14), transparent 60%), radial-gradient(900px 300px at 90% 80%, rgba(244,63,94,0.14), transparent 60%)",
+          maskImage:
+            "radial-gradient(70% 55% at 50% 50%, rgba(0,0,0,0.95), rgba(0,0,0,0.45) 55%, rgba(0,0,0,0) 90%)",
+          WebkitMaskImage:
+            "radial-gradient(70% 55% at 50% 50%, rgba(0,0,0,0.95), rgba(0,0,0,0.45) 55%, rgba(0,0,0,0) 90%)",
+          animation: "pulseGlow 7s ease-in-out infinite",
         }}
       />
       <style jsx>{`
         @keyframes pulseGlow {
           0%,
           100% {
-            opacity: 0.55;
+            opacity: 0.6;
             transform: scale(1);
           }
           50% {

@@ -19,9 +19,8 @@ export default function Page() {
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [newTokenTick, setNewTokenTick] = useState(0);
   const [followNow, setFollowNow] = useState(0);
-  const lastUserRef = useRef<string>("");
 
-  // Export PDF (server-generated)
+  // Export PDF only after a chat starts
   const exportPDF = async () => {
     const r = await fetch("/api/export/pdf", {
       method: "POST",
@@ -40,17 +39,6 @@ export default function Page() {
     URL.revokeObjectURL(url);
   };
 
-  const regenerate = async () => {
-    if (!lastUserRef.current) return;
-    const priorUser = lastUserRef.current;
-    setMessages((prev) => {
-      const copy = [...prev];
-      if (copy.at(-1)?.role === "assistant") copy.pop();
-      return copy;
-    });
-    await onSend(priorUser, []);
-  };
-
   const callAutoTitle = async (text: string) => {
     try {
       const r = await fetch("/api/title", {
@@ -61,14 +49,90 @@ export default function Page() {
       const j = await r.json();
       const title = j?.title || "New chat";
       document.title = `${title} • CareIQ`;
-      // Optional: PATCH your /api/chats/:id here if you track chat ids on this page.
     } catch {}
+  };
+
+  // Per-message regenerate (icon under each assistant message)
+  const regenerateAt = async (assistantMessageId: string) => {
+    const idx = messages.findIndex((m) => m.id === assistantMessageId);
+    if (idx === -1) return;
+
+    // Find the nearest previous user message and build history up to that point (inclusive)
+    let priorUserIndex = -1;
+    for (let i = idx - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        priorUserIndex = i;
+        break;
+      }
+    }
+    if (priorUserIndex === -1) return;
+
+    const history = messages
+      .slice(0, priorUserIndex + 1)
+      .map((m) => ({ role: m.role, content: m.content }));
+
+    // Replace the assistant message with a fresh streaming placeholder
+    const now = new Date().toISOString();
+    const newId = `${uid()}:a`;
+
+    setMessages((prev) => {
+      const copy = [...prev];
+      copy.splice(idx, 1, { id: newId, role: "assistant", content: "", createdAt: now });
+      return copy;
+    });
+    setStreamingId(newId);
+    setFollowNow((v) => v + 1);
+
+    const res = await fetch("/api/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: history, attachments: [] }),
+    });
+
+    if (!res.body) {
+      setStreamingId(null);
+      setMessages((prev) => prev.map((m) => (m.id === newId ? { ...m, content: "(no response)" } : m)));
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let assistantBuf = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split(/\r?\n/).filter(Boolean);
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const payload = line.slice(6);
+          if (payload === "[DONE]") continue;
+          try {
+            const j = JSON.parse(payload);
+            const token =
+              j?.choices?.[0]?.delta?.content ??
+              j?.choices?.[0]?.message?.content ??
+              "";
+            if (token) {
+              assistantBuf += token;
+              setMessages((prev) => prev.map((m) => (m.id === newId ? { ...m, content: assistantBuf } : m)));
+              setNewTokenTick((t) => t + 1);
+            }
+          } catch {
+            // keep-alives
+          }
+        }
+      }
+    }
+
+    setStreamingId(null);
   };
 
   const onSend = async (text: string, files: File[]) => {
     const now = new Date().toISOString();
     const idBase = uid();
-    lastUserRef.current = text;
 
     const userMsg: Msg = {
       id: `${idBase}:u`,
@@ -156,24 +220,18 @@ export default function Page() {
   return (
     <RequireAuth>
       <div className="flex w-full flex-col gap-4">
-        {/* Top actions (PDF only) */}
-        <div className="flex items-center justify-end gap-2 print:hidden">
-          <button
-            onClick={exportPDF}
-            className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
-            title="Export PDF"
-          >
-            Export PDF
-          </button>
-          <button
-            onClick={regenerate}
-            className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90 disabled:opacity-50"
-            disabled={!messages.some((m) => m.role === "assistant")}
-            title="Regenerate last reply"
-          >
-            Regenerate
-          </button>
-        </div>
+        {/* Top actions: show ONLY after chat has started */}
+        {!showHero && (
+          <div className="flex items-center justify-end gap-2 print:hidden">
+            <button
+              onClick={exportPDF}
+              className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
+              title="Export PDF"
+            >
+              Export PDF
+            </button>
+          </div>
+        )}
 
         {/* Conversation / Hero */}
         <div className="relative flex min-h-[60svh] flex-1">
@@ -193,7 +251,7 @@ export default function Page() {
                   streamingId={streamingId}
                   followNowSignal={followNow}
                   newAssistantTokenTick={newTokenTick}
-                  onRegenerate={() => regenerate()}
+                  onRegenerate={regenerateAt}
                 />
               </div>
 
