@@ -104,7 +104,7 @@ export default function Page() {
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split(/\r?\n/).filter(Boolean); // ✅ fixed: added the dot before split
+      const lines = chunk.split(/\r?\n/).filter(Boolean);
       for (const line of lines) {
         if (line.startsWith("data: ")) {
           const payload = line.slice(6);
@@ -187,7 +187,7 @@ export default function Page() {
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split(/\r?\n/).filter(Boolean); // ✅ fixed here as well for consistency
+      const lines = chunk.split(/\r?\n/).filter(Boolean);
       for (const line of lines) {
         if (line.startsWith("data: ")) {
           const payload = line.slice(6);
@@ -236,6 +236,7 @@ export default function Page() {
         {/* Conversation / Hero */}
         <div className="relative flex min-h-[60svh] flex-1">
           {showHero ? (
+            // HERO: exactly one composer + suggestions visible
             <div className="mx-auto my-16 flex w-full max-w-3xl flex-col items-stretch gap-5 text-center">
               {/* Welcome header above composer */}
               <div className="space-y-2">
@@ -245,15 +246,16 @@ export default function Page() {
                 </p>
               </div>
 
-              {/* Centered composer */}
+              {/* Centered composer (only one on hero) */}
               <div className="mx-auto w-full max-w-3xl">
                 <Composer onSend={onSend} placeholder="How can I help today?" autoFocus />
               </div>
 
-              {/* Short role‑aware suggestions BELOW the composer (only on hero) */}
+              {/* Suggestions BELOW the composer (visible only on hero) */}
               <QuickAccess onPick={(t) => onSend(t, [])} max={4} compact />
             </div>
           ) : (
+            // IN-CHAT: message list + sticky composer; suggestions hidden here
             <div className="flex h-full w-full flex-col">
               <div className="flex-1 min-h-0">
                 <MessageList
@@ -266,7 +268,7 @@ export default function Page() {
                 />
               </div>
 
-              {/* Sticky composer; suggestions intentionally hidden after chat starts */}
+              {/* Sticky composer (no suggestions here) */}
               <div className="sticky bottom-0 z-10 w-full bg-gradient-to-b from-[color-mix(in_oklab,var(--bg),transparent_40%)] to-[var(--bg)] px-4 pb-5 pt-3 print:hidden">
                 <div className="mx-auto w-full max-w-3xl">
                   <Composer onSend={onSend} placeholder="How can I help today?" />

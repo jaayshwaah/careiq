@@ -100,7 +100,6 @@ export default function Composer({
     }
   };
 
-  // Dynamic gradient for the send button (keeps “liquid” vibe)
   const isEmpty = value.trim().length === 0;
 
   return (
@@ -173,7 +172,7 @@ export default function Composer({
           />
         </div>
 
-        {/* Send (animated gradient + frosted look) */}
+        {/* Send — glass button with soft edge glow */}
         <button
           type="submit"
           aria-label="Send message"
@@ -185,33 +184,28 @@ export default function Composer({
             disabled || isSending || (!value.trim() && files.length === 0)
               ? "opacity-70 cursor-not-allowed"
               : "hover:opacity-95",
-            "text-white",
+            // glass
+            "text-zinc-900 dark:text-white",
+            "bg-white/70 dark:bg-white/10 backdrop-blur",
+            "border border-white/50 dark:border-white/20",
+            "shadow-[0_2px_8px_rgba(0,0,0,0.08)]",
           ].join(" ")}
+          style={{
+            boxShadow:
+              "0 0 0 1px rgba(255,255,255,0.6) inset, 0 0 20px rgba(99,102,241,0.25), 0 4px 12px rgba(0,0,0,0.12)",
+          }}
         >
-          <span className="absolute inset-0 rounded-full" style={{
-            backdropFilter: "saturate(180%) blur(10px)",
-            WebkitBackdropFilter: "saturate(180%) blur(10px)",
-            border: "1px solid rgba(255,255,255,0.25)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), 0 10px 24px rgba(0,0,0,0.18)"
-          }} />
+          <SendHorizontal className="relative h-[16px] w-[16px]" />
           <span
-            className="absolute inset-0 rounded-full -z-10"
+            aria-hidden
+            className="pointer-events-none absolute inset-[-2px] -z-10 rounded-full"
             style={{
               background:
-                "linear-gradient(90deg, #6366F1, #22C55E, #F43F5E, #06B6D4, #A78BFA)",
-              backgroundSize: "200% 200%",
-              animation: "careiqGradientShift 8s ease infinite",
-              filter: "saturate(120%)",
+                "conic-gradient(from 0deg, rgba(99,102,241,0.35), rgba(6,182,212,0.25), rgba(244,63,94,0.25), rgba(34,197,94,0.25), rgba(99,102,241,0.35))",
+              filter: "blur(8px)",
+              opacity: 0.6,
             }}
           />
-          <SendHorizontal className="relative h-[16px] w-[16px] z-10" />
-          <style jsx>{`
-            @keyframes careiqGradientShift {
-              0% { background-position: 0% 50%; }
-              50% { background-position: 100% 50%; }
-              100% { background-position: 0% 50%; }
-            }
-          `}</style>
         </button>
 
         <input ref={fileInputRef} type="file" className="hidden" multiple onChange={filesPicked} />
