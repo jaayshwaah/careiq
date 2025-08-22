@@ -104,7 +104,7 @@ export default function Page() {
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split(/\r?\n/).filter(Boolean);
+      const lines = chunk.split(/\r?\n/).filter(Boolean); // ✅ fixed: added the dot before split
       for (const line of lines) {
         if (line.startsWith("data: ")) {
           const payload = line.slice(6);
@@ -187,7 +187,7 @@ export default function Page() {
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk split(/\r?\n/).filter(Boolean);
+      const lines = chunk.split(/\r?\n/).filter(Boolean); // ✅ fixed here as well for consistency
       for (const line of lines) {
         if (line.startsWith("data: ")) {
           const payload = line.slice(6);
