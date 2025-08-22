@@ -1,132 +1,221 @@
-// src/components/QuickAccess.tsx
+// src/components/Composer.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Plus, SendHorizontal } from "lucide-react";
 
-type Profile = { role?: string | null };
+type Props = {
+  onSend?: (text: string, files: File[]) => Promise<void> | void;
+  disabled?: boolean;
+  placeholder?: string;
+  autoFocus?: boolean;
+};
 
-export default function QuickAccess({
-  onPick,
-  max = 4,
-  compact = false,
-}: {
-  onPick: (text: string) => void;
-  max?: number;
-  compact?: boolean;
-}) {
-  const [role, setRole] = useState<string>("");
+export default function Composer({
+  onSend,
+  disabled = false,
+  placeholder = "How can I help today?",
+  autoFocus = true,
+}: Props) {
+  const [value, setValue] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [isSending, setIsSending] = useState(false);
+
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Thin default; grow with content
+  const MIN_H = 40; // ~44px visual
+  const MAX_H = 160;
 
   useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch("/api/profile");
-        const j = await r.json();
-        const p: Profile | null = j?.profile ?? null;
-        setRole((p?.role || "").trim());
-      } catch {
-        setRole("");
-      }
-    })();
+    if (autoFocus && taRef.current) taRef.current.focus();
+    autosize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const base: string[] = [
-    "What should I prep for the next survey?",
-    "Create a quick policy checklist.",
-    "Summarize today’s top risks.",
-    "Outline this quarter’s training.",
-  ];
+  useEffect(() => {
+    autosize();
+  }, [value]);
 
-  const forAdmin: string[] = [
-    "Top 3 staffing priorities this week?",
-    "Draft a brief QAPI update.",
-    "What’s due on the compliance calendar?",
-  ];
+  const autosize = () => {
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    const next = Math.min(MAX_H, Math.max(MIN_H, el.scrollHeight));
+    el.style.height = `${next}px`;
+  };
 
-  const forDON: string[] = [
-    "Quick med-pass audit checklist.",
-    "Infection control checks for today.",
-    "3 items for CNA huddle?",
-  ];
+  // Attachments
+  const chooseFiles = () => fileInputRef.current?.click();
+  const filesPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    if (!list) return;
+    setFiles((prev) => [...prev, ...Array.from(list)]);
+    e.target.value = "";
+  };
+  const clearAttachments = (idx?: number) => {
+    if (typeof idx === "number") setFiles((prev) => prev.filter((_, i) => i !== idx));
+    else setFiles([]);
+  };
 
-  const forInfection: string[] = [
-    "Daily infection surveillance checklist.",
-    "PPE audit talking points.",
-    "Update isolation precautions summary.",
-  ];
+  // Send
+  const actuallySend = useCallback(
+    async (text: string) => {
+      if (!text.trim() && files.length === 0) return;
 
-  const extras =
-    role.toLowerCase().includes("admin")
-      ? forAdmin
-      : role.toLowerCase().includes("director of nursing") ||
-        role.toLowerCase().includes("don")
-      ? forDON
-      : role.toLowerCase().includes("infection")
-      ? forInfection
-      : [];
+      let ok = false;
+      try {
+        setIsSending(true);
+        if (onSend) {
+          await onSend(text.trim(), files);
+          ok = true;
+        } else {
+          const evt = new CustomEvent("composer:send", { detail: { text: text.trim(), files } });
+          window.dispatchEvent(evt);
+        }
+      } catch {
+        ok = false;
+      } finally {
+        setIsSending(false);
+        if (ok) {
+          setValue("");
+          clearAttachments();
+        }
+        taRef.current?.focus();
+      }
+    },
+    [onSend, files]
+  );
 
-  const list = useMemo(() => {
-    const pool = [...extras, ...base];
-    const seen = new Set<string>();
-    const picked: string[] = [];
-    for (const p of pool) {
-      if (picked.length >= max) break;
-      if (seen.has(p)) continue;
-      seen.add(p);
-      picked.push(p);
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isSending && !disabled) void actuallySend(value);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!isSending && !disabled) void actuallySend(value);
     }
-    return picked;
-  }, [extras, max]);
+  };
+
+  // Dynamic gradient for the send button (keeps “liquid” vibe)
+  const isEmpty = value.trim().length === 0;
 
   return (
-    <div
-      className={cn(
-        "relative mt-2",
-        compact ? "mx-auto w-full max-w-3xl" : "mx-auto w-full max-w-3xl"
+    <form onSubmit={onSubmit} className="w-full">
+      {/* Attachment chips */}
+      {files.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {files.map((f, i) => (
+            <button
+              key={`${f.name}-${i}`}
+              type="button"
+              onClick={() => clearAttachments(i)}
+              title="Click to remove"
+              className="group max-w-full truncate rounded-xl border border-default/70 bg-white/70 px-3 py-1.5 text-xs text-neutral-700 shadow-sm hover:bg-white dark:bg-neutral-900/60 dark:text-neutral-200 dark:hover:bg-neutral-900"
+            >
+              📎 {f.name}
+              <span className="ml-2 rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 group-hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:group-hover:bg-neutral-700">
+                remove
+              </span>
+            </button>
+          ))}
+        </div>
       )}
-    >
-      {/* Soft, feathered glow with mask so there is no hard edge */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -inset-x-6 -inset-y-4 -z-10 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(1200px 360px at 50% 0%, rgba(99,102,241,0.18), transparent 60%), radial-gradient(900px 300px at 10% 80%, rgba(34,197,94,0.14), transparent 60%), radial-gradient(900px 300px at 90% 80%, rgba(244,63,94,0.14), transparent 60%)",
-          maskImage:
-            "radial-gradient(70% 55% at 50% 50%, rgba(0,0,0,0.95), rgba(0,0,0,0.45) 55%, rgba(0,0,0,0) 90%)",
-          WebkitMaskImage:
-            "radial-gradient(70% 55% at 50% 50%, rgba(0,0,0,0.95), rgba(0,0,0,0.45) 55%, rgba(0,0,0,0) 90%)",
-          animation: "pulseGlow 7s ease-in-out infinite",
-        }}
-      />
-      <style jsx>{`
-        @keyframes pulseGlow {
-          0%,
-          100% {
-            opacity: 0.6;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.9;
-            transform: scale(1.02);
-          }
-        }
-      `}</style>
 
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        {list.map((t, i) => (
-          <button
-            key={i}
-            onClick={() => onPick(t)}
-            className={cn(
-              "rounded-full border border-zinc-200/80 bg-white/80 px-4 py-2 text-sm shadow-sm backdrop-blur transition hover:bg-white",
-              "ring-1 ring-transparent hover:ring-zinc-200"
-            )}
-          >
-            {t}
-          </button>
-        ))}
+      {/* Pill */}
+      <div
+        className={[
+          "relative flex w-full items-center gap-2 sm:gap-3 rounded-full px-3 sm:px-4",
+          "border border-default shadow-[0_8px_24px_rgba(0,0,0,0.06)]",
+          "bg-white dark:bg-[rgba(20,20,20,0.65)]",
+          // subtle soft gradient sheen for the “liquid” vibe
+          "before:pointer-events-none before:absolute before:inset-0 before:rounded-full",
+          "before:bg-[radial-gradient(120%_140%_at_10%_10%,rgba(255,255,255,0.8),rgba(255,255,255,0)_60%),linear-gradient(90deg,rgba(255,255,255,0.3),rgba(255,255,255,0))]",
+        ].join(" ")}
+        style={{ minHeight: MIN_H + 12 }}
+      >
+        {/* Left + */}
+        <button
+          type="button"
+          onClick={chooseFiles}
+          aria-label="Add attachment"
+          title="Add attachment"
+          disabled={disabled || isSending}
+          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full hover:bg-neutral-100 focus:outline-none dark:hover:bg-neutral-800"
+        >
+          <Plus className="h-[18px] w-[18px]" />
+        </button>
+
+        {/* Textarea (placeholder centered when empty) */}
+        <div className="flex min-w-0 flex-1 items-center py-1">
+          <textarea
+            ref={taRef}
+            rows={1}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder={placeholder}
+            spellCheck
+            disabled={disabled || isSending}
+            aria-label="Message"
+            className={[
+              "w-full resize-none bg-transparent outline-none",
+              "text-[15px] leading-[22px]",
+              "placeholder:text-neutral-400",
+              // Center the placeholder text when empty; user text stays left-aligned
+              isEmpty ? "text-left placeholder:text-center" : "text-left",
+              // extra vertical padding helps optical centering
+              "py-3"
+            ].join(" ")}
+          />
+        </div>
+
+        {/* Send (animated gradient + frosted look) */}
+        <button
+          type="submit"
+          aria-label="Send message"
+          title="Send"
+          disabled={disabled || isSending || (!value.trim() && files.length === 0)}
+          className={[
+            "relative ml-1 inline-flex h-[32px] min-w-[38px] items-center justify-center rounded-full px-3 text-sm font-medium transition ease-ios",
+            "active:scale-[0.99]",
+            disabled || isSending || (!value.trim() && files.length === 0)
+              ? "opacity-70 cursor-not-allowed"
+              : "hover:opacity-95",
+            "text-white",
+          ].join(" ")}
+        >
+          <span className="absolute inset-0 rounded-full" style={{
+            backdropFilter: "saturate(180%) blur(10px)",
+            WebkitBackdropFilter: "saturate(180%) blur(10px)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), 0 10px 24px rgba(0,0,0,0.18)"
+          }} />
+          <span
+            className="absolute inset-0 rounded-full -z-10"
+            style={{
+              background:
+                "linear-gradient(90deg, #6366F1, #22C55E, #F43F5E, #06B6D4, #A78BFA)",
+              backgroundSize: "200% 200%",
+              animation: "careiqGradientShift 8s ease infinite",
+              filter: "saturate(120%)",
+            }}
+          />
+          <SendHorizontal className="relative h-[16px] w-[16px] z-10" />
+          <style jsx>{`
+            @keyframes careiqGradientShift {
+              0% { background-position: 0% 50%; }
+              50% { background-position: 100% 50%; }
+              100% { background-position: 0% 50%; }
+            }
+          `}</style>
+        </button>
+
+        <input ref={fileInputRef} type="file" className="hidden" multiple onChange={filesPicked} />
       </div>
-    </div>
+    </form>
   );
 }

@@ -100,32 +100,7 @@ export default function Composer({
     }
   };
 
-  // Liquid glass button (light/dark)
-  const [dark, setDark] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
-    const update = () => setDark(!!mq?.matches);
-    update();
-    mq?.addEventListener?.("change", update);
-    return () => mq?.removeEventListener?.("change", update);
-  }, []);
-
-  const glassBtn = dark
-    ? {
-        backdropFilter: "saturate(180%) blur(14px)",
-        WebkitBackdropFilter: "saturate(180%) blur(14px)",
-        background: "linear-gradient(180deg, rgba(30,30,30,0.70), rgba(30,30,30,0.55))",
-        border: "1px solid rgba(255,255,255,0.12)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.32)",
-      }
-    : {
-        backdropFilter: "saturate(180%) blur(14px)",
-        WebkitBackdropFilter: "saturate(180%) blur(14px)",
-        background: "linear-gradient(180deg, rgba(255,255,255,0.70), rgba(255,255,255,0.55))",
-        border: "1px solid rgba(0,0,0,0.10)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.65), 0 8px 24px rgba(0,0,0,0.08)",
-      };
-
+  // Dynamic gradient for the send button (keeps “liquid” vibe)
   const isEmpty = value.trim().length === 0;
 
   return (
@@ -156,6 +131,7 @@ export default function Composer({
           "relative flex w-full items-center gap-2 sm:gap-3 rounded-full px-3 sm:px-4",
           "border border-default shadow-[0_8px_24px_rgba(0,0,0,0.06)]",
           "bg-white dark:bg-[rgba(20,20,20,0.65)]",
+          // subtle soft gradient sheen for the “liquid” vibe
           "before:pointer-events-none before:absolute before:inset-0 before:rounded-full",
           "before:bg-[radial-gradient(120%_140%_at_10%_10%,rgba(255,255,255,0.8),rgba(255,255,255,0)_60%),linear-gradient(90deg,rgba(255,255,255,0.3),rgba(255,255,255,0))]",
         ].join(" ")}
@@ -191,29 +167,51 @@ export default function Composer({
               "placeholder:text-neutral-400",
               // Center the placeholder text when empty; user text stays left-aligned
               isEmpty ? "text-left placeholder:text-center" : "text-left",
-              // add a little extra vertical padding for visual centering
+              // extra vertical padding helps optical centering
               "py-3"
             ].join(" ")}
           />
         </div>
 
-        {/* Send (liquid glass) */}
+        {/* Send (animated gradient + frosted look) */}
         <button
           type="submit"
           aria-label="Send message"
           title="Send"
           disabled={disabled || isSending || (!value.trim() && files.length === 0)}
           className={[
-            "ml-1 inline-flex h-[32px] min-w-[32px] items-center justify-center rounded-full px-3 text-sm font-medium transition ease-ios",
+            "relative ml-1 inline-flex h-[32px] min-w-[38px] items-center justify-center rounded-full px-3 text-sm font-medium transition ease-ios",
             "active:scale-[0.99]",
             disabled || isSending || (!value.trim() && files.length === 0)
               ? "opacity-70 cursor-not-allowed"
               : "hover:opacity-95",
-            "text-black dark:text-white",
+            "text-white",
           ].join(" ")}
-          style={glassBtn}
         >
-          <SendHorizontal className="h-[16px] w-[16px]" />
+          <span className="absolute inset-0 rounded-full" style={{
+            backdropFilter: "saturate(180%) blur(10px)",
+            WebkitBackdropFilter: "saturate(180%) blur(10px)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), 0 10px 24px rgba(0,0,0,0.18)"
+          }} />
+          <span
+            className="absolute inset-0 rounded-full -z-10"
+            style={{
+              background:
+                "linear-gradient(90deg, #6366F1, #22C55E, #F43F5E, #06B6D4, #A78BFA)",
+              backgroundSize: "200% 200%",
+              animation: "careiqGradientShift 8s ease infinite",
+              filter: "saturate(120%)",
+            }}
+          />
+          <SendHorizontal className="relative h-[16px] w-[16px] z-10" />
+          <style jsx>{`
+            @keyframes careiqGradientShift {
+              0% { background-position: 0% 50%; }
+              50% { background-position: 100% 50%; }
+              100% { background-position: 0% 50%; }
+            }
+          `}</style>
         </button>
 
         <input ref={fileInputRef} type="file" className="hidden" multiple onChange={filesPicked} />

@@ -1,7 +1,7 @@
 // src/app/page.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
 import Composer from "@/components/Composer";
 import MessageList from "@/components/MessageList";
@@ -52,7 +52,7 @@ export default function Page() {
     } catch {}
   };
 
-  // Per-message regenerate (icon under each assistant message)
+  // Per-message regenerate (icon lives in MessageList)
   const regenerateAt = async (assistantMessageId: string) => {
     const idx = messages.findIndex((m) => m.id === assistantMessageId);
     if (idx === -1) return;
@@ -187,7 +187,7 @@ export default function Page() {
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split(/\r?\n/).filter(Boolean);
+      const lines = chunk split(/\r?\n/).filter(Boolean);
       for (const line of lines) {
         if (line.startsWith("data: ")) {
           const payload = line.slice(6);
@@ -236,10 +236,21 @@ export default function Page() {
         {/* Conversation / Hero */}
         <div className="relative flex min-h-[60svh] flex-1">
           {showHero ? (
-            <div className="mx-auto my-12 flex w-full max-w-3xl flex-col items-stretch gap-4">
-              {/* Composer first */}
-              <Composer onSend={onSend} placeholder="How can I help today?" autoFocus />
-              {/* Suggestions BELOW the composer */}
+            <div className="mx-auto my-16 flex w-full max-w-3xl flex-col items-stretch gap-5 text-center">
+              {/* Welcome header above composer */}
+              <div className="space-y-2">
+                <h1 className="text-3xl font-semibold tracking-tight">Welcome to CareIQ</h1>
+                <p className="text-sm text-zinc-600">
+                  Ask anything about nursing‑home compliance and operations. Get clear, survey‑ready answers with citations and dates, tailored to your facility and state.
+                </p>
+              </div>
+
+              {/* Centered composer */}
+              <div className="mx-auto w-full max-w-3xl">
+                <Composer onSend={onSend} placeholder="How can I help today?" autoFocus />
+              </div>
+
+              {/* Short role‑aware suggestions BELOW the composer (only on hero) */}
               <QuickAccess onPick={(t) => onSend(t, [])} max={4} compact />
             </div>
           ) : (
@@ -255,11 +266,10 @@ export default function Page() {
                 />
               </div>
 
-              {/* Sticky composer with suggestions below */}
+              {/* Sticky composer; suggestions intentionally hidden after chat starts */}
               <div className="sticky bottom-0 z-10 w-full bg-gradient-to-b from-[color-mix(in_oklab,var(--bg),transparent_40%)] to-[var(--bg)] px-4 pb-5 pt-3 print:hidden">
-                <div className="mx-auto w-full max-w-3xl space-y-3">
+                <div className="mx-auto w-full max-w-3xl">
                   <Composer onSend={onSend} placeholder="How can I help today?" />
-                  <QuickAccess onPick={(t) => onSend(t, [])} max={3} compact />
                 </div>
               </div>
             </div>
