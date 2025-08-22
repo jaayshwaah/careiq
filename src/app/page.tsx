@@ -83,7 +83,7 @@ export default function Page() {
     setStreamingId(newId);
     setFollowNow((v) => v + 1);
 
-    const res = await fetch("/api/complete", {
+    const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: history, attachments: [] }),
@@ -161,7 +161,7 @@ export default function Page() {
       { role: "user", content: text },
     ];
 
-    const res = await fetch("/api/complete", {
+    const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -236,26 +236,37 @@ export default function Page() {
         {/* Conversation / Hero */}
         <div className="relative flex min-h-[60svh] flex-1">
           {showHero ? (
-            // HERO: exactly one composer + suggestions visible
-            <div className="mx-auto my-16 flex w-full max-w-3xl flex-col items-stretch gap-5 text-center">
-              {/* Welcome header above composer */}
-              <div className="space-y-2">
-                <h1 className="text-3xl font-semibold tracking-tight">Welcome to CareIQ</h1>
-                <p className="text-sm text-zinc-600">
-                  Ask anything about nursing‑home compliance and operations. Get clear, survey‑ready answers with citations and dates, tailored to your facility and state.
+            // HERO: one composer + welcome copy + suggestions
+            <div className="mx-auto my-16 flex w-full max-w-3xl flex-col items-stretch gap-6 text-center">
+              {/* Clean welcome copy above the composer (no asterisks, no (42 CFR Part 483)) */}
+              <div className="space-y-3">
+                <p className="text-[22px] font-semibold tracking-tight">
+                  Hello! 👋 I’m CareIQ, your expert assistant for U.S. nursing home compliance and operations.
                 </p>
+                <div className="mx-auto max-w-2xl text-sm text-zinc-600">
+                  <p>How can I help you today? For example, you can ask about:</p>
+                  <ul className="mt-2 list-disc space-y-1 text-left">
+                    <li>Federal nursing home regulations</li>
+                    <li>Survey tags and compliance pitfalls</li>
+                    <li>Staffing, resident rights, and care planning requirements</li>
+                    <li>State-specific rules for your facility</li>
+                  </ul>
+                  <p className="mt-3">
+                    Would you like to start with a federal regulation question, or should I tailor guidance for your specific state?
+                  </p>
+                </div>
               </div>
 
-              {/* Centered composer (only one on hero) */}
+              {/* Centered composer */}
               <div className="mx-auto w-full max-w-3xl">
                 <Composer onSend={onSend} placeholder="How can I help today?" autoFocus />
               </div>
 
-              {/* Suggestions BELOW the composer (visible only on hero) */}
+              {/* Suggestions BELOW the composer (hero only) */}
               <QuickAccess onPick={(t) => onSend(t, [])} max={4} compact />
             </div>
           ) : (
-            // IN-CHAT: message list + sticky composer; suggestions hidden here
+            // IN-CHAT: message list + sticky composer (no suggestions here)
             <div className="flex h-full w-full flex-col">
               <div className="flex-1 min-h-0">
                 <MessageList
@@ -268,7 +279,7 @@ export default function Page() {
                 />
               </div>
 
-              {/* Sticky composer (no suggestions here) */}
+              {/* Sticky composer */}
               <div className="sticky bottom-0 z-10 w-full bg-gradient-to-b from-[color-mix(in_oklab,var(--bg),transparent_40%)] to-[var(--bg)] px-4 pb-5 pt-3 print:hidden">
                 <div className="mx-auto w-full max-w-3xl">
                   <Composer onSend={onSend} placeholder="How can I help today?" />

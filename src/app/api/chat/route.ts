@@ -1,156 +1,79 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// src/app/api/chat/route.ts
+import { NextRequest } from "next/server";
 
-import { NextRequest, NextResponse } from "next/server";
-import crypto from "node:crypto";
-import { providerFromEnv } from "@/lib/ai/providers";
-import { scrubPHI, likelyPHI } from "@/lib/privacy/scrub";
-import { encryptPHI } from "@/lib/crypto/phi";
-import { recordAudit } from "@/lib/audit";
-import { supabaseServerWithAuth, supabaseService } from "@/lib/supabase/server";
-import { buildRagContext } from "@/lib/ai/buildRagContext";
-import { logInfo, logError } from "@/lib/logging";
+export const runtime = "edge";
 
-function bad(status: number, message: string) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
 export async function POST(req: NextRequest) {
-  const hipaa = process.env.HIPAA_MODE === "true";
-  const requestId = crypto.randomUUID();
-  const t0 = Date.now();
-
   try {
-    const body = await req.json().catch(() => ({}));
-    const { chatId, content, facilityId = null, category = null } = body || {};
-    const text = (content ?? "").trim();
-    if (!text) return bad(400, "content required");
+    const { messages = [], attachments = [] } = await req.json();
 
-    const authHeader = req.headers.get("authorization") || undefined;
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
-    const supa = supabaseServerWithAuth(token);
-    const svc = supabaseService();
+    // Inject our cleaned system prompt (no asterisks, no inline citations)
+    const systemPrompt =
+      "You are CareIQ, an expert assistant for U.S. nursing home compliance and operations. Provide clear, survey‑ready answers with citations to source documents and effective dates when relevant. Call out state-specific variations where they matter. Keep responses concise and practical.";
 
-    // Auth check
-    const { data: userRes } = await supa.auth.getUser();
-    const userId = userRes?.user?.id ?? null;
-    if (!userId) return bad(401, "Unauthorized");
+    const chat: ChatMessage[] = [
+      { role: "system", content: systemPrompt },
+      ...(Array.isArray(messages) ? messages : []),
+    ];
 
-    // Store user message (encrypted)
-    const enc = encryptPHI(text);
-    const isPhi = hipaa ? true : likelyPHI(text);
-    const { data: userMsg, error: insErr } = await supa
-      .from("messages")
-      .insert({
-        chat_id: chatId,
-        role: "user",
-        content_enc: enc.ciphertext.toString("base64"),
-        content_iv: enc.iv.toString("base64"),
-        content_tag: enc.tag.toString("base64"),
-        content_sha256: enc.sha256,
-        is_phi: isPhi,
-      })
-      .select("*")
-      .single();
-    if (insErr) return bad(500, insErr.message);
-
-    await recordAudit({
-      user_id: userId,
-      action: "message.create",
-      resource_type: "message",
-      resource_id: userMsg?.id || null,
-      route: "/api/chat",
-      request_id: requestId,
-      ip: req.ip || null,
-      user_agent: req.headers.get("user-agent"),
-      metadata: { role: "user", chatId, is_phi: isPhi },
-    });
-
-    // Build minimal history and scrub before egress
-    const { data: hist } = await supa
-      .from("messages")
-      .select("role, content_enc, content_iv, content_tag")
-      .eq("chat_id", chatId)
-      .order("created_at", { ascending: true })
-      .limit(20);
-
-    const toProvider = [];
-    for (const m of hist || []) {
-      const bundle = {
-        ciphertext: Buffer.from(m.content_enc, "base64"),
-        iv: Buffer.from(m.content_iv, "base64"),
-        tag: Buffer.from(m.content_tag, "base64"),
-      };
-      let decrypted = "";
-      try {
-        const { decryptPHI } = await import("@/lib/crypto/phi");
-        decrypted = decryptPHI(bundle);
-      } catch {}
-      const { cleaned } = scrubPHI(decrypted);
-      toProvider.push({ role: (m.role as "user" | "assistant") ?? "user", content: cleaned });
+    // Stream from OpenAI Chat Completions
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return new Response("Missing OPENAI_API_KEY", { status: 500 });
     }
 
-    const rag = await buildRagContext({ query: text, facilityId, category, topK: 6, accessToken: token });
-    const system = `You are CareIQ, an HR/healthcare assistant. If you use the context below, cite sources by number.\n\n${rag || ""}`.trim();
-
-    const provider = providerFromEnv();
-    if (hipaa && provider.name === "local-echo") {
-      return bad(400, "HIPAA mode requires a HIPAA-eligible AI_PROVIDER (e.g., azure-openai).");
-    }
-
-    const messages = [{ role: "system" as const, content: system }, ...toProvider];
-    const answer = await provider.complete(messages, { temperature: 0.2, max_tokens: 1200 });
-
-    // Save assistant reply encrypted
-    const encA = encryptPHI(answer);
-    const { data: assistMsg, error: saveErr } = await supa
-      .from("messages")
-      .insert({
-        chat_id: chatId,
-        role: "assistant",
-        content_enc: encA.ciphertext.toString("base64"),
-        content_iv: encA.iv.toString("base64"),
-        content_tag: encA.tag.toString("base64"),
-        content_sha256: encA.sha256,
-        is_phi: hipaa ? true : false,
-      })
-      .select("*")
-      .single();
-    if (saveErr) return bad(500, saveErr.message);
-
-    await recordAudit({
-      user_id: userId,
-      action: "model.infer",
-      resource_type: "chat",
-      resource_id: chatId,
-      route: "/api/chat",
-      request_id: requestId,
-      ip: req.ip || null,
-      user_agent: req.headers.get("user-agent"),
-      metadata: { provider: provider.name, scrubbed: true },
-    });
-
-    const ms = Date.now() - t0;
-    logInfo("api.chat.post.ok", { route: "/api/chat", method: "POST", status: 200, requestId, userId, duration_ms: ms });
-
-    return NextResponse.json({ ok: true, content: answer });
-  } catch (err: any) {
-    const ms = Date.now() - t0;
-    logError("api.chat.post.error", {
-      route: "/api/chat",
+    const upstream = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      status: 500,
-      requestId,
-      userId: undefined,
-      duration_ms: ms,
-      error: String(err?.message || err),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-5-chat",
+        stream: true,
+        temperature: 0.2,
+        messages: chat,
+      }),
     });
-    await recordAudit({
-      action: "error",
-      route: "/api/chat",
-      request_id: requestId,
-      metadata: { message: "Internal error" }, // don't echo err.message if it might contain sensitive data
+
+    if (!upstream.ok || !upstream.body) {
+      const text = await upstream.text();
+      return new Response(text || "Upstream error", { status: 502 });
+    }
+
+    // Re‑wrap OpenAI stream as SSE for the client
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        const reader = upstream.body!.getReader();
+
+        (async function pump() {
+          try {
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              controller.enqueue(value);
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          } catch (err) {
+            controller.error(err);
+          }
+        })();
+      },
     });
-    return NextResponse.json({ ok: false, error: "Internal error" }, { status: 500 });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "Transfer-Encoding": "chunked",
+      },
+    });
+  } catch (err: any) {
+    return new Response(err?.message ?? "Internal error", { status: 500 });
   }
 }
