@@ -1,294 +1,182 @@
 // src/app/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
 import Composer from "@/components/Composer";
 import MessageList from "@/components/MessageList";
-import QuickAccess from "@/components/QuickAccess";
 
-type Role = "user" | "assistant";
-type Msg = { id: string; role: Role; content: string; createdAt: string; attachments?: any[] };
+type Role = "user" | "assistant" | "system";
+type Attachment = { name: string; type: string; size: number; text?: string };
+type Msg = { id: string; role: Role; content: string; createdAt: number; attachments?: Attachment[] };
 
 function uid() {
-  return (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`).toString();
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
 
 export default function Page() {
   const [messages, setMessages] = useState<Msg[]>([]);
-  const [streamingId, setStreamingId] = useState<string | null>(null);
-  const [newTokenTick, setNewTokenTick] = useState(0);
-  const [followNow, setFollowNow] = useState(0);
+  const [sending, setSending] = useState(false);
+  const [aborter, setAborter] = useState<AbortController | null>(null);
+  const [followTick, setFollowTick] = useState(0);
 
-  // Export PDF only after a chat starts
-  const exportPDF = async () => {
-    const r = await fetch("/api/export/pdf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: "CareIQ Chat Export",
-        messages,
-      }),
-    });
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `careiq-chat-${new Date().toISOString().slice(0, 10)}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const lastUser = useMemo(() => messages.filter((m) => m.role === "user").at(-1), [messages]);
 
-  const callAutoTitle = async (text: string) => {
-    try {
-      const r = await fetch("/api/title", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const j = await r.json();
-      const title = j?.title || "New chat";
-      document.title = `${title} • CareIQ`;
-    } catch {}
-  };
+  async function onSend(text: string, files: File[]) {
+    // auto-follow once user sends
+    setFollowTick((t) => t + 1);
 
-  // Per-message regenerate (icon lives in MessageList)
-  const regenerateAt = async (assistantMessageId: string) => {
-    const idx = messages.findIndex((m) => m.id === assistantMessageId);
-    if (idx === -1) return;
+    // capture attachments (we don’t upload binary here; we pass metadata + optional extracted text if you add it later)
+    const atts: Attachment[] = (files || []).map((f) => ({
+      name: f.name,
+      type: f.type || "application/octet-stream",
+      size: (f as any).size ?? 0,
+    }));
 
-    // Find the nearest previous user message and build history up to that point (inclusive)
-    let priorUserIndex = -1;
-    for (let i = idx - 1; i >= 0; i--) {
-      if (messages[i].role === "user") {
-        priorUserIndex = i;
-        break;
-      }
-    }
-    if (priorUserIndex === -1) return;
+    const userMsg: Msg = { id: uid(), role: "user", content: text, createdAt: Date.now(), attachments: atts };
+    setMessages((prev) => [...prev, userMsg]);
 
-    const history = messages
-      .slice(0, priorUserIndex + 1)
-      .map((m) => ({ role: m.role, content: m.content }));
-
-    // Replace the assistant message with a fresh streaming placeholder
-    const now = new Date().toISOString();
-    const newId = `${uid()}:a`;
-
-    setMessages((prev) => {
-      const copy = [...prev];
-      copy.splice(idx, 1, { id: newId, role: "assistant", content: "", createdAt: now });
-      return copy;
-    });
-    setStreamingId(newId);
-    setFollowNow((v) => v + 1);
-
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history, attachments: [] }),
-    });
-
-    if (!res.body) {
-      setStreamingId(null);
-      setMessages((prev) => prev.map((m) => (m.id === newId ? { ...m, content: "(no response)" } : m)));
-      return;
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let assistantBuf = "";
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split(/\r?\n/).filter(Boolean);
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const payload = line.slice(6);
-          if (payload === "[DONE]") continue;
-          try {
-            const j = JSON.parse(payload);
-            const token =
-              j?.choices?.[0]?.delta?.content ??
-              j?.choices?.[0]?.message?.content ??
-              "";
-            if (token) {
-              assistantBuf += token;
-              setMessages((prev) => prev.map((m) => (m.id === newId ? { ...m, content: assistantBuf } : m)));
-              setNewTokenTick((t) => t + 1);
-            }
-          } catch {
-            // keep-alives
-          }
-        }
-      }
-    }
-
-    setStreamingId(null);
-  };
-
-  const onSend = async (text: string, files: File[]) => {
-    const now = new Date().toISOString();
-    const idBase = uid();
-
-    const userMsg: Msg = {
-      id: `${idBase}:u`,
-      role: "user",
-      content: text,
-      createdAt: now,
-      attachments: [],
-    };
-    const asstMsg: Msg = {
-      id: `${idBase}:a`,
+    // create pending assistant msg for streaming
+    const asstId = uid();
+    const assistantMsg: Msg = {
+      id: asstId,
       role: "assistant",
       content: "",
-      createdAt: now,
+      createdAt: Date.now(),
+      attachments: [],
     };
+    setMessages((prev) => [...prev, assistantMsg]);
+    setSending(true);
 
-    const isFirst = messages.length === 0;
+    const controller = new AbortController();
+    setAborter(controller);
 
-    setMessages((prev) => [...prev, userMsg, asstMsg]);
-    setStreamingId(asstMsg.id);
-    setFollowNow((v) => v + 1);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        body: JSON.stringify({ messages: toWire(messages).concat(toWire([userMsg])), attachments: atts }),
+        signal: controller.signal,
+      });
 
-    if (isFirst) callAutoTitle(text);
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
-    const history = [
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
-      { role: "user", content: text },
-    ];
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: history,
-        attachments: [],
-      }),
-    });
+      let full = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
 
-    if (!res.body) {
-      setStreamingId(null);
-      setMessages((prev) =>
-        prev.map((m) => (m.id === asstMsg.id ? { ...m, content: "(no response)" } : m))
-      );
-      return;
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let assistantBuf = "";
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split(/\r?\n/).filter(Boolean);
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const payload = line.slice(6);
+        // OpenRouter streams SSE lines; parse lines that start with "data: "
+        for (const line of chunk.split("\n")) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const payload = trimmed.replace(/^data:\s*/, "");
           if (payload === "[DONE]") continue;
+
           try {
             const j = JSON.parse(payload);
-            const token =
-              j?.choices?.[0]?.delta?.content ??
-              j?.choices?.[0]?.message?.content ??
-              "";
-            if (token) {
-              assistantBuf += token;
+            const delta: string | undefined = j?.choices?.[0]?.delta?.content;
+            if (delta) {
+              full += delta;
               setMessages((prev) =>
-                prev.map((m) => (m.id === asstMsg.id ? { ...m, content: assistantBuf } : m))
+                prev.map((m) => (m.id === asstId ? { ...m, content: full } : m))
               );
-              setNewTokenTick((t) => t + 1);
             }
           } catch {
             // ignore keepalives
           }
         }
       }
+
+      // kick auto-titling (cheap model), based on the first user message + first assistant reply
+      if (messages.length === 0 && full) {
+        void fetch("/api/title", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: `${text}\n\n${full}` }),
+        })
+          .then((r) => r.json())
+          .then((j) => {
+            const title = j?.title?.trim();
+            if (title) {
+              // fire an app-wide event so Sidebar can update this chat’s title if you store chats globally
+              window.dispatchEvent(
+                new CustomEvent("chat:title", { detail: { title } })
+              );
+            }
+          })
+          .catch(() => {});
+      }
+    } catch (err) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === asstId
+            ? { ...m, content: "Sorry — I had trouble reaching the model." }
+            : m
+        )
+      );
+    } finally {
+      setSending(false);
+      setAborter(null);
     }
+  }
 
-    setStreamingId(null);
-  };
+  function stop() {
+    aborter?.abort();
+    setAborter(null);
+    setSending(false);
+  }
 
-  const showHero = messages.length === 0;
+  function regenerate() {
+    // resend the last user message with same attachments
+    const last = lastUser;
+    if (!last) return;
+    onSend(last.content, []);
+  }
+
+  const showEmpty = messages.length === 0;
 
   return (
     <RequireAuth>
-      <div className="flex w-full flex-col gap-4">
-        {/* Top actions: show ONLY after chat has started */}
-        {!showHero && (
-          <div className="flex items-center justify-end gap-2 print:hidden">
-            <button
-              onClick={exportPDF}
-              className="px-3 py-1.5 text-sm rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90"
-              title="Export PDF"
-            >
-              Export PDF
-            </button>
+      <div className="flex h-dvh w-full flex-col">
+        {/* Header-like hero that only shows before first message (like ChatGPT) */}
+        {showEmpty ? (
+          <div className="relative mx-auto mt-14 w-full max-w-3xl px-4 text-center">
+            <h1 className="mb-6 text-4xl font-semibold tracking-tight">How can I help today?</h1>
           </div>
-        )}
+        ) : null}
 
-        {/* Conversation / Hero */}
-        <div className="relative flex min-h-[60svh] flex-1">
-          {showHero ? (
-            // HERO: one composer + welcome copy + suggestions
-            <div className="mx-auto my-16 flex w-full max-w-3xl flex-col items-stretch gap-6 text-center">
-              {/* Clean welcome copy above the composer (no asterisks, no (42 CFR Part 483)) */}
-              <div className="space-y-3">
-                <p className="text-[22px] font-semibold tracking-tight">
-                  Hello! 👋 I’m CareIQ, your expert assistant for U.S. nursing home compliance and operations.
-                </p>
-                <div className="mx-auto max-w-2xl text-sm text-zinc-600">
-                  <p>How can I help you today? For example, you can ask about:</p>
-                  <ul className="mt-2 list-disc space-y-1 text-left">
-                    <li>Federal nursing home regulations</li>
-                    <li>Survey tags and compliance pitfalls</li>
-                    <li>Staffing, resident rights, and care planning requirements</li>
-                    <li>State-specific rules for your facility</li>
-                  </ul>
-                  <p className="mt-3">
-                    Would you like to start with a federal regulation question, or should I tailor guidance for your specific state?
-                  </p>
-                </div>
-              </div>
+        {/* Messages */}
+        <div className="relative flex min-h-0 flex-1">
+          <MessageList messages={messages} onRegenerate={regenerate} followNowSignal={followTick} />
+        </div>
 
-              {/* Centered composer */}
-              <div className="mx-auto w-full max-w-3xl">
-                <Composer onSend={onSend} placeholder="How can I help today?" autoFocus />
-              </div>
-
-              {/* Suggestions BELOW the composer (hero only) */}
-              <QuickAccess onPick={(t) => onSend(t, [])} max={4} compact />
+        {/* Sticky composer w/ gradient scrim like ChatGPT */}
+        <div className="sticky bottom-0 z-10 w-full bg-gradient-to-b from-transparent to-[var(--bg)] px-4 pb-5 pt-3">
+          <Composer
+            onSend={onSend}
+            placeholder="How can I help today?"
+            disabled={sending}
+          />
+          {sending ? (
+            <div className="mx-auto mt-2 flex max-w-3xl justify-end">
+              <button
+                onClick={stop}
+                className="rounded-full bg-white/80 px-3 py-1 text-sm shadow ring-1 ring-black/10 hover:bg-white dark:bg-neutral-900/70 dark:ring-white/10"
+              >
+                Stop generating
+              </button>
             </div>
-          ) : (
-            // IN-CHAT: message list + sticky composer (no suggestions here)
-            <div className="flex h-full w-full flex-col">
-              <div className="flex-1 min-h-0">
-                <MessageList
-                  messages={messages}
-                  isStreaming={Boolean(streamingId)}
-                  streamingId={streamingId}
-                  followNowSignal={followNow}
-                  newAssistantTokenTick={newTokenTick}
-                  onRegenerate={regenerateAt}
-                />
-              </div>
-
-              {/* Sticky composer */}
-              <div className="sticky bottom-0 z-10 w-full bg-gradient-to-b from-[color-mix(in_oklab,var(--bg),transparent_40%)] to-[var(--bg)] px-4 pb-5 pt-3 print:hidden">
-                <div className="mx-auto w-full max-w-3xl">
-                  <Composer onSend={onSend} placeholder="How can I help today?" />
-                </div>
-              </div>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     </RequireAuth>
   );
+}
+
+function toWire(arr: Msg[]) {
+  return arr.map(({ role, content }) => ({ role, content }));
 }

@@ -18,6 +18,8 @@ import {
   LogOut,
   PencilLine,
   CalendarDays,
+  Paperclip,
+  Loader2,
 } from "lucide-react";
 import { cn, timeAgo } from "@/lib/utils";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -29,6 +31,9 @@ type ChatRow = {
   id: string;
   title: string | null;
   created_at: string | null;
+  // Optional fields if you add them later in DB; UI degrades gracefully if missing.
+  updated_at?: string | null;
+  last_message_at?: string | null;
 };
 
 type SidebarProps = {
@@ -40,6 +45,9 @@ type SidebarProps = {
 
 const PIN_STORAGE_KEY = "careiq.pinnedChatIds.v1";
 const AUTOTITLE_MARK = "careiq.autotitle.done.v1";
+// Generous rate limits (per action key)
+const RL_DEFAULT_MAX = 30; // 30 actions
+const RL_DEFAULT_WINDOW_MS = 60_000; // per minute
 
 /* ------------------------------- Utilities -------------------------------- */
 
@@ -90,6 +98,77 @@ function isLikelyUntitled(title: string | null | undefined) {
   return !t || t === "new chat";
 }
 
+/* ----------------------------- Rate Limiter ------------------------------- */
+
+function rlKey(key: string) {
+  return `careiq.rl.${key}`;
+}
+function allowAction(key: string, max = RL_DEFAULT_MAX, windowMs = RL_DEFAULT_WINDOW_MS) {
+  try {
+    const now = Date.now();
+    const raw = localStorage.getItem(rlKey(key));
+    const arr: number[] = raw ? JSON.parse(raw) : [];
+    const recent = arr.filter((t) => now - t < windowMs);
+    if (recent.length >= max) return false;
+    recent.push(now);
+    localStorage.setItem(rlKey(key), JSON.stringify(recent));
+    return true;
+  } catch {
+    return true; // fail-open if storage blocked
+  }
+}
+
+/* ----------------------- Cross-tab typing indicator ----------------------- */
+
+type TypingSignal = { chatId: string; typing: boolean };
+
+function useTypingPresence() {
+  const [typingIds, setTypingIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const update = ({ chatId, typing }: TypingSignal) => {
+      setTypingIds((prev) => {
+        const next = new Set(prev);
+        if (typing) next.add(chatId);
+        else next.delete(chatId);
+        return next;
+      });
+    };
+
+    // BroadcastChannel if available
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("careiq-typing");
+      bc.onmessage = (ev) => {
+        if (!ev?.data) return;
+        update(ev.data as TypingSignal);
+      };
+    } catch {
+      // ignore
+    }
+
+    // Fallback to DOM events
+    const onEvt = (e: Event) => {
+      const detail = (e as CustomEvent).detail as TypingSignal | undefined;
+      if (detail) update(detail);
+    };
+    window.addEventListener("chat:typing", onEvt as any);
+    window.addEventListener("chat:done", onEvt as any);
+
+    return () => {
+      if (bc) {
+        try {
+          bc.close();
+        } catch {}
+      }
+      window.removeEventListener("chat:typing", onEvt as any);
+      window.removeEventListener("chat:done", onEvt as any);
+    };
+  }, []);
+
+  return typingIds;
+}
+
 /* --------------------------- Tiny popover menu ---------------------------- */
 
 function useOutsideClick<T extends HTMLElement>(onOutside: () => void) {
@@ -122,7 +201,7 @@ function TinyMenu({
     <div
       ref={ref}
       className={cn(
-        "absolute z-50 mt-1 min-w-[200px] rounded-2xl border border-black/10 bg-white p-1 text-sm shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-white/10 dark:bg-neutral-900/90",
+        "absolute z-50 mt-1 min-w-[220px] rounded-2xl border border-black/10 bg-white p-1 text-sm shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-white/10 dark:bg-neutral-900/90",
         align === "end" ? "right-0" : "left-0"
       )}
       role="menu"
@@ -165,6 +244,19 @@ function TinyMenuItem({
   );
 }
 
+/* ----------------------------- Row decorations ---------------------------- */
+
+function Dot({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-block h-1.5 w-1.5 rounded-full bg-neutral-400 align-middle",
+        className
+      )}
+    />
+  );
+}
+
 /* -------------------------------- Chat row -------------------------------- */
 
 function ChatItem({
@@ -174,13 +266,19 @@ function ChatItem({
   onPinToggle,
   onDelete,
   onRename,
+  onIngest,
+  showTyping,
+  hasFiles,
 }: {
   row: ChatRow;
   active: boolean;
   pinned: boolean;
+  showTyping?: boolean;
+  hasFiles?: boolean;
   onPinToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, newTitle: string) => void; // optimistic
+  onIngest: (id: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -203,10 +301,22 @@ function ChatItem({
       setRenaming(false);
       return;
     }
+    if (!allowAction("rename", 60, 60_000)) {
+      alert("You are renaming too quickly. Please wait a bit.");
+      return;
+    }
     setSavingRename(true);
     onRename(row.id, trimmed); // optimistic update
     setRenaming(false);
     setSavingRename(false);
+  };
+
+  const editResend = () => {
+    // Let the chat page handle opening an editor with the last user message
+    const detail = { chatId: row.id };
+    try {
+      window.dispatchEvent(new CustomEvent("chat:edit-resend", { detail }));
+    } catch {}
   };
 
   return (
@@ -221,13 +331,28 @@ function ChatItem({
       {!renaming ? (
         <Link
           href={`/chat/${row.id}`}
-          className={cn("block truncate px-3 py-2 pr-10 text-sm", active && "font-medium")}
+          className={cn(
+            "flex items-center gap-2 truncate px-3 py-2 pr-10 text-sm",
+            active && "font-medium"
+          )}
           title={row.title || "New chat"}
         >
-          {row.title || "New chat"}
+          {/* small adorners */}
+          {hasFiles && (
+            <span className="text-neutral-500" title="Has attachments">
+              <Paperclip size={14} />
+            </span>
+          )}
+          <span className="truncate">{row.title || "New chat"}</span>
           <span className="ml-2 text-xs text-neutral-500">
             {row.created_at ? timeAgo(row.created_at) : ""}
           </span>
+          {showTyping && (
+            <span className="ml-2 inline-flex items-center gap-1 text-xs text-neutral-500">
+              <Loader2 className="animate-spin" size={12} />
+              typing…
+            </span>
+          )}
         </Link>
       ) : (
         <div className="flex items-center gap-2 px-3 py-2 pr-10">
@@ -268,6 +393,7 @@ function ChatItem({
             aria-label={pinned ? "Unpin chat" : "Pin chat"}
             onClick={(e) => {
               e.preventDefault();
+              if (!allowAction("pin", 80, 60_000)) return;
               onPinToggle(row.id);
             }}
             title={pinned ? "Unpin" : "Pin"}
@@ -302,8 +428,30 @@ function ChatItem({
                     Rename
                   </TinyMenuItem>
                   <TinyMenuItem
+                    icon={<Paperclip size={16} />}
+                    onClick={() => {
+                      onIngest(row.id);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Ingest attachments
+                  </TinyMenuItem>
+                  <TinyMenuItem
+                    icon={<Loader2 size={16} />}
+                    onClick={() => {
+                      editResend();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Edit &amp; Resend last
+                  </TinyMenuItem>
+                  <TinyMenuItem
                     icon={<Pin size={16} />}
                     onClick={() => {
+                      if (!allowAction("pin", 80, 60_000)) {
+                        alert("Too many pin/unpin actions right now.");
+                        return;
+                      }
                       onPinToggle(row.id);
                       setMenuOpen(false);
                     }}
@@ -334,6 +482,10 @@ function ChatItem({
                     <button
                       className="flex-1 rounded-lg bg-red-600 px-2 py-1.5 text-sm text-white hover:bg-red-700"
                       onClick={() => {
+                        if (!allowAction("delete", 20, 60_000)) {
+                          alert("You’re deleting too quickly. Please slow down.");
+                          return;
+                        }
                         onDelete(row.id);
                         setMenuOpen(false);
                       }}
@@ -352,6 +504,10 @@ function ChatItem({
 }
 
 /* -------------------------- Auto Title background ------------------------- */
+/**
+ * Periodically finds untitled chats and asks /api/title (cheap model) to name them,
+ * then PATCHes /api/chats/:id with the new title. Marks done in localStorage to avoid repeats.
+ */
 function AutoTitleAgent() {
   const supabase = getBrowserSupabase();
   useEffect(() => {
@@ -419,7 +575,7 @@ function AutoTitleAgent() {
     }
 
     attempt();
-    const t = setInterval(attempt, 20000);
+    const t = setInterval(attempt, 20_000);
     return () => {
       cancelled = true;
       clearInterval(t);
@@ -437,12 +593,24 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+  const [hasFilesMap, setHasFilesMap] = useState<Record<string, boolean>>({});
   const supabase = getBrowserSupabase();
+
+  // typing indicator
+  const typingIds = useTypingPresence();
+
+  // prevent nested scroll-jank: sidebar handles its own scroll, independent of chat pane
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.style.overscrollBehavior = "contain";
+  }, []);
 
   const fetchChats = useCallback(async () => {
     const { data, error } = await supabase
       .from("chats")
-      .select("id,title,created_at")
+      .select("id,title,created_at,updated_at,last_message_at")
       .order("created_at", { ascending: false })
       .limit(500);
     if (!error) setChats((data || []) as ChatRow[]);
@@ -451,6 +619,54 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   useEffect(() => {
     fetchChats();
   }, [fetchChats]);
+
+  // Realtime updates (auto-save awareness)
+  useEffect(() => {
+    const channel = supabase
+      .channel("sidebar-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "chats" },
+        (payload) => {
+          const row = payload.new as ChatRow;
+          if (payload.eventType === "INSERT") {
+            setChats((prev) =>
+              [row, ...prev.filter((c) => c.id !== row.id)].sort((a, b) =>
+                (b.created_at || "").localeCompare(a.created_at || "")
+              )
+            );
+          } else if (payload.eventType === "UPDATE") {
+            setChats((prev) => prev.map((c) => (c.id === row.id ? { ...c, ...row } : c)));
+          } else if (payload.eventType === "DELETE") {
+            setChats((prev) => prev.filter((c) => c.id !== (payload.old as any)?.id));
+            setHasFilesMap((prev) => {
+              const copy = { ...prev };
+              delete copy[(payload.old as any)?.id];
+              return copy;
+            });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload: any) => {
+          // If a message arrives with attachments, note it for that chat
+          const chatId = payload.new?.chat_id as string | undefined;
+          const attachments = payload.new?.attachments as any[] | undefined;
+          if (chatId && attachments && attachments.length > 0) {
+            setHasFilesMap((prev) => ({ ...prev, [chatId]: true }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch {}
+    };
+  }, [supabase]);
 
   useEffect(() => setPinnedIds(loadPinnedIds()), []);
   useEffect(() => savePinnedIds(pinnedIds), [pinnedIds]);
@@ -471,6 +687,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   );
 
   async function handleDelete(id: string) {
+    if (!allowAction("delete", 20, 60_000)) {
+      alert("You’re deleting too quickly. Please slow down.");
+      return;
+    }
     setChats((prev) => prev.filter((c) => c.id !== id));
     setPinnedIds((prev) => prev.filter((p) => p !== id));
     fetch(`/api/chats/${id}`, { method: "DELETE" }).catch(() => {});
@@ -478,10 +698,18 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }
 
   function togglePin(id: string) {
+    if (!allowAction("pin", 80, 60_000)) {
+      alert("Too many pin/unpin actions right now.");
+      return;
+    }
     setPinnedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev]));
   }
 
   async function handleNewChat() {
+    if (!allowAction("newchat", 40, 60_000)) {
+      alert("You’ve created a lot of chats in a short time—try again soon.");
+      return;
+    }
     const res = await fetch("/api/chats", { method: "POST" });
     const json = await res.json();
     const newId = json.id as string;
@@ -493,12 +721,34 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }
 
   const handleRename = useCallback((id: string, newTitle: string) => {
+    if (!allowAction("rename", 60, 60_000)) {
+      alert("You’re renaming too fast. Please wait a bit.");
+      return;
+    }
     setChats((prev) => prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c)));
     fetch(`/api/chats/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: newTitle }),
     }).catch((err) => console.error("Rename sync failed", err));
+  }, []);
+
+  const handleIngest = useCallback(async (id: string) => {
+    // Optional server route that extracts & stores text for all attachments in the chat
+    // Sidebar calls it; server should parse docs and update storage/DB for RAG.
+    if (!allowAction("ingest", 15, 60_000)) {
+      alert("Ingestion rate limit reached temporarily. Try again shortly.");
+      return;
+    }
+    try {
+      const r = await fetch(`/api/ingest?chat_id=${encodeURIComponent(id)}`, { method: "POST" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      // You can toast success here if you have a toaster
+      // setHasFilesMap(prev => ({...prev, [id]: true})) // if ingestion implies files are present
+    } catch (e) {
+      console.warn("Ingest failed", e);
+      alert("Ingestion failed to start. Check the server logs for details.");
+    }
   }, []);
 
   return (
@@ -572,7 +822,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
 
           {/* Lists */}
-          <div className="min-h-0 flex-1 overflow-auto px-2 pb-2">
+          <div ref={scrollerRef} className="min-h-0 flex-1 overflow-auto px-2 pb-2">
+            {/* Pinned */}
             {!collapsed && pinned.length > 0 && (
               <div className="mb-2">
                 <div className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -588,11 +839,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       onPinToggle={togglePin}
                       onDelete={handleDelete}
                       onRename={handleRename}
+                      onIngest={handleIngest}
+                      hasFiles={!!hasFilesMap[row.id]}
+                      showTyping={typingIds.has(row.id) && isActiveChat(pathname, row.id)}
                     />
                   ))}
                 </ul>
               </div>
             )}
+
+            {/* Recent */}
             <div className={!collapsed ? "mt-1" : ""}>
               {!collapsed && (
                 <div className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -612,6 +868,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       onPinToggle={togglePin}
                       onDelete={handleDelete}
                       onRename={handleRename}
+                      onIngest={handleIngest}
+                      hasFiles={!!hasFilesMap[row.id]}
+                      showTyping={typingIds.has(row.id) && isActiveChat(pathname, row.id)}
                     />
                   ))
                 )}

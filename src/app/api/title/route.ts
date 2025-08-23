@@ -1,50 +1,54 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// src/app/api/title/route.ts
+export const runtime = "edge";
 
 import { NextRequest, NextResponse } from "next/server";
+import { AUTO_TITLE_MODEL, getOpenRouterClient } from "@/lib/modelRouter";
 
+/**
+ * POST /api/title
+ * Body: { text: string }
+ * Returns { ok: true, title: string }
+ */
 export async function POST(req: NextRequest) {
   try {
     const { text } = await req.json();
+
     if (!text || typeof text !== "string") {
       return NextResponse.json({ ok: false, error: "text required" }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ ok: true, title: "New chat" }); // graceful fallback
+    let title = "New chat";
+    try {
+      const client = getOpenRouterClient();
+      const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${client.apiKey}`,
+          "HTTP-Referer": (client as any).defaultHeaders?.["HTTP-Referer"] || "",
+          "X-Title": (client as any).defaultHeaders?.["X-Title"] || "",
+        },
+        body: JSON.stringify({
+          model: AUTO_TITLE_MODEL,
+          messages: [
+            {
+              role: "system",
+              content:
+                "Write a very short (3–5 words) human-friendly chat title. No names, URLs, emojis, or quotes.",
+            },
+            { role: "user", content: text.slice(0, 1200) },
+          ],
+          temperature: 0.2,
+          max_tokens: 12,
+        }),
+      });
+      const j = await r.json();
+      title =
+        j?.choices?.[0]?.message?.content?.trim()?.replace(/^["']|["']$/g, "") || "New chat";
+      title = title.length > 44 ? title.slice(0, 41).trimEnd() + "…" : title;
+    } catch {
+      // fall through to default
     }
-
-    const model =
-      process.env.OPENROUTER_TITLE_MODEL ||
-      "openai/gpt-4o-mini"; // or "mistralai/mistral-small"
-
-    const system =
-      "You write ultra-brief, human-friendly chat titles (3–5 words). Remove jargon, names, URLs, and emojis.";
-
-    const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://careiq.local",
-        "X-Title": "CareIQ Title",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: text.slice(0, 500) },
-        ],
-        temperature: 0.2,
-        max_tokens: 12,
-      }),
-    });
-
-    const j = await r.json();
-    const title =
-      j?.choices?.[0]?.message?.content?.trim()?.replace(/^["']|["']$/g, "") ||
-      "New chat";
 
     return NextResponse.json({ ok: true, title });
   } catch (err: any) {

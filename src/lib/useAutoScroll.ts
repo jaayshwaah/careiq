@@ -5,24 +5,23 @@ type NewContentKind = "assistant" | "user";
 
 /**
  * Smart auto-scroll with "manual pause" semantics.
- *
- * Behavior:
- * - User scrolls up → auto-follow PAUSES (persists).
- * - "Jump to latest" or "resumeAutoFollow()" → auto-follow RESUMES and jumps to bottom.
- * - When paused and new ASSISTANT tokens arrive while scrolled up → sets hasUnseen=true (toast).
- * - When NOT paused (or currently at bottom), new content keeps you pinned to bottom smoothly.
+ * - User scrolls up → auto-follow PAUSES.
+ * - "Jump to latest" → auto-follow RESUMES and jumps.
+ * - When paused and new ASSISTANT tokens arrive → hasUnseen=true (toast).
  */
 export function useAutoScroll<T extends HTMLElement>(bottomThresholdPx = 72) {
   const ref = useRef<T | null>(null);
+  const pausedRef = useRef(false);
+
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const [paused, setPaused] = useState(false); // manual pause persists until resume
+  const [paused, setPaused] = useState(false);
   const [hasUnseen, setHasUnseen] = useState(false);
 
   const computeIsAtBottom = useCallback(() => {
     const el = ref.current;
     if (!el) return true;
-    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-    return distance <= bottomThresholdPx;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= bottomThresholdPx;
+    return atBottom;
   }, [bottomThresholdPx]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
@@ -32,54 +31,46 @@ export function useAutoScroll<T extends HTMLElement>(bottomThresholdPx = 72) {
   }, []);
 
   const handleScroll = useCallback(() => {
-    // Update "at bottom" on any scroll.
     const atBottom = computeIsAtBottom();
     setIsAtBottom(atBottom);
 
-    // If the user moved away from bottom, set/persist manual pause.
-    // If they reach bottom again, keep "paused" as-is (they must click jump or send).
-    if (!atBottom) setPaused(true);
+    // If user moved away from bottom → persist manual pause.
+    if (!atBottom) {
+      setPaused(true);
+      pausedRef.current = true;
+    }
   }, [computeIsAtBottom]);
 
-  /**
-   * Consumer should call this when new content is appended.
-   * - If paused and not at bottom and kind is "assistant" → show unseen toast.
-   * - Otherwise follow to bottom.
-   */
   const notifyNewContent = useCallback(
     (kind: NewContentKind) => {
       const atBottom = computeIsAtBottom();
-      setIsAtBottom(atBottom);
-
-      if (paused && !atBottom) {
-        if (kind === "assistant") {
-          setHasUnseen(true);
-        }
-        // Stay paused, do not auto-follow.
+      if (!pausedRef.current || atBottom) {
+        // follow
+        scrollToBottom(kind === "assistant" ? "smooth" : "auto");
+        setHasUnseen(false);
         return;
       }
-
-      // Not paused (or currently at bottom) → follow to bottom
-      scrollToBottom(kind === "assistant" ? "smooth" : "auto");
-      setHasUnseen(false);
+      // paused and scrolled up
+      if (kind === "assistant") setHasUnseen(true);
     },
-    [computeIsAtBottom, paused, scrollToBottom]
+    [computeIsAtBottom, scrollToBottom]
   );
 
-  /** Resume auto-follow and jump to latest. */
   const resumeAutoFollow = useCallback((behavior: ScrollBehavior = "smooth") => {
     setPaused(false);
+    pausedRef.current = false;
     setHasUnseen(false);
     scrollToBottom(behavior);
   }, [scrollToBottom]);
 
-  /** Optionally clear the unseen toast (e.g., on overlay dismiss). */
   const clearUnseen = useCallback(() => setHasUnseen(false), []);
 
-  // Ensure we start at bottom on first mount
   useEffect(() => {
-    scrollToBottom("auto");
-    setIsAtBottom(true);
+    // initialize at bottom
+    setTimeout(() => {
+      scrollToBottom("auto");
+      setIsAtBottom(true);
+    }, 0);
   }, [scrollToBottom]);
 
   return {
