@@ -27,13 +27,12 @@ import AccountMenu from "./AccountMenu";
 
 /* ---------------------------------- Types --------------------------------- */
 
-type ChatRow = {
+type ChatMetaRow = {
   id: string;
   title: string | null;
   created_at: string | null;
-  // Optional fields if you add them later in DB; UI degrades gracefully if missing.
-  updated_at?: string | null;
-  last_message_at?: string | null;
+  last_message_at: string | null;
+  has_attachments: boolean | null;
 };
 
 type SidebarProps = {
@@ -43,35 +42,14 @@ type SidebarProps = {
 
 /* ----------------------------- Local constants ---------------------------- */
 
-const PIN_STORAGE_KEY = "careiq.pinnedChatIds.v1";
+// Legacy key (we migrate these to server once)
+const LEGACY_PIN_STORAGE_KEY = "careiq.pinnedChatIds.v1";
 const AUTOTITLE_MARK = "careiq.autotitle.done.v1";
 // Generous rate limits (per action key)
 const RL_DEFAULT_MAX = 30; // 30 actions
 const RL_DEFAULT_WINDOW_MS = 60_000; // per minute
 
 /* ------------------------------- Utilities -------------------------------- */
-
-function loadPinnedIds(): string[] {
-  try {
-    const raw = localStorage.getItem(PIN_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function savePinnedIds(ids: string[]) {
-  try {
-    localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(ids));
-  } catch {}
-}
-
-function isActiveChat(pathname: string | null, id: string) {
-  if (!pathname) return false;
-  return pathname === `/chat/${id}`;
-}
 
 function getAutotitleMap(): Record<string, number> {
   try {
@@ -96,6 +74,11 @@ function isLikelyUntitled(title: string | null | undefined) {
   if (!title) return true;
   const t = title.trim().toLowerCase();
   return !t || t === "new chat";
+}
+
+function isActiveChat(pathname: string | null, id: string) {
+  if (!pathname) return false;
+  return pathname === `/chat/${id}`;
 }
 
 /* ----------------------------- Rate Limiter ------------------------------- */
@@ -135,7 +118,6 @@ function useTypingPresence() {
       });
     };
 
-    // BroadcastChannel if available
     let bc: BroadcastChannel | null = null;
     try {
       bc = new BroadcastChannel("careiq-typing");
@@ -143,11 +125,8 @@ function useTypingPresence() {
         if (!ev?.data) return;
         update(ev.data as TypingSignal);
       };
-    } catch {
-      // ignore
-    }
+    } catch {}
 
-    // Fallback to DOM events
     const onEvt = (e: Event) => {
       const detail = (e as CustomEvent).detail as TypingSignal | undefined;
       if (detail) update(detail);
@@ -244,19 +223,6 @@ function TinyMenuItem({
   );
 }
 
-/* ----------------------------- Row decorations ---------------------------- */
-
-function Dot({ className = "" }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-block h-1.5 w-1.5 rounded-full bg-neutral-400 align-middle",
-        className
-      )}
-    />
-  );
-}
-
 /* -------------------------------- Chat row -------------------------------- */
 
 function ChatItem({
@@ -268,13 +234,11 @@ function ChatItem({
   onRename,
   onIngest,
   showTyping,
-  hasFiles,
 }: {
-  row: ChatRow;
+  row: ChatMetaRow;
   active: boolean;
   pinned: boolean;
   showTyping?: boolean;
-  hasFiles?: boolean;
   onPinToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, newTitle: string) => void; // optimistic
@@ -312,7 +276,6 @@ function ChatItem({
   };
 
   const editResend = () => {
-    // Let the chat page handle opening an editor with the last user message
     const detail = { chatId: row.id };
     try {
       window.dispatchEvent(new CustomEvent("chat:edit-resend", { detail }));
@@ -337,15 +300,18 @@ function ChatItem({
           )}
           title={row.title || "New chat"}
         >
-          {/* small adorners */}
-          {hasFiles && (
+          {row.has_attachments ? (
             <span className="text-neutral-500" title="Has attachments">
               <Paperclip size={14} />
             </span>
-          )}
+          ) : null}
           <span className="truncate">{row.title || "New chat"}</span>
           <span className="ml-2 text-xs text-neutral-500">
-            {row.created_at ? timeAgo(row.created_at) : ""}
+            {row.last_message_at
+              ? timeAgo(row.last_message_at)
+              : row.created_at
+              ? timeAgo(row.created_at)
+              : ""}
           </span>
           {showTyping && (
             <span className="ml-2 inline-flex items-center gap-1 text-xs text-neutral-500">
@@ -374,7 +340,7 @@ function ChatItem({
             Cancel
           </button>
           <button
-            className="rounded-lg bg-neutral-900 px-2 py-1 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-black"
+            className="rounded-lg bg-neutral-900 px-2 py-1 text-xs text-white hover:bg-neutral-800 dark:bg白 dark:text-black"
             onClick={submitRename}
             disabled={savingRename}
           >
@@ -505,8 +471,8 @@ function ChatItem({
 
 /* -------------------------- Auto Title background ------------------------- */
 /**
- * Periodically finds untitled chats and asks /api/title (cheap model) to name them,
- * then PATCHes /api/chats/:id with the new title. Marks done in localStorage to avoid repeats.
+ * Finds untitled chats and asks /api/title (cheap model) to name them,
+ * then PATCHes /api/chats/:id. Marks done in localStorage to avoid repeats.
  */
 function AutoTitleAgent() {
   const supabase = getBrowserSupabase();
@@ -590,11 +556,12 @@ function AutoTitleAgent() {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [chats, setChats] = useState<ChatRow[]>([]);
+  const supabase = getBrowserSupabase();
+
+  const [userId, setUserId] = useState<string | null>(null);
+  const [chats, setChats] = useState<ChatMetaRow[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const [hasFilesMap, setHasFilesMap] = useState<Record<string, boolean>>({});
-  const supabase = getBrowserSupabase();
 
   // typing indicator
   const typingIds = useTypingPresence();
@@ -607,69 +574,113 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     el.style.overscrollBehavior = "contain";
   }, []);
 
+  /* ------------------------ Auth + server pin migration ------------------------ */
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const uid = data?.user?.id || null;
+      setUserId(uid);
+
+      // migrate legacy local pins to server once
+      if (uid) {
+        try {
+          const raw = localStorage.getItem(LEGACY_PIN_STORAGE_KEY);
+          if (raw) {
+            const legacy = JSON.parse(raw) as string[];
+            if (Array.isArray(legacy) && legacy.length) {
+              // fetch existing pins to avoid duplicates
+              const { data: existing } = await supabase
+                .from("pins")
+                .select("chat_id")
+                .eq("user_id", uid);
+              const existingSet = new Set((existing || []).map((p: any) => p.chat_id as string));
+              const toInsert = legacy
+                .filter((id) => !existingSet.has(id))
+                .map((chat_id) => ({ user_id: uid, chat_id }));
+
+              if (toInsert.length) {
+                await supabase.from("pins").insert(toInsert);
+              }
+            }
+            // clear legacy storage after migration
+            localStorage.removeItem(LEGACY_PIN_STORAGE_KEY);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    })();
+  }, [supabase]);
+
+  /* ------------------------------- Fetch data ------------------------------- */
+
   const fetchChats = useCallback(async () => {
     const { data, error } = await supabase
-      .from("chats")
-      .select("id,title,created_at,updated_at,last_message_at")
+      .from("chat_meta")
+      .select("id,title,created_at,last_message_at,has_attachments")
+      .order("last_message_at", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(500);
-    if (!error) setChats((data || []) as ChatRow[]);
+    if (!error) setChats((data || []) as ChatMetaRow[]);
   }, [supabase]);
+
+  const fetchPins = useCallback(
+    async (uid: string | null) => {
+      if (!uid) {
+        setPinnedIds([]);
+        return;
+      }
+      const { data, error } = await supabase.from("pins").select("chat_id").eq("user_id", uid);
+      if (!error) setPinnedIds((data || []).map((r: any) => r.chat_id as string));
+    },
+    [supabase]
+  );
 
   useEffect(() => {
     fetchChats();
   }, [fetchChats]);
 
-  // Realtime updates (auto-save awareness)
   useEffect(() => {
+    fetchPins(userId);
+  }, [fetchPins, userId]);
+
+  /* ------------------------------ Realtime sync ----------------------------- */
+
+  useEffect(() => {
+    // Realtime for chats/messages to refresh the meta view
     const channel = supabase
-      .channel("sidebar-changes")
+      .channel("sidebar-meta")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "chats" },
-        (payload) => {
-          const row = payload.new as ChatRow;
-          if (payload.eventType === "INSERT") {
-            setChats((prev) =>
-              [row, ...prev.filter((c) => c.id !== row.id)].sort((a, b) =>
-                (b.created_at || "").localeCompare(a.created_at || "")
-              )
-            );
-          } else if (payload.eventType === "UPDATE") {
-            setChats((prev) => prev.map((c) => (c.id === row.id ? { ...c, ...row } : c)));
-          } else if (payload.eventType === "DELETE") {
-            setChats((prev) => prev.filter((c) => c.id !== (payload.old as any)?.id));
-            setHasFilesMap((prev) => {
-              const copy = { ...prev };
-              delete copy[(payload.old as any)?.id];
-              return copy;
-            });
-          }
-        }
+        () => fetchChats()
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
-        (payload: any) => {
-          // If a message arrives with attachments, note it for that chat
-          const chatId = payload.new?.chat_id as string | undefined;
-          const attachments = payload.new?.attachments as any[] | undefined;
-          if (chatId && attachments && attachments.length > 0) {
-            setHasFilesMap((prev) => ({ ...prev, [chatId]: true }));
-          }
-        }
+        { event: "*", schema: "public", table: "messages" },
+        () => fetchChats()
+      )
+      .subscribe();
+
+    // Realtime for pins (user-scoped)
+    const pinsChannel = supabase
+      .channel("sidebar-pins")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pins", filter: userId ? `user_id=eq.${userId}` : undefined },
+        () => fetchPins(userId)
       )
       .subscribe();
 
     return () => {
       try {
         supabase.removeChannel(channel);
+        supabase.removeChannel(pinsChannel);
       } catch {}
     };
-  }, [supabase]);
+  }, [supabase, fetchChats, fetchPins, userId]);
 
-  useEffect(() => setPinnedIds(loadPinnedIds()), []);
-  useEffect(() => savePinnedIds(pinnedIds), [pinnedIds]);
+  /* --------------------------- Derived + handlers --------------------------- */
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -692,17 +703,32 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       return;
     }
     setChats((prev) => prev.filter((c) => c.id !== id));
-    setPinnedIds((prev) => prev.filter((p) => p !== id));
+    // unpin if pinned
+    if (userId) {
+      setPinnedIds((prev) => prev.filter((p) => p !== id));
+      await supabase.from("pins").delete().eq("user_id", userId).eq("chat_id", id);
+    }
     fetch(`/api/chats/${id}`, { method: "DELETE" }).catch(() => {});
     if (isActiveChat(pathname, id)) router.push("/chat/new");
   }
 
-  function togglePin(id: string) {
+  async function togglePin(id: string) {
     if (!allowAction("pin", 80, 60_000)) {
       alert("Too many pin/unpin actions right now.");
       return;
     }
-    setPinnedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev]));
+    if (!userId) {
+      alert("Please sign in to pin chats.");
+      return;
+    }
+    const isPinned = pinnedIds.includes(id);
+    if (isPinned) {
+      setPinnedIds((prev) => prev.filter((x) => x !== id));
+      await supabase.from("pins").delete().eq("user_id", userId).eq("chat_id", id);
+    } else {
+      setPinnedIds((prev) => [id, ...prev]);
+      await supabase.from("pins").insert({ user_id: userId, chat_id: id });
+    }
   }
 
   async function handleNewChat() {
@@ -713,14 +739,21 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const res = await fetch("/api/chats", { method: "POST" });
     const json = await res.json();
     const newId = json.id as string;
+    // optimistic add (chat_meta will soon reflect it)
     setChats((prev) => [
-      { id: newId, title: "New chat", created_at: new Date().toISOString() },
+      {
+        id: newId,
+        title: "New chat",
+        created_at: new Date().toISOString(),
+        last_message_at: new Date().toISOString(),
+        has_attachments: false,
+      },
       ...prev,
     ]);
     router.push(`/chat/${newId}`);
   }
 
-  const handleRename = useCallback((id: string, newTitle: string) => {
+  const handleRename = useCallback(async (id: string, newTitle: string) => {
     if (!allowAction("rename", 60, 60_000)) {
       alert("You’re renaming too fast. Please wait a bit.");
       return;
@@ -734,8 +767,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }, []);
 
   const handleIngest = useCallback(async (id: string) => {
-    // Optional server route that extracts & stores text for all attachments in the chat
-    // Sidebar calls it; server should parse docs and update storage/DB for RAG.
     if (!allowAction("ingest", 15, 60_000)) {
       alert("Ingestion rate limit reached temporarily. Try again shortly.");
       return;
@@ -743,11 +774,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     try {
       const r = await fetch(`/api/ingest?chat_id=${encodeURIComponent(id)}`, { method: "POST" });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      // You can toast success here if you have a toaster
-      // setHasFilesMap(prev => ({...prev, [id]: true})) // if ingestion implies files are present
+      // optional: toast success
     } catch (e) {
       console.warn("Ingest failed", e);
-      alert("Ingestion failed to start. Check the server logs for details.");
+      alert("Ingestion failed to start. Check server logs for details.");
     }
   }, []);
 
@@ -840,7 +870,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       onDelete={handleDelete}
                       onRename={handleRename}
                       onIngest={handleIngest}
-                      hasFiles={!!hasFilesMap[row.id]}
                       showTyping={typingIds.has(row.id) && isActiveChat(pathname, row.id)}
                     />
                   ))}
@@ -869,7 +898,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       onDelete={handleDelete}
                       onRename={handleRename}
                       onIngest={handleIngest}
-                      hasFiles={!!hasFilesMap[row.id]}
                       showTyping={typingIds.has(row.id) && isActiveChat(pathname, row.id)}
                     />
                   ))
