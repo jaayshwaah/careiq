@@ -1,160 +1,108 @@
 // src/app/(auth)/login/page.tsx
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getBrowserSupabase, setAuthPersistence } from "@/lib/supabaseClient";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { getBrowserSupabase } from "@/lib/supabaseClient";
 
-/** Prevent SSG/ISR so Next won't try to prerender this route. */
-export const dynamic = "force-dynamic";
-
-function LoginClient() {
-  const router = useRouter();
+export default function LoginPage() {
   const supabase = getBrowserSupabase();
-
-  const [mode, setMode] = useState<"password" | "magic">("password");
   const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
-  const [keepSignedIn, setKeepSignedIn] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
 
-  // If there's already a session, skip this screen.
   useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) router.replace("/");
-    })();
-  }, [router, supabase]);
+    // If already signed in, bounce to home
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.href = "/";
+    });
+  }, [supabase]);
 
-  // Keep persistence in sync with the checkbox
-  useEffect(() => {
-    setAuthPersistence(keepSignedIn ? "local" : "session");
-  }, [keepSignedIn]);
-
-  async function loginWithPassword(e: React.FormEvent) {
+  async function signInWithMagicLink(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null); setMsg(null); setLoading(true);
+    setBusy(true);
+    setMsg(null);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-      if (error) throw error;
-      router.replace("/");
-    } catch (e: any) {
-      setErr(e?.message ?? "Could not sign in.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function sendMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setErr(null); setMsg(null); setLoading(true);
-    try {
-      const appUrl =
-        process.env.NEXT_PUBLIC_APP_URL ??
-        (typeof window !== "undefined" ? window.location.origin : "");
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: appUrl ? `${appUrl}/login` : undefined },
+        options: {
+          // Update to your production URL in Supabase Auth settings too
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/`
+              : undefined,
+        },
       });
       if (error) throw error;
-      setMsg("Magic link sent! Check your inbox.");
-    } catch (e: any) {
-      setErr(e?.message ?? "Could not send magic link.");
+      setMsg("Check your email for the sign-in link.");
+    } catch (err: any) {
+      setMsg(err?.message || "Sign-in failed.");
     } finally {
-      setLoading(false);
+      setBusy(false);
+    }
+  }
+
+  async function signInWithGoogle() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/`
+              : undefined,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setMsg(err?.message || "Google sign-in failed.");
+      setBusy(false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-md px-6 py-12">
-      <h1 className="text-2xl font-semibold mb-6">Sign in to CareIQ</h1>
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-6">
+      <h1 className="mb-6 text-2xl font-semibold">Sign in to CareIQ</h1>
 
-      <div className="mb-4 flex gap-2">
+      <form onSubmit={signInWithMagicLink} className="space-y-3">
+        <label className="block text-sm">
+          Email
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 outline-none focus:border-neutral-500 dark:border-neutral-700 dark:bg-neutral-950"
+          />
+        </label>
         <button
-          className={`px-3 py-1 rounded border ${mode === "password" ? "bg-black text-white" : ""}`}
-          onClick={() => setMode("password")}
+          type="submit"
+          disabled={busy}
+          className="w-full rounded-lg bg-black px-3 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
-          Password
+          {busy ? "Sending link…" : "Send magic link"}
         </button>
-        <button
-          className={`px-3 py-1 rounded border ${mode === "magic" ? "bg-black text-white" : ""}`}
-          onClick={() => setMode("magic")}
-        >
-          Magic link
-        </button>
+      </form>
+
+      <div className="my-4 text-center text-sm text-neutral-500">or</div>
+
+      <button
+        onClick={signInWithGoogle}
+        disabled={busy}
+        className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm disabled:opacity-50 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-950"
+      >
+        Continue with Google
+      </button>
+
+      {msg && <div className="mt-4 text-sm text-neutral-600">{msg}</div>}
+
+      <div className="mt-8 text-sm text-neutral-500">
+        <Link className="underline" href="/">
+          Back to home
+        </Link>
       </div>
-
-      <label className="mb-4 flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={keepSignedIn}
-          onChange={(e) => setKeepSignedIn(e.target.checked)}
-        />
-        <span>Keep me signed in</span>
-      </label>
-
-      {mode === "password" ? (
-        <form onSubmit={loginWithPassword} className="space-y-3">
-          <input
-            className="w-full rounded border px-3 py-2"
-            type="email"
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-          <input
-            className="w-full rounded border px-3 py-2"
-            type="password"
-            placeholder="••••••••"
-            value={pass}
-            onChange={(e) => setPass(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-          <button
-            className="w-full rounded bg-black text-white py-2 disabled:opacity-50"
-            disabled={loading}
-            type="submit"
-          >
-            {loading ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={sendMagicLink} className="space-y-3">
-          <input
-            className="w-full rounded border px-3 py-2"
-            type="email"
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-          <button
-            className="w-full rounded bg-black text-white py-2 disabled:opacity-50"
-            disabled={loading}
-            type="submit"
-          >
-            {loading ? "Sending..." : "Send magic link"}
-          </button>
-        </form>
-      )}
-
-      {(msg || err) && (
-        <p className={`mt-4 text-sm ${err ? "text-red-600" : "text-green-600"}`}>{msg || err}</p>
-      )}
     </div>
-  );
-}
-
-export default function Page() {
-  return (
-    <Suspense fallback={<div className="p-6 text-sm text-neutral-500">Loading…</div>}>
-      <LoginClient />
-    </Suspense>
   );
 }
