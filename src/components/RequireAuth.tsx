@@ -1,53 +1,76 @@
 // src/components/RequireAuth.tsx
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
-/**
- * Waits for Supabase to restore session from localStorage before redirecting.
- * Prevents "forced login every refresh" behavior.
- */
-export default function RequireAuth({ children }: { children: ReactNode }) {
+type Props = {
+  children: React.ReactNode;
+  fallback?: React.ReactNode; // optional custom login UI
+};
+
+export default function RequireAuth({ children, fallback }: Props) {
   const supabase = getBrowserSupabase();
-  const router = useRouter();
-  const pathname = usePathname();
-  const [checked, setChecked] = useState(false);
-  const [hasSession, setHasSession] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isAuthed, setAuthed] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
-    (async () => {
+    async function init() {
+      // 1) Read existing session from localStorage (persistSession: true)
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-      setHasSession(!!data.session);
-      setChecked(true);
-    })();
+      setAuthed(!!data.session);
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-      setHasSession(!!session);
-    });
+      // 2) Listen for auth state changes (token refresh, sign in/out)
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!mounted) return;
+        setAuthed(!!session);
+      });
+
+      setLoading(false);
+
+      return () => {
+        sub.subscription.unsubscribe();
+      };
+    }
+
+    init();
 
     return () => {
-      sub.subscription.unsubscribe();
       mounted = false;
     };
   }, [supabase]);
 
-  // While restoring, don't kick user out.
-  if (!checked) {
+  if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-neutral-500">
+      <div className="flex h-dvh items-center justify-center text-sm text-neutral-500">
         Loading…
       </div>
     );
   }
 
-  if (!hasSession) {
-    if (pathname !== "/login") router.replace("/login");
-    return null;
+  if (!isAuthed) {
+    // IMPORTANT: Don’t force hard navigation. Let user sign in without losing app state.
+    return (
+      fallback ?? (
+        <div className="flex h-dvh flex-col items-center justify-center gap-4">
+          <div className="text-lg font-semibold">Sign in to continue</div>
+          <button
+            className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
+            onClick={async () => {
+              // Send to your /login page or start OAuth here.
+              // Example: email magic link or OAuth:
+              // await supabase.auth.signInWithOAuth({ provider: "google" });
+              window.location.href = "/login";
+            }}
+          >
+            Go to Login
+          </button>
+        </div>
+      )
+    );
   }
 
   return <>{children}</>;
