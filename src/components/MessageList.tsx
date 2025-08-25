@@ -1,159 +1,167 @@
 // src/components/MessageList.tsx
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { useAutoScroll } from "@/lib/useAutoScroll";
-import { cn } from "@/lib/utils";
-import { ArrowDown, File, Repeat } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, Paperclip } from "lucide-react";
+import { useAutoFollow } from "@/hooks/useAutoFollow";
+import Toast from "./Toast";
 
-type Role = "system" | "user" | "assistant";
-export type AttachmentPayload = { name: string; type: string; size: number; text?: string };
+/** Types used by the list. Adjust to match your app if needed. */
+export type ChatRole = "system" | "user" | "assistant";
 
-export type ChatMsg = {
-  id: string;
-  role: Role;
-  content: string;
-  createdAt: number;
-  attachments?: AttachmentPayload[];
-  pending?: boolean;
+export type Attachment = {
+  id?: string;
+  name: string;
+  type?: string;
+  url?: string;
+  size?: number;
+  text?: string;
 };
 
+export type ChatMessage = {
+  id: string;
+  role: ChatRole;
+  content: string;
+  createdAt?: string; // ISO
+  attachments?: Attachment[]; // NEW: will render chips under the bubble if present
+};
+
+type MessageListProps = {
+  messages: ChatMessage[];
+  isAssistantStreaming?: boolean; // true while assistant tokens arrive
+  className?: string;
+};
+
+/**
+ * MessageList:
+ * - Single scroll container
+ * - Auto-follow/pause via useAutoFollow()
+ * - FAB: "Jump to latest" when scrolled up
+ * - "New reply" toast appears when assistant is streaming & you're scrolled up
+ * - Attachment chips for any message with attachments[]
+ */
 export default function MessageList({
   messages,
-  onRegenerate,
-  followNowSignal = 0,
-}: {
-  messages: ChatMsg[];
-  onRegenerate?: () => void;
-  /** bump this to force resume follow (e.g., after you send a new user msg) */
-  followNowSignal?: number;
-}) {
+  isAssistantStreaming = false,
+  className = "",
+}: MessageListProps) {
   const {
-    ref,
+    containerRef,
+    bottomSentinelRef,
     isAtBottom,
-    hasUnseen,
-    handleScroll,
-    notifyNewContent,
+    isAutoFollow,
+    scrollToBottom,
     resumeAutoFollow,
-    clearUnseen,
-  } = useAutoScroll<HTMLDivElement>(72);
+  } = useAutoFollow();
 
-  // resume follow when sender says so (after a user message)
-  useEffect(() => {
-    if (followNowSignal > 0) {
-      resumeAutoFollow("auto");
-    }
-  }, [followNowSignal, resumeAutoFollow]);
+  const [showNewReplyToast, setShowNewReplyToast] = useState(false);
+  const lastAssistantTextLenRef = useRef<number>(0);
 
-  // notify on every message change (streams will append to last assistant)
-  const last = messages[messages.length - 1];
-  useEffect(() => {
-    if (!last) return;
-    notifyNewContent(last.role);
-  }, [last?.content, last?.id, last?.role, notifyNewContent]);
-
-  const normalized = useMemo(() => {
-    return messages.filter((m) => m.role !== "system");
+  // Derived “assistant text length” to detect new tokens
+  const assistantTextLen = useMemo(() => {
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+    return lastAssistant ? lastAssistant.content.length : 0;
   }, [messages]);
 
-  const lastAssistantIndex = useMemo(
-    () => [...normalized].reverse().findIndex((m) => m.role === "assistant"),
-    [normalized]
-  );
-  const hasAssistant = lastAssistantIndex !== -1;
-  const lastAssistantId =
-    hasAssistant ? normalized[normalized.length - 1 - lastAssistantIndex]?.id : null;
+  // When assistant tokens arrive and user is NOT at bottom → show toast briefly
+  useEffect(() => {
+    if (!isAssistantStreaming) {
+      setShowNewReplyToast(false);
+      lastAssistantTextLenRef.current = assistantTextLen;
+      return;
+    }
+    const grew = assistantTextLen > lastAssistantTextLenRef.current;
+    if (grew && !isAtBottom) {
+      setShowNewReplyToast(true);
+    }
+    lastAssistantTextLenRef.current = assistantTextLen;
+  }, [assistantTextLen, isAssistantStreaming, isAtBottom]);
+
+  // Auto-follow when content grows and auto-follow is enabled
+  useEffect(() => {
+    if (isAutoFollow) {
+      const raf = requestAnimationFrame(() => scrollToBottom(false));
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [messages.length, isAutoFollow, scrollToBottom]);
 
   return (
-    <div className="relative h-full w-full">
-      {/* toast */}
-      {!isAtBottom && hasUnseen && (
-        <button
-          onClick={() => resumeAutoFollow("smooth")}
-          className="pointer-events-auto fixed bottom-24 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black text-white shadow-lg ring-1 ring-black/10 transition hover:opacity-95 dark:bg-white dark:text-black dark:ring-white/10"
-        >
-          <span className="flex items-center gap-2 px-3 py-2 text-sm">
-            <ArrowDown size={16} />
-            New reply
-          </span>
-        </button>
-      )}
-
-      {/* list */}
+    <div className={["relative flex h-full w-full flex-col", className].join(" ")}>
+      {/* Scroll container */}
       <div
-        ref={ref}
-        onScroll={handleScroll}
-        className="h-full w-full overflow-y-auto px-4 pb-28 pt-8 sm:px-6"
+        ref={containerRef}
+        className="scroll-area relative h-full w-full overflow-y-auto px-4 py-6 sm:px-6"
+        aria-label="Conversation"
       >
-        <div className="mx-auto w-full max-w-3xl">
-          {normalized.map((m, idx) => (
-            <div key={m.id}>
-              <Bubble msg={m} />
-
-              {/* Inline Regenerate directly under the most recent assistant message */}
-              {onRegenerate && m.id === lastAssistantId && (
-                <div className="mt-2 flex justify-start">
-                  <button
-                    onClick={onRegenerate}
-                    className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-1.5 text-sm shadow ring-1 ring-black/10 backdrop-blur-md hover:bg-white dark:bg-neutral-900/80 dark:ring-white/10"
-                    title="Regenerate response"
-                  >
-                    <Repeat size={16} />
-                    Regenerate
-                  </button>
-                </div>
-              )}
-            </div>
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+          {messages.map((m) => (
+            <MessageRow key={m.id} message={m} />
           ))}
+          {/* bottom sentinel for intersection observer */}
+          <div ref={bottomSentinelRef} className="h-1 w-full" />
         </div>
       </div>
 
-      {/* jump fab */}
-      {!isAtBottom && (
-        <button
-          onClick={() => {
-            clearUnseen();
-            resumeAutoFollow("smooth");
-          }}
-          title="Jump to latest"
-          className="fixed bottom-5 right-5 z-20 rounded-full bg-white/90 p-3 shadow-lg backdrop-blur-md ring-1 ring-black/10 hover:bg-white dark:bg-neutral-900/80 dark:ring-white/10"
-        >
-          <ArrowDown size={18} />
-        </button>
-      )}
+      {/* Jump to latest FAB */}
+      <button
+        type="button"
+        onClick={() => resumeAutoFollow()}
+        aria-label="Jump to latest"
+        className={[
+          "fixed bottom-6 right-6 z-50 inline-flex h-11 items-center gap-2 rounded-full px-4 shadow-lg transition",
+          isAtBottom ? "pointer-events-none scale-95 opacity-0" : "pointer-events-auto opacity-100",
+          "border border-black/10 bg-white/80 text-black/80 backdrop-blur-xl hover:bg-white dark:border-white/10 dark:bg-zinc-900/60 dark:text-white/80",
+        ].join(" ")}
+      >
+        <ArrowDown className="h-4 w-4" />
+        <span className="text-sm font-medium">Jump to latest</span>
+      </button>
+
+      {/* New reply toast (when scrolled up and assistant is streaming) */}
+      <Toast
+        open={showNewReplyToast && !isAtBottom}
+        label="New reply"
+        onClick={() => {
+          setShowNewReplyToast(false);
+          resumeAutoFollow();
+        }}
+      />
     </div>
   );
 }
 
-function Bubble({ msg }: { msg: ChatMsg }) {
-  const isUser = msg.role === "user";
+/** Single message row with simple Apple‑y bubbles and attachment chips. */
+function MessageRow({ message }: { message: ChatMessage }) {
+  const isUser = message.role === "user";
+  const isAssistant = message.role === "assistant";
+
   return (
-    <div className={cn("mb-6 flex w-full", isUser ? "justify-end" : "justify-start")}>
+    <div className={["flex w-full", isUser ? "justify-end" : "justify-start"].join(" ")}>
       <div
-        className={cn(
-          "max-w-full whitespace-pre-wrap rounded-3xl px-4 py-3 leading-6 shadow-sm ring-1",
+        className={[
+          "max-w-[85%] rounded-2xl px-4 py-2 text-[15px] leading-6 shadow-sm",
           isUser
-            ? "bg-gradient-to-br from-white/80 to-white/60 ring-black/5 dark:from-neutral-800/70 dark:to-neutral-800/50 dark:ring-white/10"
-            : "bg-white/80 ring-black/5 dark:bg-neutral-900/70 dark:ring-white/10"
-        )}
+            ? "rounded-br-md bg-blue-600 text-white"
+            : "rounded-bl-md border border-black/10 bg-white/70 text-black/90 backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/50 dark:text-white/90",
+        ].join(" ")}
       >
-        {/* attachment bubble for user messages */}
-        {isUser && msg.attachments && msg.attachments.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-2">
-            {msg.attachments.map((a, i) => (
+        <div className="whitespace-pre-wrap">{message.content}</div>
+
+        {/* Attachment chips below the bubble if present */}
+        {Array.isArray(message.attachments) && message.attachments.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {message.attachments.map((a, idx) => (
               <span
-                key={i}
-                className="inline-flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-1 text-xs text-neutral-700 backdrop-blur-md ring-1 ring-black/5 dark:bg-neutral-800/70 dark:text-neutral-200 dark:ring-white/10"
+                key={a.id || `${message.id}-att-${idx}`}
+                className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-2 py-1 text-xs text-black/80 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/40 dark:text-white/80"
+                title={a.name}
               >
-                <File size={12} />
-                <span className="truncate">{a.name}</span>
+                <Paperclip className="h-3.5 w-3.5" />
+                <span className="truncate max-w-[12rem]">{a.name}</span>
               </span>
             ))}
           </div>
         )}
-        <div className={cn("prose prose-p:my-2 prose-ul:my-2 max-w-none text-[15px] dark:prose-invert")}>
-          {msg.content || (msg.pending ? "…" : "")}
-        </div>
       </div>
     </div>
   );
