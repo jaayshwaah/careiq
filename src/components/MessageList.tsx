@@ -56,6 +56,14 @@ export default function MessageList({
     return messages.filter((m) => m.role !== "system");
   }, [messages]);
 
+  const lastAssistantIndex = useMemo(
+    () => [...normalized].reverse().findIndex((m) => m.role === "assistant"),
+    [normalized]
+  );
+  const hasAssistant = lastAssistantIndex !== -1;
+  const lastAssistantId =
+    hasAssistant ? normalized[normalized.length - 1 - lastAssistantIndex]?.id : null;
+
   return (
     <div className="relative h-full w-full">
       {/* toast */}
@@ -78,8 +86,24 @@ export default function MessageList({
         className="h-full w-full overflow-y-auto px-4 pb-28 pt-8 sm:px-6"
       >
         <div className="mx-auto w-full max-w-3xl">
-          {normalized.map((m) => (
-            <Bubble key={m.id} msg={m} />
+          {normalized.map((m, idx) => (
+            <div key={m.id}>
+              <Bubble msg={m} />
+
+              {/* Inline Regenerate directly under the most recent assistant message */}
+              {onRegenerate && m.id === lastAssistantId && (
+                <div className="mt-2 flex justify-start">
+                  <button
+                    onClick={onRegenerate}
+                    className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-1.5 text-sm shadow ring-1 ring-black/10 backdrop-blur-md hover:bg-white dark:bg-neutral-900/80 dark:ring-white/10"
+                    title="Regenerate response"
+                  >
+                    <Repeat size={16} />
+                    Regenerate
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -96,19 +120,6 @@ export default function MessageList({
         >
           <ArrowDown size={18} />
         </button>
-      )}
-
-      {/* regenerate inline (mirrors ChatGPT) */}
-      {!!onRegenerate && last?.role === "assistant" && (
-        <div className="pointer-events-auto fixed bottom-5 left-1/2 z-20 -translate-x-1/2">
-          <button
-            onClick={onRegenerate}
-            className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm shadow-lg backdrop-blur-md ring-1 ring-black/10 hover:bg-white dark:bg-neutral-900/80 dark:ring-white/10"
-          >
-            <Repeat size={16} />
-            Regenerate
-          </button>
-        </div>
       )}
     </div>
   );

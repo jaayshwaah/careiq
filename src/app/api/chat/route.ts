@@ -14,20 +14,37 @@ const RETRYABLE = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages = [], attachments = [] } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { messages = [], attachments = [] } = body || {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      return json(400, { ok: false, error: "No messages provided" });
+      return json(400, {
+        ok: false,
+        error: "No messages provided. The request body must include { messages: ChatMessage[] }.",
+      });
     }
 
-    // validate env quickly (Edge runtime reads from Vercel env — set them in Vercel!)
-    const client = getOpenRouterClient();
-    const apiKey = (client as any).apiKey as string | undefined;
+    // Validate env (Edge reads from Vercel env — set them in Project → Settings → Environment Variables)
+    let apiKey = "";
+    let referer = "";
+    let title = "";
+    try {
+      const client = getOpenRouterClient();
+      apiKey = (client as any).apiKey || "";
+      referer = (client as any).defaultHeaders?.["HTTP-Referer"] || "";
+      title = (client as any).defaultHeaders?.["X-Title"] || "";
+    } catch (e: any) {
+      return json(500, {
+        ok: false,
+        error:
+          "OPENROUTER_API_KEY is not configured on the server. Add it in Vercel → Settings → Environment Variables.",
+      });
+    }
     if (!apiKey) {
       return json(500, {
         ok: false,
         error:
-          "Missing OPENROUTER_API_KEY on the server. Set it in Vercel → Settings → Environment Variables.",
+          "OPENROUTER_API_KEY is empty. Add it in Vercel → Settings → Environment Variables.",
       });
     }
 
@@ -53,7 +70,7 @@ export async function POST(req: NextRequest) {
         : []),
     ];
 
-    // Try upstream with small backoff/retries
+    // Try upstream with small backoff/retries.
     let lastRes: Response | null = null;
     for (let attempt = 0; attempt <= RETRIES; attempt++) {
       lastRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -61,12 +78,15 @@ export async function POST(req: NextRequest) {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
-          "HTTP-Referer": (client as any).defaultHeaders?.["HTTP-Referer"] || "",
-          "X-Title": (client as any).defaultHeaders?.["X-Title"] || "",
+          "HTTP-Referer": referer,
+          "X-Title": title,
         },
         body: JSON.stringify({
-          model: CHAT_MODEL, // "openai/gpt-5-chat" by default
+          model: CHAT_MODEL, // defaults to "openai/gpt-5-chat"
           stream: true,
+          // A little resilience: let OpenRouter fall back to compatible routes if needed
+          // (won't switch models; just infra path fallbacks).
+          allow_fallbacks: true,
           temperature: 0.3,
           max_tokens: 2048,
           messages: chat,
@@ -87,22 +107,25 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // retry if retryable
       const status = lastRes.status;
       if (!RETRYABLE.has(status) || attempt === RETRIES) break;
 
-      const backoff = 300 * (attempt + 1);
-      await sleep(backoff);
+      await sleep(300 * (attempt + 1));
     }
 
-    // If we’re here, upstream failed
-    const text = lastRes ? await safeText(lastRes) : "No response";
+    // If we’re here, upstream failed.
+    const text = lastRes ? await safeText(lastRes) : "No response from OpenRouter";
     return json(502, {
       ok: false,
-      error: `OpenRouter upstream error (${lastRes?.status}): ${text}`,
+      error: `OpenRouter error (${lastRes?.status ?? "?"}): ${text}`,
+      hint: envHint(),
     });
   } catch (err: any) {
-    return json(500, { ok: false, error: String(err?.message || err) });
+    return json(500, {
+      ok: false,
+      error: String(err?.message || err),
+      hint: envHint(),
+    });
   }
 }
 
@@ -122,10 +145,14 @@ async function safeText(res: Response) {
   try {
     return await res.text();
   } catch {
-    return "(failed to read body)";
+    return "(failed to read error body)";
   }
 }
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function envHint() {
+  return "Confirm OPENROUTER_API_KEY is set for this Vercel environment (Preview/Production). Also ensure OPENROUTER_SITE_URL and OPENROUTER_SITE_NAME are optional but recommended.";
 }

@@ -1,10 +1,10 @@
 // src/app/page.tsx
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
-import Composer from "@/components/Composer";
 import MessageList from "@/components/MessageList";
+import Composer from "@/components/Composer";
 
 type Role = "user" | "assistant" | "system";
 type Attachment = { name: string; type: string; size: number; text?: string };
@@ -26,7 +26,7 @@ export default function Page() {
     // auto-follow once user sends
     setFollowTick((t) => t + 1);
 
-    // capture attachments (we don’t upload binary here; we pass metadata + optional extracted text if you add it later)
+    // attachments metadata
     const atts: Attachment[] = (files || []).map((f) => ({
       name: f.name,
       type: f.type || "application/octet-stream",
@@ -58,7 +58,17 @@ export default function Page() {
         signal: controller.signal,
       });
 
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok || !res.body) {
+        // Try to surface the real error text if available
+        let errText = "Unknown error";
+        try {
+          const j = await res.json();
+          errText = j?.error || JSON.stringify(j);
+        } catch {
+          errText = `${res.status} ${res.statusText}`;
+        }
+        throw new Error(errText);
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -91,7 +101,7 @@ export default function Page() {
         }
       }
 
-      // kick auto-titling (cheap model), based on the first user message + first assistant reply
+      // auto-title only for very first exchange
       if (messages.length === 0 && full) {
         void fetch("/api/title", {
           method: "POST",
@@ -102,19 +112,25 @@ export default function Page() {
           .then((j) => {
             const title = j?.title?.trim();
             if (title) {
-              // fire an app-wide event so Sidebar can update this chat’s title if you store chats globally
-              window.dispatchEvent(
-                new CustomEvent("chat:title", { detail: { title } })
-              );
+              window.dispatchEvent(new CustomEvent("chat:title", { detail: { title } }));
             }
           })
           .catch(() => {});
       }
-    } catch (err) {
+    } catch (err: any) {
+      const message =
+        (err && (err.message as string)) ||
+        "I had trouble reaching the model.";
       setMessages((prev) =>
         prev.map((m) =>
           m.id === asstId
-            ? { ...m, content: "Sorry — I had trouble reaching the model." }
+            ? {
+                ...m,
+                content:
+                  "⚠️ Model error:\n\n" +
+                  message +
+                  "\n\n• Check that OPENROUTER_API_KEY is set for this Vercel environment.\n• If you just set it, redeploy.\n• Retries may help if it was a transient 429/5xx.",
+              }
             : m
         )
       );
@@ -131,7 +147,6 @@ export default function Page() {
   }
 
   function regenerate() {
-    // resend the last user message with same attachments
     const last = lastUser;
     if (!last) return;
     onSend(last.content, []);
@@ -142,7 +157,7 @@ export default function Page() {
   return (
     <RequireAuth>
       <div className="flex h-dvh w-full flex-col">
-        {/* Header-like hero that only shows before first message (like ChatGPT) */}
+        {/* Header-like hero shown before first message */}
         {showEmpty ? (
           <div className="relative mx-auto mt-14 w-full max-w-3xl px-4 text-center">
             <h1 className="mb-6 text-4xl font-semibold tracking-tight">How can I help today?</h1>
@@ -154,7 +169,7 @@ export default function Page() {
           <MessageList messages={messages} onRegenerate={regenerate} followNowSignal={followTick} />
         </div>
 
-        {/* Sticky composer w/ gradient scrim like ChatGPT */}
+        {/* Sticky composer w/ gradient scrim */}
         <div className="sticky bottom-0 z-10 w-full bg-gradient-to-b from-transparent to-[var(--bg)] px-4 pb-5 pt-3">
           <Composer
             onSend={onSend}
