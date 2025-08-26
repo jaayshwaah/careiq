@@ -13,7 +13,8 @@ import {
   FileText,
   Database,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  ExternalLink
 } from "lucide-react";
 
 type KnowledgeEntry = {
@@ -48,6 +49,7 @@ export default function AdminKnowledgePage() {
   
   // Add new entry modal
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<KnowledgeEntry | null>(null);
   const [newEntry, setNewEntry] = useState({
     title: "",
     category: "",
@@ -74,6 +76,31 @@ export default function AdminKnowledgePage() {
       }
     } catch (error) {
       console.error("Failed to load knowledge entries:", error);
+      // Mock data for development
+      setEntries([
+        {
+          id: "1",
+          title: "CMS Medication Administration Requirements",
+          category: "CMS",
+          facility_id: null,
+          state: null,
+          content: "42 CFR 483.45 - Pharmacy services. The facility must provide pharmaceutical services to meet the needs of each resident...",
+          source_url: "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-G/part-483/section-483.45",
+          last_updated: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        },
+        {
+          id: "2", 
+          title: "California Infection Control Requirements",
+          category: "State",
+          facility_id: null,
+          state: "CA",
+          content: "California Health and Safety Code Section 1275.5 requires nursing facilities to implement infection control programs...",
+          source_url: null,
+          last_updated: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -344,4 +371,232 @@ export default function AdminKnowledgePage() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredEntries.map((entry) => (
-                <tr key={entry.id} className="hover:bg-gray-50"></tr>
+                <tr key={entry.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="flex items-start gap-3">
+                      <FileText className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {entry.title}
+                        </p>
+                        <p className="text-sm text-gray-500 line-clamp-2">
+                          {entry.content.slice(0, 120)}...
+                        </p>
+                        {entry.source_url && (
+                          <a 
+                            href={entry.source_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Source
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {entry.category && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {entry.category}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {entry.state && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {entry.state}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {new Date(entry.last_updated).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm font-medium">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setSelectedEntry(entry)}
+                        className="text-gray-400 hover:text-gray-600"
+                        title="View"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEntry(entry.id)}
+                        className="text-red-400 hover:text-red-600"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredEntries.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    No entries found. Try adjusting your search or filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Add Entry Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Add New Knowledge Entry</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={newEntry.title}
+                    onChange={(e) => setNewEntry({...newEntry, title: e.target.value})}
+                    className="w-full border rounded-lg px-3 py-2"
+                    placeholder="Enter title..."
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={newEntry.category}
+                      onChange={(e) => setNewEntry({...newEntry, category: e.target.value})}
+                      className="w-full border rounded-lg px-3 py-2"
+                    >
+                      <option value="">Select Category</option>
+                      <option value="CMS">CMS Regulations</option>
+                      <option value="State">State Regulations</option>
+                      <option value="Joint Commission">Joint Commission</option>
+                      <option value="CDC">CDC Guidelines</option>
+                      <option value="Policy">Facility Policies</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                    <select
+                      value={newEntry.state}
+                      onChange={(e) => setNewEntry({...newEntry, state: e.target.value})}
+                      className="w-full border rounded-lg px-3 py-2"
+                    >
+                      <option value="">Select State</option>
+                      <option value="CA">California</option>
+                      <option value="TX">Texas</option>
+                      <option value="FL">Florida</option>
+                      <option value="NY">New York</option>
+                      <option value="PA">Pennsylvania</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Source URL</label>
+                  <input
+                    type="url"
+                    value={newEntry.source_url}
+                    onChange={(e) => setNewEntry({...newEntry, source_url: e.target.value})}
+                    className="w-full border rounded-lg px-3 py-2"
+                    placeholder="https://..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                  <textarea
+                    value={newEntry.content}
+                    onChange={(e) => setNewEntry({...newEntry, content: e.target.value})}
+                    rows={8}
+                    className="w-full border rounded-lg px-3 py-2"
+                    placeholder="Enter the regulation or policy content..."
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddEntry}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Add Entry
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Entry Modal */}
+      {selectedEntry && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-xl font-semibold">{selectedEntry.title}</h3>
+                  <div className="flex items-center gap-2 mt-2">
+                    {selectedEntry.category && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {selectedEntry.category}
+                      </span>
+                    )}
+                    {selectedEntry.state && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {selectedEntry.state}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedEntry(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="prose max-w-none">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <pre className="whitespace-pre-wrap text-sm">{selectedEntry.content}</pre>
+                </div>
+                
+                {selectedEntry.source_url && (
+                  <div className="mt-4">
+                    <a 
+                      href={selectedEntry.source_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View Original Source
+                    </a>
+                  </div>
+                )}
+                
+                <div className="mt-4 text-sm text-gray-500">
+                  <p>Last updated: {new Date(selectedEntry.last_updated).toLocaleString()}</p>
+                  <p>Created: {new Date(selectedEntry.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
