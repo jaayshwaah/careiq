@@ -26,20 +26,6 @@ export function getORConfig() {
   };
 }
 
-export async function orModels() {
-  const cfg = getORConfig();
-  const res = await fetch(`${OPENROUTER_URL}/models`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${cfg.key}`,
-      "HTTP-Referer": cfg.siteUrl,
-      "X-Title": cfg.siteName,
-    },
-    cache: "no-store",
-  });
-  return res;
-}
-
 export async function orChatComplete(messages: ORMessage[], model?: string, stream = false) {
   const cfg = getORConfig();
   const res = await fetch(`${OPENROUTER_URL}/chat/completions`, {

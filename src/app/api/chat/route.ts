@@ -1,10 +1,10 @@
 // src/app/api/chat/route.ts
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { orChatComplete, getORConfig, ORMessage } from "@/lib/openrouter";
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   let body: any = {};
   try {
     body = await req.json();
@@ -12,9 +12,9 @@ export async function POST(req: Request) {
 
   const messages: ORMessage[] = Array.isArray(body?.messages) ? body.messages : [];
   const model = body?.model;
-  let cfg;
+
   try {
-    cfg = getORConfig();
+    getORConfig(); // asserts env present
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || String(e) }, { status: 500 });
   }
