@@ -33,6 +33,20 @@ type MessageListProps = {
   className?: string;
 };
 
+// Animated thinking dots component
+function ThinkingDots() {
+  return (
+    <div className="flex items-center space-x-1">
+      <div className="flex space-x-1">
+        <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+        <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+        <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce"></div>
+      </div>
+      <span className="text-white/80 text-sm ml-2">Thinking...</span>
+    </div>
+  );
+}
+
 export default function MessageList({
   messages,
   onRegenerate,
@@ -105,6 +119,24 @@ export default function MessageList({
               onRegenerate={onRegenerate}
             />
           ))}
+          
+          {/* Show thinking indicator when streaming and no content yet, or when the last message is empty */}
+          {isAssistantStreaming && (
+            (() => {
+              const lastMessage = messages[messages.length - 1];
+              const shouldShowThinking = !lastMessage || 
+                (lastMessage.role === "assistant" && (!lastMessage.content || lastMessage.content.trim() === ""));
+              
+              return shouldShowThinking ? (
+                <div className="flex w-full justify-start">
+                  <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-black/10 bg-white/70 px-4 py-2 text-[15px] leading-6 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/50">
+                    <ThinkingDots />
+                  </div>
+                </div>
+              ) : null;
+            })()
+          )}
+          
           <div ref={bottomSentinelRef} className="h-1 w-full" />
         </div>
       </div>
@@ -182,10 +214,10 @@ function MessageRow({
             <button
               type="button"
               onClick={onRegenerate}
-              className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/80 px-3 py-1 text-xs text-black/70 shadow-sm backdrop-blur hover:bg-white dark:border-white/10 dark:bg-zinc-900/60 dark:text-white/70"
+              title="Regenerate"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-black/10 bg-white/80 text-black/70 shadow-sm backdrop-blur hover:bg-white hover:text-black/90 dark:border-white/10 dark:bg-zinc-900/60 dark:text-white/70 dark:hover:bg-zinc-900/80 dark:hover:text-white/90 transition-all"
             >
               <RefreshCcw className="h-3.5 w-3.5" />
-              Try again
             </button>
           </div>
         )}

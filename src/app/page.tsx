@@ -42,7 +42,7 @@ export default function Page() {
     };
     setMessages((prev) => [...prev, userMsg]);
 
-    // create pending assistant msg for response
+    // Start with empty assistant message - thinking indicator will show
     const asstId = uid();
     const assistantMsg: Msg = {
       id: asstId,
@@ -116,7 +116,7 @@ export default function Page() {
                 content:
                   "⚠️ Error:\n\n" +
                   message +
-                  "\n\n• Check that OPENROUTER_API_KEY is set correctly.\n• Try again in a moment if it was a temporary issue.",
+                  "\n\nPlease check your connection and try again.",
               }
             : m
         )
@@ -136,6 +136,16 @@ export default function Page() {
   function regenerate() {
     const last = lastUser;
     if (!last) return;
+    
+    // Remove the last assistant message before regenerating
+    setMessages((prev) => {
+      const lastAssistantIndex = prev.findLastIndex(m => m.role === "assistant");
+      if (lastAssistantIndex !== -1) {
+        return prev.slice(0, lastAssistantIndex);
+      }
+      return prev;
+    });
+    
     onSend(last.content, []);
   }
 
