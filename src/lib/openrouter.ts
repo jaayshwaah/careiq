@@ -1,4 +1,5 @@
 // src/lib/openrouter.ts
+
 export type ORMessage = { role: "system" | "user" | "assistant"; content: string };
 
 export const OPENROUTER_URL = "https://openrouter.ai/api/v1";
@@ -6,7 +7,7 @@ export const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 function mask(key?: string | null) {
   if (!key) return "";
   const show = 6;
-  return key.length <= show ? "********" : `${"*".repeat(key.length - show)}${key.slice(-show)}`;
+  return key.length <= show ? "********" : `${"*".repeat(Math.max(0, key.length - show))}${key.slice(-show)}`;
 }
 
 export function getORConfig() {
@@ -26,6 +27,22 @@ export function getORConfig() {
   };
 }
 
+/** Simple GET to confirm the key works and list available models. */
+export async function orModels() {
+  const cfg = getORConfig();
+  const res = await fetch(`${OPENROUTER_URL}/models`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${cfg.key}`,
+      "HTTP-Referer": cfg.siteUrl,
+      "X-Title": cfg.siteName,
+    },
+    cache: "no-store",
+  });
+  return res;
+}
+
+/** Chat completion call (set stream=true if you wire SSE). */
 export async function orChatComplete(messages: ORMessage[], model?: string, stream = false) {
   const cfg = getORConfig();
   const res = await fetch(`${OPENROUTER_URL}/chat/completions`, {

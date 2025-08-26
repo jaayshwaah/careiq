@@ -12,7 +12,9 @@ export async function GET() {
     let json: any = null;
     try {
       json = JSON.parse(text);
-    } catch {}
+    } catch {
+      // non-JSON response
+    }
 
     if (!res.ok) {
       return NextResponse.json(
@@ -23,7 +25,7 @@ export async function GET() {
           statusText: res.statusText,
           message:
             res.status === 401
-              ? "Unauthorized from OpenRouter. Re-paste/rotate key in Vercel and redeploy."
+              ? "Unauthorized from OpenRouter. Rotate/re-paste key in Vercel and redeploy."
               : "OpenRouter request failed.",
           details: {
             keyMasked: cfg.masked,
