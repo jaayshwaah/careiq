@@ -71,15 +71,8 @@ export default function NotFound() {
                 color: 'white',
                 textDecoration: 'none',
                 fontWeight: '500',
-                transition: 'transform 200ms ease',
                 border: 'none',
                 cursor: 'pointer'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
               }}
             >
               <span style={{ marginRight: '0.5rem' }}>🏠</span>
