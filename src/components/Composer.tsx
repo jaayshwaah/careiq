@@ -1,6 +1,6 @@
 /* 
    FILE: src/components/Composer.tsx
-   Replace entire file with this enhanced version
+   Fixed version - replace entire file
 */
 
 "use client";
@@ -181,7 +181,6 @@ export default function EnhancedComposer({
       className={`pointer-events-auto ${className}`} 
       ref={wrapperRef}
       style={{
-        /* Add drag over styling */
         transition: 'all 300ms cubic-bezier(0.4, 0.0, 0.2, 1)',
       }}
     >
@@ -300,11 +299,7 @@ export default function EnhancedComposer({
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               placeholder={isListening ? "🎤 Listening..." : placeholder}
-              className="
-                block w-full resize-none border-0 bg-transparent px-4 py-3 text-[15px] leading-6 
-                text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] 
-                focus:outline-none max-h-[40vh] min-h-[44px] overflow-y-auto scroll-area
-              "
+              className="block w-full resize-none border-0 bg-transparent px-4 py-3 text-[15px] leading-6 text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none max-h-[40vh] min-h-[44px] overflow-y-auto scroll-area"
               rows={1}
               aria-label="Message input"
               spellCheck

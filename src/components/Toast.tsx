@@ -1,314 +1,369 @@
 /* 
-   FILE: src/components/Toast.tsx
-   Replace entire file with this enhanced version
+   FILE: src/components/Composer.tsx
+   Fixed version - replace entire file
 */
 
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { 
+  Send, 
+  Paperclip, 
+  X, 
+  Loader2, 
+  Mic, 
+  MicOff,
+  Sparkles,
+  Plus,
+  Command
+} from "lucide-react";
 
-type ToastType = "success" | "error" | "warning" | "info";
-
-type ToastProps = {
-  open: boolean;
-  label: string;
-  type?: ToastType;
-  description?: string;
-  onClick?: () => void;
-  onClose?: () => void;
-  autoClose?: boolean;
-  duration?: number;
-  position?: "top-right" | "top-left" | "bottom-right" | "bottom-left" | "top-center" | "bottom-center";
+type ComposerProps = {
+  onSend: (text: string, files?: File[]) => void | Promise<void>;
+  placeholder?: string;
+  isGenerating?: boolean;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  initialValue?: string;
+  showAttach?: boolean;
+  showVoice?: boolean;
+  maxLength?: number;
+  onSent?: () => void;
   className?: string;
 };
 
-const toastIcons = {
-  success: CheckCircle,
-  error: AlertCircle,
-  warning: AlertTriangle,
-  info: Info,
-};
-
-const toastColors = {
-  success: {
-    bg: "from-[var(--accent-green)]/20 to-emerald-500/20",
-    border: "border-[var(--accent-green)]/30",
-    icon: "text-[var(--accent-green)]",
-    text: "text-[var(--text-primary)]",
-  },
-  error: {
-    bg: "from-[var(--accent-red)]/20 to-red-500/20",
-    border: "border-[var(--accent-red)]/30",
-    icon: "text-[var(--accent-red)]",
-    text: "text-[var(--text-primary)]",
-  },
-  warning: {
-    bg: "from-[var(--accent-orange)]/20 to-orange-500/20",
-    border: "border-[var(--accent-orange)]/30",
-    icon: "text-[var(--accent-orange)]",
-    text: "text-[var(--text-primary)]",
-  },
-  info: {
-    bg: "from-[var(--accent-blue)]/20 to-blue-500/20",
-    border: "border-[var(--accent-blue)]/30",
-    icon: "text-[var(--accent-blue)]",
-    text: "text-[var(--text-primary)]",
-  },
-};
-
-const positionClasses = {
-  "top-right": "top-4 right-4",
-  "top-left": "top-4 left-4",
-  "bottom-right": "bottom-4 right-4",
-  "bottom-left": "bottom-4 left-4",
-  "top-center": "top-4 left-1/2 -translate-x-1/2",
-  "bottom-center": "bottom-4 left-1/2 -translate-x-1/2",
-};
-
-export default function Toast({
-  open,
-  label,
-  type = "info",
-  description,
-  onClick,
-  onClose,
-  autoClose = true,
-  duration = 5000,
-  position = "bottom-center",
+export default function EnhancedComposer({
+  onSend,
+  placeholder = "Message CareIQ...",
+  isGenerating = false,
+  disabled = false,
+  autoFocus = true,
+  initialValue = "",
+  showAttach = true,
+  showVoice = false,
+  maxLength,
+  onSent,
   className = "",
-}: ToastProps) {
-  const [isVisible, setIsVisible] = useState(open);
-  const [isAnimating, setIsAnimating] = useState(false);
+}: ComposerProps) {
+  const [value, setValue] = useState(initialValue);
+  const [files, setFiles] = useState<File[]>([]);
+  const [focused, setFocused] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
-  const Icon = toastIcons[type];
-  const colors = toastColors[type];
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  const trulyDisabled = disabled || isGenerating;
+
+  const fit = useCallback(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "0px";
+    const next = Math.min(ta.scrollHeight, Math.round(window.innerHeight * 0.4));
+    ta.style.height = `${next}px`;
+  }, []);
 
   useEffect(() => {
-    if (open) {
-      setIsVisible(true);
-      setIsAnimating(true);
-    } else {
-      setIsAnimating(false);
-      const timer = setTimeout(() => setIsVisible(false), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [open]);
+    fit();
+  }, [value, fit]);
 
   useEffect(() => {
-    if (open && autoClose && duration > 0) {
-      const timer = setTimeout(() => {
-        handleClose();
-      }, duration);
-      return () => clearTimeout(timer);
-    }
-  }, [open, autoClose, duration]);
+    if (autoFocus && taRef.current) taRef.current.focus();
+  }, [autoFocus]);
 
-  const handleClose = () => {
-    setIsAnimating(false);
-    setTimeout(() => {
-      onClose?.();
-    }, 300);
-  };
-
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-    } else {
-      handleClose();
-    }
-  };
-
-  if (!isVisible) return null;
-
-  return (
-    <div
-      className={`
-        pointer-events-none fixed z-[100] flex justify-center transition-all duration-300 ease-out
-        ${positionClasses[position]}
-        ${isAnimating 
-          ? "opacity-100 translate-y-0 scale-100" 
-          : "opacity-0 translate-y-2 scale-95"
-        }
-      `}
-      aria-hidden={!open}
-      role="alert"
-      aria-live="polite"
-    >
-      <div
-        className={`
-          pointer-events-auto group relative max-w-sm overflow-hidden rounded-2xl
-          glass-heavy border backdrop-blur-xl cursor-pointer
-          transition-all duration-300 hover:scale-105 active:scale-95
-          ${colors.border} ${className}
-        `}
-        onClick={handleClick}
-      >
-        {/* Gradient background overlay */}
-        <div 
-          className={`absolute inset-0 bg-gradient-to-r opacity-50 ${colors.bg}`}
-        />
-        
-        {/* Shine effect */}
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <div 
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent 
-                       transform -skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] 
-                       transition-transform duration-700 ease-out"
-          />
-        </div>
-
-        <div className="relative z-10 flex items-start gap-3 p-4">
-          {/* Icon */}
-          <div className={`flex-shrink-0 ${colors.icon}`}>
-            <Icon size={20} />
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className={`font-medium text-sm leading-5 ${colors.text}`}>
-              {label}
-            </div>
-            {description && (
-              <div className="text-xs text-[var(--text-secondary)] mt-1 leading-4">
-                {description}
-              </div>
-            )}
-          </div>
-
-          {/* Close button */}
-          {onClose && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClose();
-              }}
-              className="flex-shrink-0 rounded-lg p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] transition-all duration-200"
-              aria-label="Close"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* Progress bar for auto-close */}
-        {autoClose && duration > 0 && open && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/10">
-            <div
-              className={`h-full bg-gradient-to-r ${colors.bg} opacity-60`}
-              style={{
-                animation: `toast-progress ${duration}ms linear forwards`,
-              }}
-            />
-          </div>
-        )}
-      </div>
-
-      <style jsx>{`
-        @keyframes toast-progress {
-          from {
-            width: 100%;
-          }
-          to {
-            width: 0%;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-// Toast Manager Hook for programmatic toasts
-type ToastOptions = Omit<ToastProps, 'open' | 'onClose'> & {
-  id?: string;
-};
-
-type ToastItem = ToastOptions & {
-  id: string;
-  open: boolean;
-};
-
-export function useToast() {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
-
-  const addToast = (options: ToastOptions) => {
-    const id = options.id || `toast-${Date.now()}-${Math.random()}`;
-    const toast: ToastItem = {
-      ...options,
-      id,
-      open: true,
+  // Enhanced drag & drop with visual feedback
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    
+    let dragCounter = 0;
+    
+    const prevent = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    
+    const onDragEnter = (e: DragEvent) => {
+      prevent(e);
+      dragCounter++;
+      el.classList.add('drag-over');
+    };
+    
+    const onDragLeave = (e: DragEvent) => {
+      prevent(e);
+      dragCounter--;
+      if (dragCounter === 0) {
+        el.classList.remove('drag-over');
+      }
+    };
+    
+    const onDrop = (e: DragEvent) => {
+      prevent(e);
+      dragCounter = 0;
+      el.classList.remove('drag-over');
+      
+      const dt = e.dataTransfer;
+      if (!dt) return;
+      const picked: File[] = [];
+      for (let i = 0; i < dt.files.length; i++) picked.push(dt.files[i]);
+      if (picked.length) setFiles((prev) => [...prev, ...picked]);
     };
 
-    setToasts((prev) => [...prev, toast]);
+    ["dragenter", "dragover", "dragleave", "drop"].forEach((ev) =>
+      el.addEventListener(ev, prevent as any),
+    );
+    el.addEventListener("dragenter", onDragEnter as any);
+    el.addEventListener("dragleave", onDragLeave as any);
+    el.addEventListener("drop", onDrop as any);
 
-    // Auto-remove after duration + animation time
-    const duration = options.autoClose !== false ? (options.duration || 5000) : 0;
-    if (duration > 0) {
-      setTimeout(() => {
-        removeToast(id);
-      }, duration + 300);
+    return () => {
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((ev) =>
+        el.removeEventListener(ev, prevent as any),
+      );
+      el.removeEventListener("dragenter", onDragEnter as any);
+      el.removeEventListener("dragleave", onDragLeave as any);
+      el.removeEventListener("drop", onDrop as any);
+    };
+  }, []);
+
+  const handleSend = useCallback(async () => {
+    const trimmed = value.trim();
+    if (!trimmed || trulyDisabled) return;
+    try {
+      await onSend(trimmed, files);
+      setValue("");
+      setFiles([]);
+      requestAnimationFrame(fit);
+
+      // Resume auto-follow on send
+      window.dispatchEvent(new CustomEvent("careiq:resume-autofollow"));
+      onSent?.();
+    } catch (e) {
+      console.error(e);
     }
+  }, [value, files, onSend, trulyDisabled, fit, onSent]);
 
-    return id;
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, open: false } : t)));
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 300);
+  const removeFile = (idx: number) => setFiles((p) => p.filter((_, i) => i !== idx));
+  const onPickFiles = () => fileInputRef.current?.click();
+  const onFilesChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    if (!list || !list.length) return;
+    const picked: File[] = [];
+    for (let i = 0; i < list.length; i++) picked.push(list[i]);
+    setFiles((prev) => [...prev, ...picked]);
+    e.currentTarget.value = "";
   };
 
-  const removeAllToasts = () => {
-    setToasts((prev) => prev.map((t) => ({ ...t, open: false })));
-    setTimeout(() => {
-      setToasts([]);
-    }, 300);
+  // Voice input simulation (you'd implement actual speech recognition)
+  const toggleVoice = () => {
+    setIsListening(!isListening);
+    // TODO: Implement actual speech recognition
+    if (!isListening) {
+      setTimeout(() => setIsListening(false), 3000); // Demo timeout
+    }
   };
 
-  // Convenience methods
-  const toast = {
-    success: (label: string, options?: Omit<ToastOptions, 'type' | 'label'>) =>
-      addToast({ ...options, label, type: 'success' }),
-    error: (label: string, options?: Omit<ToastOptions, 'type' | 'label'>) =>
-      addToast({ ...options, label, type: 'error' }),
-    warning: (label: string, options?: Omit<ToastOptions, 'type' | 'label'>) =>
-      addToast({ ...options, label, type: 'warning' }),
-    info: (label: string, options?: Omit<ToastOptions, 'type' | 'label'>) =>
-      addToast({ ...options, label, type: 'info' }),
-  };
+  const remaining =
+    typeof maxLength === "number" ? Math.max(0, maxLength - value.length) : undefined;
 
-  return {
-    toasts,
-    addToast,
-    removeToast,
-    removeAllToasts,
-    toast,
-  };
-}
-
-// Toast Container Component
-export function ToastContainer() {
-  const { toasts } = useToast();
-
-  if (toasts.length === 0) return null;
+  const canSend = value.trim().length > 0 && !trulyDisabled;
 
   return (
-    <>
-      {toasts.map((toast) => (
-        <Toast key={toast.id} {...toast} />
-      ))}
-    </>
-  );
-}
+    <div 
+      className={`pointer-events-auto ${className}`} 
+      ref={wrapperRef}
+      style={{
+        transition: 'all 300ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+      }}
+    >
+      <style jsx>{`
+        .drag-over {
+          transform: scale(1.02);
+          box-shadow: 0 0 0 2px var(--accent-blue);
+          background: var(--bg-glass-heavy);
+        }
+      `}</style>
+      
+      {/* Attachments preview row */}
+      {files.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 px-2 sm:px-0">
+          {files.map((f, i) => (
+            <div
+              key={i}
+              className="group glass inline-flex max-w-full items-center gap-2 truncate rounded-2xl px-3 py-2 text-sm animate-scaleIn"
+              title={f.name}
+            >
+              <Sparkles className="h-4 w-4 shrink-0 text-[var(--accent-blue)]" />
+              <span className="truncate max-w-[12rem] text-[var(--text-primary)]">{f.name}</span>
+              <button
+                type="button"
+                className="ml-1 rounded-full p-1 text-[var(--text-tertiary)] transition-all hover:bg-[var(--bg-overlay)] hover:text-[var(--text-primary)]"
+                aria-label={`Remove ${f.name}`}
+                onClick={() => removeFile(i)}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
-// Global Toast Provider (optional)
-export function ToastProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      {children}
-      <ToastContainer />
-    </>
+      {/* Enhanced glass composer */}
+      <div
+        className={`
+          relative isolate w-full rounded-3xl p-[1px] transition-all duration-300
+          ${focused
+            ? 'shadow-[0_0_0_2px_var(--border-focus)] scale-[1.01]'
+            : 'shadow-[0_0_0_1px_var(--border-primary)]'
+          }
+        `}
+      >
+        {/* Animated border gradient */}
+        <div
+          className={`
+            pointer-events-none absolute -inset-[2px] rounded-[inherit] opacity-0 blur-md transition-opacity duration-500
+            ${focused ? 'opacity-100' : ''}
+          `}
+          style={{
+            background: "conic-gradient(from 180deg at 50% 50%, rgba(0,122,255,0.4), rgba(52,168,83,0.4), rgba(255,149,0,0.4), rgba(255,59,48,0.4), rgba(0,122,255,0.4))",
+          }}
+        />
+        
+        <div className="relative z-10 flex w-full items-end gap-2 rounded-[inherit] glass-heavy px-2 py-2 transition-all duration-300 sm:px-3">
+          {/* Attach button */}
+          {showAttach && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                onChange={onFilesChosen}
+                className="hidden"
+                accept=".pdf,.docx,.txt,.md,.csv,.json"
+                aria-hidden="true"
+                tabIndex={-1}
+              />
+              <button
+                type="button"
+                onClick={onPickFiles}
+                disabled={trulyDisabled}
+                className="hidden sm:inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95 glass focus-ring text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                aria-label="Add attachments"
+                title="Attach files"
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+            </>
+          )}
+
+          {/* Voice button */}
+          {showVoice && (
+            <button
+              type="button"
+              onClick={toggleVoice}
+              disabled={trulyDisabled}
+              className={`
+                hidden sm:inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl 
+                transition-all duration-200 hover:scale-105 active:scale-95 focus-ring
+                ${isListening 
+                  ? 'bg-[var(--accent-red)] text-white shadow-lg' 
+                  : 'glass text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }
+              `}
+              aria-label={isListening ? "Stop recording" : "Start voice input"}
+              title={isListening ? "Stop recording" : "Voice input"}
+            >
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </button>
+          )}
+
+          {/* Textarea */}
+          <div className="flex min-w-0 flex-1 items-center">
+            <textarea
+              ref={taRef}
+              value={value}
+              disabled={trulyDisabled}
+              onChange={(e) => {
+                const next = typeof maxLength === "number" ? e.target.value.slice(0, maxLength) : e.target.value;
+                setValue(next);
+              }}
+              onKeyDown={onKeyDown}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              placeholder={isListening ? "🎤 Listening..." : placeholder}
+              className="block w-full resize-none border-0 bg-transparent px-4 py-3 text-[15px] leading-6 text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none max-h-[40vh] min-h-[44px] overflow-y-auto scroll-area"
+              rows={1}
+              aria-label="Message input"
+              spellCheck
+              maxLength={maxLength}
+            />
+          </div>
+
+          {/* Send button */}
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!canSend}
+            className={`
+              group relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl 
+              transition-all duration-200 focus:outline-none
+              ${canSend 
+                ? 'hover:scale-105 active:scale-95 bg-gradient-to-r from-[var(--accent-blue)] to-blue-600 text-white shadow-md hover:shadow-lg' 
+                : 'glass opacity-50 cursor-not-allowed text-[var(--text-tertiary)]'
+              }
+            `}
+            aria-label="Send message"
+          >
+            {/* Background shine effect */}
+            {canSend && (
+              <>
+                <span className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
+                <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+                  <span className="absolute -inset-x-6 -top-8 h-12 rounded-full bg-white/30 blur-md" />
+                </span>
+              </>
+            )}
+            
+            {isGenerating ? (
+              <Loader2 className="relative z-10 h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="relative z-10 h-5 w-5 transition-transform group-active:scale-95" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Footer with file count and character limit */}
+      <div className="mt-2 flex items-center justify-between px-2 text-xs text-[var(--text-tertiary)]">
+        <span className="truncate">
+          {files.length > 0 ? (
+            <span className="flex items-center gap-1">
+              <Paperclip className="h-3 w-3" />
+              {files.length} file{files.length !== 1 ? 's' : ''} ready
+            </span>
+          ) : isListening ? (
+            <span className="flex items-center gap-1 text-[var(--accent-red)]">
+              <div className="h-2 w-2 rounded-full bg-[var(--accent-red)] animate-pulse" />
+              Recording...
+            </span>
+          ) : (
+            "\u00A0"
+          )}
+        </span>
+        {typeof remaining === "number" && (
+          <span className={remaining < 50 ? 'text-[var(--accent-orange)]' : ''}>
+            {remaining} characters left
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
