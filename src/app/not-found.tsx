@@ -1,49 +1,101 @@
 // src/app/not-found.tsx
-"use client";
-
 import Link from "next/link";
-import { Home, ArrowLeft } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex items-center justify-center p-4">
-      <div className="text-center max-w-md mx-auto">
-        <div className="glass rounded-3xl p-8 mb-8 animate-scaleIn">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[var(--accent-blue)] to-blue-600 flex items-center justify-center">
-            <span className="text-3xl font-bold text-white">404</span>
-          </div>
-          
-          <h1 className="text-2xl font-semibold mb-4 text-[var(--text-primary)]">
-            Page Not Found
-          </h1>
-          
-          <p className="text-[var(--text-secondary)] mb-6 leading-relaxed">
-            The page you're looking for doesn't exist or has been moved.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+    <html lang="en">
+      <body style={{ 
+        margin: 0, 
+        padding: 0, 
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        backgroundColor: '#f8f9fb',
+        color: '#1a1a1a',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center', maxWidth: '400px', padding: '2rem' }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '24px',
+            padding: '3rem 2rem',
+            marginBottom: '2rem',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.12)'
+          }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              margin: '0 auto 1.5rem',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #007aff, #0056b3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '24px',
+              fontWeight: 'bold'
+            }}>
+              404
+            </div>
+            
+            <h1 style={{ 
+              fontSize: '1.5rem', 
+              fontWeight: '600', 
+              marginBottom: '1rem',
+              margin: '0 0 1rem 0'
+            }}>
+              Page Not Found
+            </h1>
+            
+            <p style={{ 
+              color: '#6b7280', 
+              marginBottom: '2rem',
+              lineHeight: '1.6',
+              margin: '0 0 2rem 0'
+            }}>
+              The page you're looking for doesn't exist or has been moved.
+            </p>
+            
             <Link
               href="/"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[var(--accent-blue)] to-blue-600 text-white font-medium hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '12px 24px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #007aff, #0056b3)',
+                color: 'white',
+                textDecoration: 'none',
+                fontWeight: '500',
+                transition: 'transform 200ms ease',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
             >
-              <Home className="h-4 w-4" />
+              <span style={{ marginRight: '0.5rem' }}>🏠</span>
               Go Home
             </Link>
-            
-            <button
-              onClick={() => window.history.back()}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl glass hover:glass-heavy font-medium hover:scale-105 active:scale-95 transition-all duration-200"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Go Back
-            </button>
           </div>
+          
+          <p style={{ 
+            fontSize: '0.75rem', 
+            color: '#9ca3af',
+            margin: 0
+          }}>
+            Need help? Contact support or visit our documentation.
+          </p>
         </div>
-        
-        <p className="text-xs text-[var(--text-tertiary)]">
-          Need help? Contact support or visit our documentation.
-        </p>
-      </div>
-    </div>
+      </body>
+    </html>
   );
 }
