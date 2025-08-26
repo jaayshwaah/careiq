@@ -27,7 +27,7 @@ export function getORConfig() {
   };
 }
 
-/** Optional helpers you can keep using elsewhere */
+/** Optional helpers to reuse */
 export async function orModels() {
   const cfg = getORConfig();
   return fetch(`${OPENROUTER_URL}/models`, {

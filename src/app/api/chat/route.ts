@@ -2,22 +2,20 @@
 import { NextResponse } from "next/server";
 import { getORConfig, OPENROUTER_URL } from "@/lib/openrouter";
 
-export const runtime = "nodejs"; // ensure server env access + streaming supported
+export const runtime = "nodejs"; // ensure server env and streaming support
 
 type ORMessage = { role: "system" | "user" | "assistant"; content: string };
 
 export async function POST(req: Request) {
-  // Parse request body (messages only are required; attachments are optional and ignored here)
   let body: any = {};
   try {
     body = await req.json();
-  } catch {
-    // no body is fine – just guard below
-  }
+  } catch {}
+
   const messages: ORMessage[] = Array.isArray(body?.messages) ? body.messages : [];
   const modelFromBody: string | undefined = body?.model;
 
-  // Ensure required env exists
+  // Assert env
   let cfg: ReturnType<typeof getORConfig>;
   try {
     cfg = getORConfig();
@@ -25,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: e?.message || String(e) }, { status: 500 });
   }
 
-  // Call OpenRouter (streaming SSE)
+  // Stream from OpenRouter
   const upstream = await fetch(`${OPENROUTER_URL}/chat/completions`, {
     method: "POST",
     headers: {
@@ -41,7 +39,6 @@ export async function POST(req: Request) {
     }),
   });
 
-  // If OpenRouter errored, surface a helpful message as JSON
   if (!upstream.ok || !upstream.body) {
     let text = "";
     try {
@@ -54,16 +51,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: hint, detail: text.slice(0, 1000) }, { status: 500 });
   }
 
-  // Pass through Server-Sent Events to the browser
-  const headers = new Headers({
-    "Content-Type": "text/event-stream; charset=utf-8",
-    "Cache-Control": "no-cache, no-transform",
-    "X-Accel-Buffering": "no",
-  });
-
-  // Just return the upstream body (SSE) as-is
+  // Pass SSE through to the browser
   return new Response(upstream.body, {
     status: 200,
-    headers,
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
   });
 }

@@ -2,11 +2,10 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, Paperclip } from "lucide-react";
+import { ArrowDown, Paperclip, RefreshCcw } from "lucide-react";
 import { useAutoFollow } from "@/hooks/useAutoFollow";
 import Toast from "./Toast";
 
-/** Types used by the list. Adjust to match your app if needed. */
 export type ChatRole = "system" | "user" | "assistant";
 
 export type Attachment = {
@@ -22,26 +21,22 @@ export type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
-  createdAt?: string; // ISO
-  attachments?: Attachment[]; // NEW: will render chips under the bubble if present
+  createdAt?: number | string;
+  attachments?: Attachment[];
 };
 
 type MessageListProps = {
   messages: ChatMessage[];
-  isAssistantStreaming?: boolean; // true while assistant tokens arrive
+  onRegenerate?: () => void;
+  followNowSignal?: number; // when incremented, we auto-follow now
+  isAssistantStreaming?: boolean;
   className?: string;
 };
 
-/**
- * MessageList:
- * - Single scroll container
- * - Auto-follow/pause via useAutoFollow()
- * - FAB: "Jump to latest" when scrolled up
- * - "New reply" toast appears when assistant is streaming & you're scrolled up
- * - Attachment chips for any message with attachments[]
- */
 export default function MessageList({
   messages,
+  onRegenerate,
+  followNowSignal,
   isAssistantStreaming = false,
   className = "",
 }: MessageListProps) {
@@ -57,13 +52,21 @@ export default function MessageList({
   const [showNewReplyToast, setShowNewReplyToast] = useState(false);
   const lastAssistantTextLenRef = useRef<number>(0);
 
-  // Derived “assistant text length” to detect new tokens
+  // If parent bumps followNowSignal (e.g., user sent a message), resume auto-follow
+  useEffect(() => {
+    if (typeof followNowSignal === "number") {
+      resumeAutoFollow();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [followNowSignal]);
+
+  // Derived length of last assistant content to detect token growth
   const assistantTextLen = useMemo(() => {
     const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-    return lastAssistant ? lastAssistant.content.length : 0;
+    return lastAssistant ? (lastAssistant.content || "").length : 0;
   }, [messages]);
 
-  // When assistant tokens arrive and user is NOT at bottom → show toast briefly
+  // Show toast when assistant tokens grow while scrolled up
   useEffect(() => {
     if (!isAssistantStreaming) {
       setShowNewReplyToast(false);
@@ -77,7 +80,7 @@ export default function MessageList({
     lastAssistantTextLenRef.current = assistantTextLen;
   }, [assistantTextLen, isAssistantStreaming, isAtBottom]);
 
-  // Auto-follow when content grows and auto-follow is enabled
+  // Keep auto-follow when enabled
   useEffect(() => {
     if (isAutoFollow) {
       const raf = requestAnimationFrame(() => scrollToBottom(false));
@@ -94,10 +97,14 @@ export default function MessageList({
         aria-label="Conversation"
       >
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-          {messages.map((m) => (
-            <MessageRow key={m.id} message={m} />
+          {messages.map((m, i) => (
+            <MessageRow
+              key={m.id}
+              message={m}
+              showRegenerate={Boolean(onRegenerate) && i === messages.length - 1 && m.role === "assistant"}
+              onRegenerate={onRegenerate}
+            />
           ))}
-          {/* bottom sentinel for intersection observer */}
           <div ref={bottomSentinelRef} className="h-1 w-full" />
         </div>
       </div>
@@ -130,10 +137,16 @@ export default function MessageList({
   );
 }
 
-/** Single message row with simple Apple‑y bubbles and attachment chips. */
-function MessageRow({ message }: { message: ChatMessage }) {
+function MessageRow({
+  message,
+  showRegenerate,
+  onRegenerate,
+}: {
+  message: ChatMessage;
+  showRegenerate?: boolean;
+  onRegenerate?: () => void;
+}) {
   const isUser = message.role === "user";
-  const isAssistant = message.role === "assistant";
 
   return (
     <div className={["flex w-full", isUser ? "justify-end" : "justify-start"].join(" ")}>
@@ -147,7 +160,7 @@ function MessageRow({ message }: { message: ChatMessage }) {
       >
         <div className="whitespace-pre-wrap">{message.content}</div>
 
-        {/* Attachment chips below the bubble if present */}
+        {/* Attachment chips */}
         {Array.isArray(message.attachments) && message.attachments.length > 0 && (
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {message.attachments.map((a, idx) => (
@@ -160,6 +173,20 @@ function MessageRow({ message }: { message: ChatMessage }) {
                 <span className="truncate max-w-[12rem]">{a.name}</span>
               </span>
             ))}
+          </div>
+        )}
+
+        {/* Regenerate button on the last assistant message */}
+        {showRegenerate && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={onRegenerate}
+              className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/80 px-3 py-1 text-xs text-black/70 shadow-sm backdrop-blur hover:bg-white dark:border-white/10 dark:bg-zinc-900/60 dark:text-white/70"
+            >
+              <RefreshCcw className="h-3.5 w-3.5" />
+              Try again
+            </button>
           </div>
         )}
       </div>
