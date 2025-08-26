@@ -1,9 +1,12 @@
 // src/app/not-found.tsx
-import Link from "next/link";
 
 export default function NotFound() {
   return (
     <html lang="en">
+      <head>
+        <title>404 - Page Not Found</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body style={{ 
         margin: 0, 
         padding: 0, 
@@ -59,7 +62,7 @@ export default function NotFound() {
               The page you're looking for doesn't exist or has been moved.
             </p>
             
-            <Link
+            <a
               href="/"
               style={{
                 display: 'inline-flex',
@@ -77,7 +80,7 @@ export default function NotFound() {
             >
               <span style={{ marginRight: '0.5rem' }}>🏠</span>
               Go Home
-            </Link>
+            </a>
           </div>
           
           <p style={{ 
