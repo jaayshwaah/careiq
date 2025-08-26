@@ -1,12 +1,11 @@
 /* 
    FILE: src/components/Sidebar.tsx
-   Fixed version - replace entire file
+   Complete fixed version - replace entire file
 */
 
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -24,8 +23,6 @@ import {
   CalendarDays,
   Paperclip,
   Loader2,
-  Sparkles,
-  Home,
   MessageCircle,
 } from "lucide-react";
 import { cn, timeAgo } from "@/lib/utils";
@@ -462,175 +459,6 @@ function ChatItem({
                   </div>
                   <div className="flex gap-2">
                     <button
-                  onClick={handleNewChat}
-                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200 focus-ring"
-                  aria-label="New chat"
-                  title="New chat"
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Chat Lists */}
-          <div ref={scrollerRef} className="min-h-0 flex-1 overflow-auto py-2 scroll-area">
-            {/* Pinned Chats */}
-            {!collapsed && pinned.length > 0 && (
-              <div className="mb-4">
-                <div className="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] flex items-center gap-2">
-                  <Pin size={12} />
-                  Pinned
-                </div>
-                <ul className="space-y-1">
-                  {pinned.map((row) => (
-                    <ChatItem
-                      key={row.id}
-                      row={row}
-                      active={isActiveChat(pathname, row.id)}
-                      pinned
-                      onPinToggle={togglePin}
-                      onDelete={handleDelete}
-                      onRename={handleRename}
-                      onIngest={handleIngest}
-                      showTyping={typingIds.has(row.id) && isActiveChat(pathname, row.id)}
-                    />
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Recent Chats */}
-            <div className="mb-4">
-              {!collapsed && (
-                <div className="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] flex items-center gap-2">
-                  <MessageCircle size={12} />
-                  Recent
-                </div>
-              )}
-              <ul className="space-y-1">
-                {recent.length === 0 && !collapsed ? (
-                  <li className="px-4 py-8 text-center">
-                    <div className="text-[var(--text-tertiary)] text-sm mb-2">No chats yet</div>
-                    <button
-                      onClick={handleNewChat}
-                      className="text-[var(--accent-blue)] text-sm hover:underline"
-                    >
-                      Start your first conversation
-                    </button>
-                  </li>
-                ) : (
-                  recent.slice(0, collapsed ? 20 : 50).map((row) => (
-                    <ChatItem
-                      key={row.id}
-                      row={row}
-                      active={isActiveChat(pathname, row.id)}
-                      pinned={false}
-                      onPinToggle={togglePin}
-                      onDelete={handleDelete}
-                      onRename={handleRename}
-                      onIngest={handleIngest}
-                      showTyping={typingIds.has(row.id) && isActiveChat(pathname, row.id)}
-                    />
-                  ))
-                )}
-              </ul>
-            </div>
-          </div>
-
-          {/* Enhanced Footer with Navigation */}
-          <div className="border-t border-[var(--border-secondary)] p-4">
-            {!collapsed ? (
-              <div className="space-y-3">
-                {/* Quick Links */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Link
-                    href="/calendar"
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl glass hover:glass-heavy transition-all duration-200 hover:scale-105 text-sm"
-                    title="Compliance Calendar"
-                  >
-                    <CalendarDays className="h-4 w-4 text-[var(--accent-green)]" />
-                    <span className="truncate">Calendar</span>
-                  </Link>
-                  <Link
-                    href="/settings"
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl glass hover:glass-heavy transition-all duration-200 hover:scale-105 text-sm"
-                    title="Settings"
-                  >
-                    <Settings className="h-4 w-4 text-[var(--text-secondary)]" />
-                    <span className="truncate">Settings</span>
-                  </Link>
-                </div>
-
-                {/* User Info */}
-                <div className="flex items-center justify-between px-2 py-2 glass rounded-xl">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent-blue)] to-blue-600 flex items-center justify-center text-white font-medium text-sm">
-                      <User size={14} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-[var(--text-primary)] truncate">
-                        Signed in
-                      </div>
-                      <div className="text-xs text-[var(--text-tertiary)]">
-                        CareIQ User
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    className="w-8 h-8 rounded-lg hover:bg-[var(--bg-overlay)] flex items-center justify-center transition-all duration-200 hover:scale-110 text-[var(--text-tertiary)] hover:text-[var(--accent-red)] focus-ring"
-                    title="Sign out"
-                    onClick={async () => {
-                      try {
-                        await supabase.auth.signOut();
-                        router.push("/login");
-                      } catch (error) {
-                        console.error("Sign out failed:", error);
-                      }
-                    }}
-                  >
-                    <LogOut size={14} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <Link
-                  href="/calendar"
-                  title="Compliance Calendar"
-                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 transition-all duration-200 focus-ring"
-                >
-                  <CalendarDays size={16} className="text-[var(--accent-green)]" />
-                </Link>
-                <Link
-                  href="/settings"
-                  title="Settings"
-                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 transition-all duration-200 focus-ring"
-                >
-                  <Settings size={16} />
-                </Link>
-                <button
-                  title="Sign out"
-                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 transition-all duration-200 text-[var(--text-tertiary)] hover:text-[var(--accent-red)] focus-ring"
-                  onClick={async () => {
-                    try {
-                      await supabase.auth.signOut();
-                      router.push("/login");
-                    } catch (error) {
-                      console.error("Sign out failed:", error);
-                    }
-                  }}
-                >
-                  <LogOut size={16} />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-}
                       className="btn-liquid-secondary flex-1 text-xs py-2"
                       onClick={() => setConfirmDelete(false)}
                     >
@@ -976,10 +804,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <ThemeToggle size="sm" className="w-10 h-10" />
           </div>
 
-          {/* Search + New Chat */}
-          <div className={cn("px-4 py-4 border-b border-[var(--border-secondary)]", collapsed && "px-2")}>
-            {!collapsed && (
-              <div className="flex items-center gap-2">
+          {/* Search + New Chat Section */}
+          <div className="px-4 py-4 border-b border-[var(--border-secondary)]">
+            <div className="flex items-center gap-2">
+              {!collapsed && (
                 <div className="flex-1 relative">
                   <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-tertiary)]" />
                   <input
@@ -989,5 +817,173 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     className="input-liquid pl-10 text-sm h-10"
                   />
                 </div>
+              )}
+              <button
+                onClick={handleNewChat}
+                className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200 focus-ring"
+                aria-label="New chat"
+                title="New chat"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Chat Lists */}
+          <div ref={scrollerRef} className="min-h-0 flex-1 overflow-auto py-2 scroll-area">
+            {/* Pinned Chats */}
+            {!collapsed && pinned.length > 0 && (
+              <div className="mb-4">
+                <div className="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] flex items-center gap-2">
+                  <Pin size={12} />
+                  Pinned
+                </div>
+                <ul className="space-y-1">
+                  {pinned.map((row) => (
+                    <ChatItem
+                      key={row.id}
+                      row={row}
+                      active={isActiveChat(pathname, row.id)}
+                      pinned
+                      onPinToggle={togglePin}
+                      onDelete={handleDelete}
+                      onRename={handleRename}
+                      onIngest={handleIngest}
+                      showTyping={typingIds.has(row.id) && isActiveChat(pathname, row.id)}
+                    />
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Recent Chats */}
+            <div className="mb-4">
+              {!collapsed && (
+                <div className="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] flex items-center gap-2">
+                  <MessageCircle size={12} />
+                  Recent
+                </div>
+              )}
+              <ul className="space-y-1">
+                {recent.length === 0 && !collapsed ? (
+                  <li className="px-4 py-8 text-center">
+                    <div className="text-[var(--text-tertiary)] text-sm mb-2">No chats yet</div>
+                    <button
+                      onClick={handleNewChat}
+                      className="text-[var(--accent-blue)] text-sm hover:underline"
+                    >
+                      Start your first conversation
+                    </button>
+                  </li>
+                ) : (
+                  recent.slice(0, collapsed ? 20 : 50).map((row) => (
+                    <ChatItem
+                      key={row.id}
+                      row={row}
+                      active={isActiveChat(pathname, row.id)}
+                      pinned={false}
+                      onPinToggle={togglePin}
+                      onDelete={handleDelete}
+                      onRename={handleRename}
+                      onIngest={handleIngest}
+                      showTyping={typingIds.has(row.id) && isActiveChat(pathname, row.id)}
+                    />
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>
+
+          {/* Enhanced Footer with Navigation */}
+          <div className="border-t border-[var(--border-secondary)] p-4">
+            {!collapsed ? (
+              <div className="space-y-3">
+                {/* Quick Links */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href="/calendar"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl glass hover:glass-heavy transition-all duration-200 hover:scale-105 text-sm"
+                    title="Compliance Calendar"
+                  >
+                    <CalendarDays className="h-4 w-4 text-[var(--accent-green)]" />
+                    <span className="truncate">Calendar</span>
+                  </Link>
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl glass hover:glass-heavy transition-all duration-200 hover:scale-105 text-sm"
+                    title="Settings"
+                  >
+                    <Settings className="h-4 w-4 text-[var(--text-secondary)]" />
+                    <span className="truncate">Settings</span>
+                  </Link>
+                </div>
+
+                {/* User Info */}
+                <div className="flex items-center justify-between px-2 py-2 glass rounded-xl">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent-blue)] to-blue-600 flex items-center justify-center text-white font-medium text-sm">
+                      <User size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-[var(--text-primary)] truncate">
+                        Signed in
+                      </div>
+                      <div className="text-xs text-[var(--text-tertiary)]">
+                        CareIQ User
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    className="w-8 h-8 rounded-lg hover:bg-[var(--bg-overlay)] flex items-center justify-center transition-all duration-200 hover:scale-110 text-[var(--text-tertiary)] hover:text-[var(--accent-red)] focus-ring"
+                    title="Sign out"
+                    onClick={async () => {
+                      try {
+                        await supabase.auth.signOut();
+                        router.push("/login");
+                      } catch (error) {
+                        console.error("Sign out failed:", error);
+                      }
+                    }}
+                  >
+                    <LogOut size={14} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <Link
+                  href="/calendar"
+                  title="Compliance Calendar"
+                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 transition-all duration-200 focus-ring"
+                >
+                  <CalendarDays size={16} className="text-[var(--accent-green)]" />
+                </Link>
+                <Link
+                  href="/settings"
+                  title="Settings"
+                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 transition-all duration-200 focus-ring"
+                >
+                  <Settings size={16} />
+                </Link>
                 <button
-                
+                  title="Sign out"
+                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 transition-all duration-200 text-[var(--text-tertiary)] hover:text-[var(--accent-red)] focus-ring"
+                  onClick={async () => {
+                    try {
+                      await supabase.auth.signOut();
+                      router.push("/login");
+                    } catch (error) {
+                      console.error("Sign out failed:", error);
+                    }
+                  }}
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
