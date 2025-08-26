@@ -27,10 +27,10 @@ export function getORConfig() {
   };
 }
 
-/** Simple GET to confirm the key works and list available models. */
+/** Optional helpers you can keep using elsewhere */
 export async function orModels() {
   const cfg = getORConfig();
-  const res = await fetch(`${OPENROUTER_URL}/models`, {
+  return fetch(`${OPENROUTER_URL}/models`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${cfg.key}`,
@@ -39,13 +39,11 @@ export async function orModels() {
     },
     cache: "no-store",
   });
-  return res;
 }
 
-/** Chat completion call (set stream=true if you wire SSE). */
 export async function orChatComplete(messages: ORMessage[], model?: string, stream = false) {
   const cfg = getORConfig();
-  const res = await fetch(`${OPENROUTER_URL}/chat/completions`, {
+  return fetch(`${OPENROUTER_URL}/chat/completions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${cfg.key}`,
@@ -59,5 +57,4 @@ export async function orChatComplete(messages: ORMessage[], model?: string, stre
       stream,
     }),
   });
-  return res;
 }
