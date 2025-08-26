@@ -1,4 +1,8 @@
-// src/components/Sidebar.tsx
+/* 
+   FILE: src/components/Sidebar.tsx
+   Replace entire file with this enhanced version (COMPLETE)
+*/
+
 "use client";
 
 import Link from "next/link";
@@ -20,10 +24,13 @@ import {
   CalendarDays,
   Paperclip,
   Loader2,
+  Sparkles,
+  Home,
+  MessageCircle,
 } from "lucide-react";
 import { cn, timeAgo } from "@/lib/utils";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
-import AccountMenu from "./AccountMenu";
+import { ThemeToggle } from "@/components/ThemeProvider";
 
 /* ---------------------------------- Types --------------------------------- */
 
@@ -42,12 +49,10 @@ type SidebarProps = {
 
 /* ----------------------------- Local constants ---------------------------- */
 
-// Legacy key (we migrate these to server once)
 const LEGACY_PIN_STORAGE_KEY = "careiq.pinnedChatIds.v1";
 const AUTOTITLE_MARK = "careiq.autotitle.done.v1";
-// Generous rate limits (per action key)
-const RL_DEFAULT_MAX = 30; // 30 actions
-const RL_DEFAULT_WINDOW_MS = 60_000; // per minute
+const RL_DEFAULT_MAX = 30;
+const RL_DEFAULT_WINDOW_MS = 60_000;
 
 /* ------------------------------- Utilities -------------------------------- */
 
@@ -81,11 +86,10 @@ function isActiveChat(pathname: string | null, id: string) {
   return pathname === `/chat/${id}`;
 }
 
-/* ----------------------------- Rate Limiter ------------------------------- */
-
 function rlKey(key: string) {
   return `careiq.rl.${key}`;
 }
+
 function allowAction(key: string, max = RL_DEFAULT_MAX, windowMs = RL_DEFAULT_WINDOW_MS) {
   try {
     const now = Date.now();
@@ -97,7 +101,7 @@ function allowAction(key: string, max = RL_DEFAULT_MAX, windowMs = RL_DEFAULT_WI
     localStorage.setItem(rlKey(key), JSON.stringify(recent));
     return true;
   } catch {
-    return true; // fail-open if storage blocked
+    return true;
   }
 }
 
@@ -148,7 +152,7 @@ function useTypingPresence() {
   return typingIds;
 }
 
-/* --------------------------- Tiny popover menu ---------------------------- */
+/* --------------------------- Enhanced popover menu ---------------------------- */
 
 function useOutsideClick<T extends HTMLElement>(onOutside: () => void) {
   const ref = useRef<T | null>(null);
@@ -180,7 +184,7 @@ function TinyMenu({
     <div
       ref={ref}
       className={cn(
-        "absolute z-50 mt-1 min-w-[220px] rounded-2xl border border-black/10 bg-white p-1 text-sm shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-white/10 dark:bg-neutral-900/90",
+        "absolute z-50 mt-2 min-w-[220px] glass rounded-2xl p-2 text-sm animate-scaleIn",
         align === "end" ? "right-0" : "left-0"
       )}
       role="menu"
@@ -209,21 +213,21 @@ function TinyMenuItem({
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       className={cn(
-        "flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left transition",
+        "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-200",
         disabled
           ? "cursor-not-allowed opacity-40"
-          : "hover:bg-neutral-100 active:bg-neutral-200 dark:hover:bg-neutral-800 dark:active:bg-neutral-700",
-        danger && "text-red-600 dark:text-red-400"
+          : "hover:bg-[var(--bg-overlay)] active:scale-95",
+        danger && "text-[var(--accent-red)]"
       )}
       role="menuitem"
     >
-      {icon}
+      {icon && <span className="flex-shrink-0">{icon}</span>}
       <span className="truncate">{children}</span>
     </button>
   );
 }
 
-/* -------------------------------- Chat row -------------------------------- */
+/* -------------------------------- Enhanced Chat Item -------------------------------- */
 
 function ChatItem({
   row,
@@ -241,7 +245,7 @@ function ChatItem({
   showTyping?: boolean;
   onPinToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onRename: (id: string, newTitle: string) => void; // optimistic
+  onRename: (id: string, newTitle: string) => void;
   onIngest: (id: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -270,7 +274,7 @@ function ChatItem({
       return;
     }
     setSavingRename(true);
-    onRename(row.id, trimmed); // optimistic update
+    onRename(row.id, trimmed);
     setRenaming(false);
     setSavingRename(false);
   };
@@ -285,43 +289,60 @@ function ChatItem({
   return (
     <li
       className={cn(
-        "group relative rounded-2xl",
+        "group relative rounded-2xl mx-2 mb-2 transition-all duration-300",
         active
-          ? "bg-neutral-100 ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-white/10"
-          : "hover:bg-white/60 dark:hover:bg-neutral-900/60"
+          ? "glass shadow-[var(--shadow-md)] scale-[1.02]"
+          : "hover:bg-[var(--bg-overlay)] hover:translate-x-1"
       )}
     >
       {!renaming ? (
         <Link
           href={`/chat/${row.id}`}
-          className={cn(
-            "flex items-center gap-2 truncate px-3 py-2 pr-10 text-sm",
-            active && "font-medium"
-          )}
+          className="flex items-center gap-3 truncate px-4 py-3 text-sm relative z-10"
           title={row.title || "New chat"}
         >
-          {row.has_attachments ? (
-            <span className="text-neutral-500" title="Has attachments">
-              <Paperclip size={14} />
-            </span>
-          ) : null}
-          <span className="truncate">{row.title || "New chat"}</span>
-          <span className="ml-2 text-xs text-neutral-500">
-            {row.last_message_at
-              ? timeAgo(row.last_message_at)
-              : row.created_at
-              ? timeAgo(row.created_at)
-              : ""}
-          </span>
-          {showTyping && (
-            <span className="ml-2 inline-flex items-center gap-1 text-xs text-neutral-500">
-              <Loader2 className="animate-spin" size={12} />
-              typing…
-            </span>
+          <div className="flex-shrink-0">
+            {row.has_attachments ? (
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[var(--accent-blue)]/20 to-[var(--accent-purple)]/20 flex items-center justify-center border border-[var(--border-secondary)]">
+                <Paperclip size={14} className="text-[var(--accent-blue)]" />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-xl bg-[var(--bg-overlay)] flex items-center justify-center">
+                <MessageCircle size={14} className="text-[var(--text-secondary)]" />
+              </div>
+            )}
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className={cn(
+              "truncate font-medium transition-colors",
+              active ? "text-[var(--text-primary)]" : "text-[var(--text-primary)]"
+            )}>
+              {row.title || "New chat"}
+            </div>
+            <div className="text-xs text-[var(--text-tertiary)] mt-1 flex items-center gap-2">
+              <span>
+                {row.last_message_at
+                  ? timeAgo(row.last_message_at)
+                  : row.created_at
+                  ? timeAgo(row.created_at)
+                  : ""}
+              </span>
+              {showTyping && (
+                <span className="inline-flex items-center gap-1 text-[var(--accent-blue)]">
+                  <Loader2 className="animate-spin" size={10} />
+                  <span>typing...</span>
+                </span>
+              )}
+            </div>
+          </div>
+          
+          {pinned && (
+            <Pin size={12} className="text-[var(--accent-blue)] flex-shrink-0" />
           )}
         </Link>
       ) : (
-        <div className="flex items-center gap-2 px-3 py-2 pr-10">
+        <div className="flex items-center gap-2 px-4 py-3">
           <input
             ref={inputRef}
             value={titleInput}
@@ -330,31 +351,33 @@ function ChatItem({
               if (e.key === "Enter") submitRename();
               if (e.key === "Escape") setRenaming(false);
             }}
-            className="w-full rounded-xl border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-950"
+            className="input-liquid text-sm"
+            disabled={savingRename}
+            placeholder="Chat title..."
           />
           <button
-            className="rounded-lg px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            className="btn-liquid-secondary text-xs px-3 py-1.5 min-w-fit"
             onClick={() => setRenaming(false)}
             disabled={savingRename}
           >
             Cancel
           </button>
           <button
-            className="rounded-lg bg-neutral-900 px-2 py-1 text-xs text-white hover:bg-neutral-800 dark:bg白 dark:text-black"
+            className="btn-liquid text-xs px-3 py-1.5 min-w-fit"
             onClick={submitRename}
             disabled={savingRename}
           >
-            {savingRename ? "Saving…" : "Save"}
+            {savingRename ? "Saving..." : "Save"}
           </button>
         </div>
       )}
 
       {!renaming && (
-        <div className="absolute inset-y-0 right-1 flex items-center gap-1">
+        <div className="absolute inset-y-0 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <button
             className={cn(
-              "invisible rounded-md p-1 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 group-hover:visible dark:hover:bg-neutral-800",
-              pinned && "visible"
+              "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[var(--bg-overlay)] hover:scale-110",
+              pinned && "opacity-100 text-[var(--accent-blue)]"
             )}
             aria-label={pinned ? "Unpin chat" : "Pin chat"}
             onClick={(e) => {
@@ -364,21 +387,20 @@ function ChatItem({
             }}
             title={pinned ? "Unpin" : "Pin"}
           >
-            {pinned ? <PinOff size={16} /> : <Pin size={16} />}
+            {pinned ? <PinOff size={14} /> : <Pin size={14} />}
           </button>
 
           <div className="relative">
             <button
-              className="invisible rounded-md p-1 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 group-hover:visible dark:hover:bg-neutral-800"
-              aria-label="More"
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[var(--bg-overlay)] hover:scale-110"
+              aria-label="More options"
               onClick={(e) => {
                 e.preventDefault();
                 setMenuOpen((v) => !v);
                 setConfirmDelete(false);
               }}
-              title="More"
             >
-              <MoreHorizontal size={16} />
+              <MoreHorizontal size={14} />
             </button>
 
             <TinyMenu open={menuOpen} onClose={() => setMenuOpen(false)} align="end">
@@ -424,32 +446,32 @@ function ChatItem({
                   >
                     {pinned ? "Unpin" : "Pin"}
                   </TinyMenuItem>
-                  <div className="my-1 h-px w-full bg-neutral-100 dark:bg-neutral-800" />
+                  <div className="my-1 h-px w-full bg-[var(--border-secondary)]" />
                   <TinyMenuItem
                     icon={<Trash2 size={16} />}
                     danger
                     onClick={() => setConfirmDelete(true)}
                   >
-                    Delete…
+                    Delete...
                   </TinyMenuItem>
                 </>
               ) : (
-                <>
-                  <div className="px-2 py-1.5 text-sm text-neutral-600 dark:text-neutral-300">
-                    Delete this chat? This can’t be undone.
+                <div className="p-2">
+                  <div className="text-sm text-[var(--text-secondary)] mb-3">
+                    Delete this chat? This can't be undone.
                   </div>
-                  <div className="flex gap-2 p-1">
+                  <div className="flex gap-2">
                     <button
-                      className="flex-1 rounded-lg px-2 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      className="btn-liquid-secondary flex-1 text-xs py-2"
                       onClick={() => setConfirmDelete(false)}
                     >
                       Cancel
                     </button>
                     <button
-                      className="flex-1 rounded-lg bg-red-600 px-2 py-1.5 text-sm text-white hover:bg-red-700"
+                      className="flex-1 rounded-xl bg-[var(--accent-red)] text-white text-xs py-2 px-3 hover:opacity-90 transition-all duration-200 active:scale-95"
                       onClick={() => {
                         if (!allowAction("delete", 20, 60_000)) {
-                          alert("You’re deleting too quickly. Please slow down.");
+                          alert("You're deleting too quickly. Please slow down.");
                           return;
                         }
                         onDelete(row.id);
@@ -459,7 +481,7 @@ function ChatItem({
                       Delete
                     </button>
                   </div>
-                </>
+                </div>
               )}
             </TinyMenu>
           </div>
@@ -470,10 +492,7 @@ function ChatItem({
 }
 
 /* -------------------------- Auto Title background ------------------------- */
-/**
- * Finds untitled chats and asks /api/title (cheap model) to name them,
- * then PATCHes /api/chats/:id. Marks done in localStorage to avoid repeats.
- */
+
 function AutoTitleAgent() {
   const supabase = getBrowserSupabase();
   useEffect(() => {
@@ -551,7 +570,7 @@ function AutoTitleAgent() {
   return null;
 }
 
-/* --------------------------------- Sidebar -------------------------------- */
+/* --------------------------------- Main Sidebar -------------------------------- */
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const router = useRouter();
@@ -563,11 +582,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
 
-  // typing indicator
   const typingIds = useTypingPresence();
-
-  // prevent nested scroll-jank: sidebar handles its own scroll, independent of chat pane
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -581,14 +598,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       const uid = data?.user?.id || null;
       setUserId(uid);
 
-      // migrate legacy local pins to server once
       if (uid) {
         try {
           const raw = localStorage.getItem(LEGACY_PIN_STORAGE_KEY);
           if (raw) {
             const legacy = JSON.parse(raw) as string[];
             if (Array.isArray(legacy) && legacy.length) {
-              // fetch existing pins to avoid duplicates
               const { data: existing } = await supabase
                 .from("pins")
                 .select("chat_id")
@@ -602,17 +617,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 await supabase.from("pins").insert(toInsert);
               }
             }
-            // clear legacy storage after migration
             localStorage.removeItem(LEGACY_PIN_STORAGE_KEY);
           }
-        } catch {
-          // ignore
-        }
+        } catch {}
       }
     })();
   }, [supabase]);
-
-  /* ------------------------------- Fetch data ------------------------------- */
 
   const fetchChats = useCallback(async () => {
     const { data, error } = await supabase
@@ -644,25 +654,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     fetchPins(userId);
   }, [fetchPins, userId]);
 
-  /* ------------------------------ Realtime sync ----------------------------- */
-
   useEffect(() => {
-    // Realtime for chats/messages to refresh the meta view
     const channel = supabase
       .channel("sidebar-meta")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "chats" },
-        () => fetchChats()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "messages" },
-        () => fetchChats()
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "chats" }, () => fetchChats())
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => fetchChats())
       .subscribe();
 
-    // Realtime for pins (user-scoped)
     const pinsChannel = supabase
       .channel("sidebar-pins")
       .on(
@@ -679,8 +677,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       } catch {}
     };
   }, [supabase, fetchChats, fetchPins, userId]);
-
-  /* --------------------------- Derived + handlers --------------------------- */
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -699,17 +695,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   async function handleDelete(id: string) {
     if (!allowAction("delete", 20, 60_000)) {
-      alert("You’re deleting too quickly. Please slow down.");
+      alert("You're deleting too quickly. Please slow down.");
       return;
     }
     setChats((prev) => prev.filter((c) => c.id !== id));
-    // unpin if pinned
     if (userId) {
       setPinnedIds((prev) => prev.filter((p) => p !== id));
       await supabase.from("pins").delete().eq("user_id", userId).eq("chat_id", id);
     }
     fetch(`/api/chats/${id}`, { method: "DELETE" }).catch(() => {});
-    if (isActiveChat(pathname, id)) router.push("/chat/new");
+    if (isActiveChat(pathname, id)) router.push("/");
   }
 
   async function togglePin(id: string) {
@@ -733,13 +728,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   async function handleNewChat() {
     if (!allowAction("newchat", 40, 60_000)) {
-      alert("You’ve created a lot of chats in a short time—try again soon.");
+      alert("You've created a lot of chats in a short time—try again soon.");
       return;
     }
     const res = await fetch("/api/chats", { method: "POST" });
     const json = await res.json();
     const newId = json.id as string;
-    // optimistic add (chat_meta will soon reflect it)
     setChats((prev) => [
       {
         id: newId,
@@ -755,7 +749,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const handleRename = useCallback(async (id: string, newTitle: string) => {
     if (!allowAction("rename", 60, 60_000)) {
-      alert("You’re renaming too fast. Please wait a bit.");
+      alert("You're renaming too fast. Please wait a bit.");
       return;
     }
     setChats((prev) => prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c)));
@@ -774,7 +768,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     try {
       const r = await fetch(`/api/ingest?chat_id=${encodeURIComponent(id)}`, { method: "POST" });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      // optional: toast success
     } catch (e) {
       console.warn("Ingest failed", e);
       alert("Ingestion failed to start. Check server logs for details.");
@@ -784,64 +777,52 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "relative h-svh shrink-0 transition-[width] duration-300 ease-ios",
+        "relative h-screen shrink-0 transition-[width] duration-300 ease-in-out sidebar",
         collapsed ? "w-[76px]" : "w-[300px]"
       )}
     >
       <AutoTitleAgent />
-      <div className="sticky top-0 h-svh p-2 sm:p-3">
-        <div className="glass relative flex h-full flex-col overflow-hidden rounded-2xl ring-1 ring-black/10 backdrop-blur supports-[backdrop-filter]:bg-white/55 dark:ring-white/10 dark:backdrop-blur">
-          {/* Top bar */}
-          <div className="flex items-center justify-between px-2 py-2">
+      <div className="sticky top-0 h-screen p-2 sm:p-3 flex flex-col">
+        <div className="glass relative flex h-full flex-col overflow-hidden rounded-2xl">
+          {/* Enhanced Header */}
+          <div className="flex items-center justify-between px-4 py-4 border-b border-[var(--border-secondary)]">
             <button
-              className="rounded-xl p-2 hover:bg-neutral-100 active:bg-neutral-200 dark:hover:bg-neutral-800"
+              className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200 focus-ring"
               onClick={onToggle}
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               title={collapsed ? "Expand" : "Collapse"}
             >
               <PanelsTopLeft size={18} />
             </button>
+            
             {!collapsed && (
-              <Link href="/" className="flex items-center gap-2 px-2 py-1">
-                <Image alt="CareIQ" src="/logo.svg" width={24} height={24} priority />
-                <span className="text-sm font-semibold tracking-tight">CareIQ</span>
+              <Link href="/" className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-[var(--bg-overlay)] transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[var(--accent-blue)] to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                  C
+                </div>
+                <span className="text-lg font-semibold tracking-tight">CareIQ</span>
               </Link>
             )}
-            <div className="ml-auto">
-              <AccountMenu />
-            </div>
+            
+            <ThemeToggle size="sm" className="w-10 h-10" />
           </div>
 
           {/* Search + New Chat */}
-          <div className={cn("px-2 pb-2", collapsed && "px-1")}>
+          <div className={cn("px-4 py-4 border-b border-[var(--border-secondary)]", collapsed && "px-2")}>
             {!collapsed ? (
               <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <div className="relative">
-                    <SearchIcon className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-neutral-500" />
-                    <input
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search chats…"
-                      className="w-full rounded-xl border border-neutral-200 bg-white py-2 pl-8 pr-3 text-sm outline-none dark:border-neutral-800 dark:bg-neutral-950"
-                    />
-                  </div>
+                <div className="flex-1 relative">
+                  <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-tertiary)]" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search chats..."
+                    className="input-liquid pl-10 text-sm h-10"
+                  />
                 </div>
                 <button
                   onClick={handleNewChat}
-                  className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
-                >
-                  <div className="flex items-center gap-1">
-                    <Plus size={16} />
-                    New chat
-                  </div>
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center">
-                <button
-                  onClick={handleNewChat}
-                  className="rounded-xl border border-neutral-200 bg-white p-2 shadow-sm hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
+                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200 focus-ring"
                   aria-label="New chat"
                   title="New chat"
                 >
@@ -851,12 +832,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             )}
           </div>
 
-          {/* Lists */}
-          <div ref={scrollerRef} className="min-h-0 flex-1 overflow-auto px-2 pb-2">
-            {/* Pinned */}
+          {/* Chat Lists */}
+          <div ref={scrollerRef} className="min-h-0 flex-1 overflow-auto py-2 scroll-area">
+            {/* Pinned Chats */}
             {!collapsed && pinned.length > 0 && (
-              <div className="mb-2">
-                <div className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <div className="mb-4">
+                <div className="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] flex items-center gap-2">
+                  <Pin size={12} />
                   Pinned
                 </div>
                 <ul className="space-y-1">
@@ -877,18 +859,27 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               </div>
             )}
 
-            {/* Recent */}
-            <div className={!collapsed ? "mt-1" : ""}>
+            {/* Recent Chats */}
+            <div className="mb-4">
               {!collapsed && (
-                <div className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                <div className="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] flex items-center gap-2">
+                  <MessageCircle size={12} />
                   Recent
                 </div>
               )}
-              <ul className={cn("space-y-1", collapsed && "px-1")}>
+              <ul className="space-y-1">
                 {recent.length === 0 && !collapsed ? (
-                  <li className="px-3 py-2 text-sm text-neutral-500">No chats yet.</li>
+                  <li className="px-4 py-8 text-center">
+                    <div className="text-[var(--text-tertiary)] text-sm mb-2">No chats yet</div>
+                    <button
+                      onClick={handleNewChat}
+                      className="text-[var(--accent-blue)] text-sm hover:underline"
+                    >
+                      Start your first conversation
+                    </button>
+                  </li>
                 ) : (
-                  recent.map((row) => (
+                  recent.slice(0, collapsed ? 20 : 50).map((row) => (
                     <ChatItem
                       key={row.id}
                       row={row}
@@ -906,68 +897,89 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </div>
           </div>
 
-          {/* Modules at the bottom */}
-          <div className={cn("mt-auto px-2 pb-2")}>
-            {!collapsed && (
-              <div className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                Modules
-              </div>
-            )}
-            <div className={cn("flex flex-col gap-1", collapsed && "items-center")}>
-              <Link
-                href="/calendar"
-                className={cn(
-                  "flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm shadow-sm hover:bg-white",
-                  collapsed && "justify-center px-2"
-                )}
-                title="Compliance Calendar"
-              >
-                <CalendarDays className="h-4 w-4" />
-                {!collapsed && <span>Compliance Calendar</span>}
-              </Link>
-              <Link
-                href="/settings"
-                className={cn(
-                  "flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm shadow-sm hover:bg-white",
-                  collapsed && "justify-center px-2"
-                )}
-                title="Settings"
-              >
-                <Settings className="h-4 w-4" />
-                {!collapsed && <span>Settings</span>}
-              </Link>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="border-t border-black/5 px-2 py-2 text-xs text-neutral-500 dark:border-white/5">
+          {/* Enhanced Footer with Navigation */}
+          <div className="border-t border-[var(--border-secondary)] p-4">
             {!collapsed ? (
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <User size={14} />
-                  Signed in
-                </div>
-                <div className="flex items-center gap-4">
-                  <Link href="/settings" className="flex items-center gap-1 hover:underline">
-                    <Settings size={14} />
-                    Settings
+              <div className="space-y-3">
+                {/* Quick Links */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href="/calendar"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl glass hover:glass-heavy transition-all duration-200 hover:scale-105 text-sm"
+                    title="Compliance Calendar"
+                  >
+                    <CalendarDays className="h-4 w-4 text-[var(--accent-green)]" />
+                    <span className="truncate">Calendar</span>
                   </Link>
-                  <button className="flex items-center gap-1 hover:underline" title="Log out">
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl glass hover:glass-heavy transition-all duration-200 hover:scale-105 text-sm"
+                    title="Settings"
+                  >
+                    <Settings className="h-4 w-4 text-[var(--text-secondary)]" />
+                    <span className="truncate">Settings</span>
+                  </Link>
+                </div>
+
+                {/* User Info */}
+                <div className="flex items-center justify-between px-2 py-2 glass rounded-xl">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent-blue)] to-blue-600 flex items-center justify-center text-white font-medium text-sm">
+                      <User size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-[var(--text-primary)] truncate">
+                        Signed in
+                      </div>
+                      <div className="text-xs text-[var(--text-tertiary)]">
+                        CareIQ User
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    className="w-8 h-8 rounded-lg hover:bg-[var(--bg-overlay)] flex items-center justify-center transition-all duration-200 hover:scale-110 text-[var(--text-tertiary)] hover:text-[var(--accent-red)] focus-ring"
+                    title="Sign out"
+                    onClick={async () => {
+                      try {
+                        await supabase.auth.signOut();
+                        router.push("/login");
+                      } catch (error) {
+                        console.error("Sign out failed:", error);
+                      }
+                    }}
+                  >
                     <LogOut size={14} />
-                    Log out
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex flex-col items-center gap-2">
+                <Link
+                  href="/calendar"
+                  title="Compliance Calendar"
+                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 transition-all duration-200 focus-ring"
+                >
+                  <CalendarDays size={16} className="text-[var(--accent-green)]" />
+                </Link>
                 <Link
                   href="/settings"
                   title="Settings"
-                  className="rounded-md p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 transition-all duration-200 focus-ring"
                 >
                   <Settings size={16} />
                 </Link>
-                <button title="Log out" className="rounded-md p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                <button
+                  title="Sign out"
+                  className="w-10 h-10 rounded-xl glass flex items-center justify-center hover:scale-105 transition-all duration-200 text-[var(--text-tertiary)] hover:text-[var(--accent-red)] focus-ring"
+                  onClick={async () => {
+                    try {
+                      await supabase.auth.signOut();
+                      router.push("/login");
+                    } catch (error) {
+                      console.error("Sign out failed:", error);
+                    }
+                  }}
+                >
                   <LogOut size={16} />
                 </button>
               </div>
@@ -977,4 +989,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
     </aside>
   );
-}
+}="btn-liquid text-sm px-4 h-10 flex items-center gap-2"
+                >
+                  <Plus size={16} />
+                  <span className="hidden sm:inline">New</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                <button
+                  onClick={handleNewChat}
+                  className

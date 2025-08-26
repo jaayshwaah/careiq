@@ -1,4 +1,8 @@
-// src/app/page.tsx
+/* 
+   FILE: src/app/page.tsx
+   Replace entire file with this enhanced version
+*/
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -156,32 +160,43 @@ export default function Page() {
       <div className="flex h-dvh w-full flex-col">
         {/* Header-like hero shown before first message */}
         {showEmpty ? (
-          <div className="relative mx-auto mt-14 w-full max-w-3xl px-4 text-center">
-            <h1 className="mb-6 text-4xl font-semibold tracking-tight">
-              How can I help with your nursing home today?
-            </h1>
-            <p className="text-gray-600 mb-4">
-              I'm your expert assistant for CMS regulations, survey prep, and nursing home operations.
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 text-sm">
-              <button 
-                onClick={() => onSend("What are the latest CMS medication administration requirements?", [])}
-                className="px-4 py-2 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors"
-              >
-                CMS Medication Requirements
-              </button>
-              <button 
-                onClick={() => onSend("Help me prepare for an upcoming state survey", [])}
-                className="px-4 py-2 bg-green-50 text-green-700 rounded-full hover:bg-green-100 transition-colors"
-              >
-                Survey Preparation
-              </button>
-              <button 
-                onClick={() => onSend("What infection control protocols should I review?", [])}
-                className="px-4 py-2 bg-purple-50 text-purple-700 rounded-full hover:bg-purple-100 transition-colors"
-              >
-                Infection Control
-              </button>
+          <div className="relative mx-auto mt-16 w-full max-w-3xl px-4 text-center">
+            <div className="glass rounded-3xl p-8 mb-8 animate-scaleIn">
+              <h1 className="mb-6 text-4xl font-semibold tracking-tight text-gradient">
+                How can I help with your nursing home today?
+              </h1>
+              <p className="text-[var(--text-secondary)] mb-6 text-lg">
+                I'm your expert assistant for CMS regulations, survey prep, and nursing home operations.
+              </p>
+              
+              {/* Enhanced suggestion buttons */}
+              <div className="flex flex-wrap justify-center gap-3 text-sm">
+                <SuggestionButton 
+                  onClick={() => onSend("What are the latest CMS medication administration requirements?", [])}
+                  icon="💊"
+                  primary
+                >
+                  CMS Medication Requirements
+                </SuggestionButton>
+                <SuggestionButton 
+                  onClick={() => onSend("Help me prepare for an upcoming state survey", [])}
+                  icon="📋"
+                >
+                  Survey Preparation
+                </SuggestionButton>
+                <SuggestionButton 
+                  onClick={() => onSend("What infection control protocols should I review?", [])}
+                  icon="🦠"
+                >
+                  Infection Control
+                </SuggestionButton>
+                <SuggestionButton 
+                  onClick={() => onSend("Create a staff training checklist for CNAs", [])}
+                  icon="👩‍⚕️"
+                >
+                  Staff Training
+                </SuggestionButton>
+              </div>
             </div>
           </div>
         ) : null}
@@ -196,18 +211,21 @@ export default function Page() {
           />
         </div>
 
-        {/* Sticky composer w/ gradient scrim */}
-        <div className="sticky bottom-0 z-10 w-full bg-gradient-to-b from-transparent to-[var(--bg)] px-4 pb-5 pt-3">
+        {/* Enhanced composer with glass styling */}
+        <div className="sticky bottom-0 z-10 w-full composer-container px-4 pb-5 pt-3">
           <Composer
             onSend={onSend}
             placeholder="Ask about regulations, survey prep, compliance..."
             disabled={sending}
+            showAttach={true}
+            showVoice={false}
+            className="glass-heavy"
           />
           {sending ? (
-            <div className="mx-auto mt-2 flex max-w-3xl justify-end">
+            <div className="mx-auto mt-3 flex max-w-3xl justify-end">
               <button
                 onClick={stop}
-                className="rounded-full bg-white/80 px-3 py-1 text-sm shadow ring-1 ring-black/10 hover:bg-white dark:bg-neutral-900/70 dark:ring-white/10"
+                className="btn-liquid-secondary text-sm"
               >
                 Stop generating
               </button>
@@ -216,6 +234,36 @@ export default function Page() {
         </div>
       </div>
     </RequireAuth>
+  );
+}
+
+// Enhanced suggestion button component
+function SuggestionButton({ 
+  children, 
+  onClick, 
+  icon, 
+  primary = false 
+}: { 
+  children: React.ReactNode; 
+  onClick: () => void; 
+  icon: string;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-medium transition-all duration-300
+        transform hover:scale-105 active:scale-95 focus-ring
+        ${primary 
+          ? 'bg-gradient-to-r from-[var(--accent-blue)] to-blue-600 text-white shadow-lg hover:shadow-xl' 
+          : 'glass hover:glass-heavy'
+        }
+      `}
+    >
+      <span className="text-lg">{icon}</span>
+      <span>{children}</span>
+    </button>
   );
 }
 

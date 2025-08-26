@@ -1,8 +1,22 @@
-// src/components/Composer.tsx
+/* 
+   FILE: src/components/Composer.tsx
+   Replace entire file with this enhanced version
+*/
+
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Paperclip, Loader2, Sparkles, X, CornerDownLeft } from "lucide-react";
+import { 
+  Send, 
+  Paperclip, 
+  X, 
+  Loader2, 
+  Mic, 
+  MicOff,
+  Sparkles,
+  Plus,
+  Command
+} from "lucide-react";
 
 type ComposerProps = {
   onSend: (text: string, files?: File[]) => void | Promise<void>;
@@ -12,25 +26,29 @@ type ComposerProps = {
   autoFocus?: boolean;
   initialValue?: string;
   showAttach?: boolean;
+  showVoice?: boolean;
   maxLength?: number;
-  /** Optional: if you want to wire scrolling yourself in parent, this fires post-send */
   onSent?: () => void;
+  className?: string;
 };
 
-export default function Composer({
+export default function EnhancedComposer({
   onSend,
-  placeholder = "How can I help today?",
+  placeholder = "Message CareIQ...",
   isGenerating = false,
   disabled = false,
   autoFocus = true,
   initialValue = "",
   showAttach = true,
+  showVoice = false,
   maxLength,
   onSent,
+  className = "",
 }: ComposerProps) {
   const [value, setValue] = useState(initialValue);
   const [files, setFiles] = useState<File[]>([]);
   const [focused, setFocused] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -54,16 +72,37 @@ export default function Composer({
     if (autoFocus && taRef.current) taRef.current.focus();
   }, [autoFocus]);
 
-  // Drag & drop
+  // Enhanced drag & drop with visual feedback
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
+    
+    let dragCounter = 0;
+    
     const prevent = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
     };
+    
+    const onDragEnter = (e: DragEvent) => {
+      prevent(e);
+      dragCounter++;
+      el.classList.add('drag-over');
+    };
+    
+    const onDragLeave = (e: DragEvent) => {
+      prevent(e);
+      dragCounter--;
+      if (dragCounter === 0) {
+        el.classList.remove('drag-over');
+      }
+    };
+    
     const onDrop = (e: DragEvent) => {
       prevent(e);
+      dragCounter = 0;
+      el.classList.remove('drag-over');
+      
       const dt = e.dataTransfer;
       if (!dt) return;
       const picked: File[] = [];
@@ -74,12 +113,16 @@ export default function Composer({
     ["dragenter", "dragover", "dragleave", "drop"].forEach((ev) =>
       el.addEventListener(ev, prevent as any),
     );
+    el.addEventListener("dragenter", onDragEnter as any);
+    el.addEventListener("dragleave", onDragLeave as any);
     el.addEventListener("drop", onDrop as any);
 
     return () => {
       ["dragenter", "dragover", "dragleave", "drop"].forEach((ev) =>
         el.removeEventListener(ev, prevent as any),
       );
+      el.removeEventListener("dragenter", onDragEnter as any);
+      el.removeEventListener("dragleave", onDragLeave as any);
       el.removeEventListener("drop", onDrop as any);
     };
   }, []);
@@ -93,7 +136,7 @@ export default function Composer({
       setFiles([]);
       requestAnimationFrame(fit);
 
-      // === NEW: resume auto-follow on send ===
+      // Resume auto-follow on send
       window.dispatchEvent(new CustomEvent("careiq:resume-autofollow"));
       onSent?.();
     } catch (e) {
@@ -119,56 +162,84 @@ export default function Composer({
     e.currentTarget.value = "";
   };
 
+  // Voice input simulation (you'd implement actual speech recognition)
+  const toggleVoice = () => {
+    setIsListening(!isListening);
+    // TODO: Implement actual speech recognition
+    if (!isListening) {
+      setTimeout(() => setIsListening(false), 3000); // Demo timeout
+    }
+  };
+
   const remaining =
     typeof maxLength === "number" ? Math.max(0, maxLength - value.length) : undefined;
 
+  const canSend = value.trim().length > 0 && !trulyDisabled;
+
   return (
-    <div className="pointer-events-auto" ref={wrapperRef}>
+    <div 
+      className={`pointer-events-auto ${className}`} 
+      ref={wrapperRef}
+      style={{
+        /* Add drag over styling */
+        transition: 'all 300ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+      }}
+    >
+      <style jsx>{`
+        .drag-over {
+          transform: scale(1.02);
+          box-shadow: 0 0 0 2px var(--accent-blue);
+          background: var(--bg-glass-heavy);
+        }
+      `}</style>
+      
       {/* Attachments preview row */}
       {files.length > 0 && (
-        <div className="mb-2 flex flex-wrap items-center gap-2 px-2 sm:px-0">
+        <div className="mb-3 flex flex-wrap items-center gap-2 px-2 sm:px-0">
           {files.map((f, i) => (
-            <span
+            <div
               key={i}
-              className="group inline-flex max-w-full items-center gap-2 truncate rounded-2xl border border-black/10 bg-white/60 px-3 py-1.5 text-sm text-black/80 shadow-sm backdrop-blur-md transition dark:border-white/10 dark:bg-zinc-900/40 dark:text-white/80"
+              className="group glass inline-flex max-w-full items-center gap-2 truncate rounded-2xl px-3 py-2 text-sm animate-scaleIn"
               title={f.name}
             >
-              <Sparkles className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-              <span className="truncate">{f.name}</span>
+              <Sparkles className="h-4 w-4 shrink-0 text-[var(--accent-blue)]" />
+              <span className="truncate max-w-[12rem] text-[var(--text-primary)]">{f.name}</span>
               <button
                 type="button"
-                className="ml-0.5 rounded-full p-0.5 text-black/60 transition hover:bg-black/5 hover:text-black/80 dark:text-white/60 dark:hover:bg-white/5 dark:hover:text-white/80"
+                className="ml-1 rounded-full p-1 text-[var(--text-tertiary)] transition-all hover:bg-[var(--bg-overlay)] hover:text-[var(--text-primary)]"
                 aria-label={`Remove ${f.name}`}
                 onClick={() => removeFile(i)}
               >
-                <X className="h-4 w-4" />
+                <X className="h-3 w-3" />
               </button>
-            </span>
+            </div>
           ))}
         </div>
       )}
 
-      {/* Glass composer */}
+      {/* Enhanced glass composer */}
       <div
-        className={[
-          "relative isolate w-full rounded-3xl p-[1px] transition-all duration-300",
-          focused
-            ? "shadow-[0_0_0_2px_rgba(255,255,255,0.6)] dark:shadow-[0_0_0_2px_rgba(255,255,255,0.12)]"
-            : "shadow-[0_0_0_1px_rgba(0,0,0,0.06)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.06)]",
-        ].join(" ")}
+        className={`
+          relative isolate w-full rounded-3xl p-[1px] transition-all duration-300
+          ${focused
+            ? 'shadow-[0_0_0_2px_var(--border-focus)] scale-[1.01]'
+            : 'shadow-[0_0_0_1px_var(--border-primary)]'
+          }
+        `}
       >
+        {/* Animated border gradient */}
         <div
-          className={[
-            "pointer-events-none absolute -inset-[2px] rounded-[inherit] opacity-0 blur-md transition-opacity duration-500",
-            focused ? "opacity-100" : "",
-          ].join(" ")}
+          className={`
+            pointer-events-none absolute -inset-[2px] rounded-[inherit] opacity-0 blur-md transition-opacity duration-500
+            ${focused ? 'opacity-100' : ''}
+          `}
           style={{
-            background:
-              "conic-gradient(from 180deg at 50% 50%, rgba(66,133,244,0.45), rgba(52,168,83,0.45), rgba(251,188,5,0.45), rgba(234,67,53,0.45), rgba(66,133,244,0.45))",
+            background: "conic-gradient(from 180deg at 50% 50%, rgba(0,122,255,0.4), rgba(52,168,83,0.4), rgba(255,149,0,0.4), rgba(255,59,48,0.4), rgba(0,122,255,0.4))",
           }}
         />
-        <div className="relative z-10 flex w-full items-end gap-2 rounded-[inherit] border border-black/5 bg-white/60 px-2 py-1.5 shadow-lg backdrop-blur-xl transition dark:border-white/5 dark:bg-zinc-900/40 sm:px-3 sm:py-2">
-          {/* Attach */}
+        
+        <div className="relative z-10 flex w-full items-end gap-2 rounded-[inherit] glass-heavy px-2 py-2 transition-all duration-300 sm:px-3">
+          {/* Attach button */}
           {showAttach && (
             <>
               <input
@@ -177,6 +248,7 @@ export default function Composer({
                 multiple
                 onChange={onFilesChosen}
                 className="hidden"
+                accept=".pdf,.docx,.txt,.md,.csv,.json"
                 aria-hidden="true"
                 tabIndex={-1}
               />
@@ -184,139 +256,119 @@ export default function Composer({
                 type="button"
                 onClick={onPickFiles}
                 disabled={trulyDisabled}
-                className="hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-transparent bg-white/70 text-black/70 shadow-sm backdrop-blur hover:bg-white/90 hover:text-black transition dark:bg-zinc-950/30 dark:text-white/70 dark:hover:bg-zinc-950/50"
+                className="hidden sm:inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95 glass focus-ring text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 aria-label="Add attachments"
+                title="Attach files"
               >
                 <Paperclip className="h-4 w-4" />
               </button>
             </>
           )}
 
+          {/* Voice button */}
+          {showVoice && (
+            <button
+              type="button"
+              onClick={toggleVoice}
+              disabled={trulyDisabled}
+              className={`
+                hidden sm:inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl 
+                transition-all duration-200 hover:scale-105 active:scale-95 focus-ring
+                ${isListening 
+                  ? 'bg-[var(--accent-red)] text-white shadow-lg' 
+                  : 'glass text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }
+              `}
+              aria-label={isListening ? "Stop recording" : "Start voice input"}
+              title={isListening ? "Stop recording" : "Voice input"}
+            >
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </button>
+          )}
+
           {/* Textarea */}
           <div className="flex min-w-0 flex-1 items-center">
-            <Textarea
+            <textarea
               ref={taRef}
               value={value}
               disabled={trulyDisabled}
               onChange={(e) => {
-                const next =
-                  typeof maxLength === "number" ? e.target.value.slice(0, maxLength) : e.target.value;
+                const next = typeof maxLength === "number" ? e.target.value.slice(0, maxLength) : e.target.value;
                 setValue(next);
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
+              onKeyDown={onKeyDown}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              placeholder={placeholder}
-              ariaLabel="Message CareIQ"
+              placeholder={isListening ? "🎤 Listening..." : placeholder}
+              className="
+                block w-full resize-none border-0 bg-transparent px-4 py-3 text-[15px] leading-6 
+                text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] 
+                focus:outline-none max-h-[40vh] min-h-[44px] overflow-y-auto scroll-area
+              "
+              rows={1}
+              aria-label="Message input"
+              spellCheck
               maxLength={maxLength}
             />
           </div>
 
-          {/* Send */}
+          {/* Send button */}
           <button
             type="button"
             onClick={handleSend}
-            disabled={trulyDisabled || value.trim().length === 0}
-            className="group relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition focus:outline-none disabled:opacity-50"
+            disabled={!canSend}
+            className={`
+              group relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl 
+              transition-all duration-200 focus:outline-none
+              ${canSend 
+                ? 'hover:scale-105 active:scale-95 bg-gradient-to-r from-[var(--accent-blue)] to-blue-600 text-white shadow-md hover:shadow-lg' 
+                : 'glass opacity-50 cursor-not-allowed text-[var(--text-tertiary)]'
+              }
+            `}
             aria-label="Send message"
           >
-            <span className="absolute inset-0 rounded-2xl border border-black/10 bg-white/80 shadow-md backdrop-blur-xl transition group-hover:translate-y-[-1px] dark:border-white/10 dark:bg-zinc-900/50" />
-            <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
-              <span className="absolute -inset-x-6 -top-8 h-12 rounded-full bg-white/40 blur-md dark:bg-white/10" />
-            </span>
-            <span
-              className="pointer-events-none absolute -inset-[1px] rounded-2xl opacity-0 blur transition-opacity duration-300 group-hover:opacity-100"
-              style={{
-                background:
-                  "radial-gradient(120px 120px at 50% 50%, rgba(99,102,241,0.6), transparent 60%)",
-              }}
-            />
+            {/* Background shine effect */}
+            {canSend && (
+              <>
+                <span className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
+                <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+                  <span className="absolute -inset-x-6 -top-8 h-12 rounded-full bg-white/30 blur-md" />
+                </span>
+              </>
+            )}
+            
             {isGenerating ? (
-              <Loader2 className="relative z-10 h-5 w-5 animate-spin text-black/80 dark:text-white/80" />
+              <Loader2 className="relative z-10 h-5 w-5 animate-spin" />
             ) : (
-              <CornerDownLeft className="relative z-10 h-5 w-5 text-black/80 transition group-active:scale-95 dark:text-white/80" />
+              <Send className="relative z-10 h-5 w-5 transition-transform group-active:scale-95" />
             )}
           </button>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="mt-1 flex items-center justify-between px-1 text-xs text-black/50 dark:text-white/40">
+      {/* Footer with file count and character limit */}
+      <div className="mt-2 flex items-center justify-between px-2 text-xs text-[var(--text-tertiary)]">
         <span className="truncate">
-          {files.length > 0 ? `${files.length} attachment${files.length > 1 ? "s" : ""} ready` : "\u00A0"}
+          {files.length > 0 ? (
+            <span className="flex items-center gap-1">
+              <Paperclip className="h-3 w-3" />
+              {files.length} file{files.length !== 1 ? 's' : ''} ready
+            </span>
+          ) : isListening ? (
+            <span className="flex items-center gap-1 text-[var(--accent-red)]">
+              <div className="h-2 w-2 rounded-full bg-[var(--accent-red)] animate-pulse" />
+              Recording...
+            </span>
+          ) : (
+            "\u00A0"
+          )}
         </span>
-        {typeof remaining === "number" ? <span>{remaining} characters left</span> : <span>&nbsp;</span>}
+        {typeof remaining === "number" && (
+          <span className={remaining < 50 ? 'text-[var(--accent-orange)]' : ''}>
+            {remaining} characters left
+          </span>
+        )}
       </div>
-
-      <style jsx>{`
-        :global(textarea.composer-ta)::-webkit-scrollbar {
-          width: 10px;
-          height: 10px;
-        }
-        :global(textarea.composer-ta)::-webkit-scrollbar-thumb {
-          background: rgba(0, 0, 0, 0.15);
-          border-radius: 8px;
-        }
-        :global(.dark textarea.composer-ta)::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.18);
-        }
-      `}</style>
     </div>
   );
 }
-
-type TAProps = {
-  value: string;
-  disabled: boolean;
-  onChange: React.ChangeEventHandler<HTMLTextAreaElement>;
-  onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement>;
-  onFocus: () => void;
-  onBlur: () => void;
-  placeholder: string;
-  ariaLabel?: string;
-  maxLength?: number;
-};
-
-const Textarea = React.forwardRef<HTMLTextAreaElement, TAProps>(function FancyTA(
-  { value, disabled, onChange, onKeyDown, onFocus, onBlur, placeholder, ariaLabel, maxLength },
-  ref
-) {
-  const innerRef = useRef<HTMLTextAreaElement | null>(null);
-
-  useEffect(() => {
-    if (!ref) return;
-    if (typeof ref === "function") ref(innerRef.current);
-    else (ref as React.MutableRefObject<HTMLTextAreaElement | null>).current = innerRef.current;
-  }, [ref]);
-
-  useEffect(() => {
-    const el = innerRef.current;
-    if (!el) return;
-    el.style.height = "0px";
-    const next = Math.min(el.scrollHeight, Math.round(window.innerHeight * 0.4));
-    el.style.height = `${next}px`;
-  }, [value]);
-
-  return (
-    <textarea
-      ref={innerRef}
-      className="composer-ta block w-full resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-6 text-black placeholder:text-black/40 focus:outline-none dark:text-white dark:placeholder:text-white/40 max-h-[40vh] min-h-[36px] overflow-y-auto"
-      rows={1}
-      value={value}
-      onChange={onChange}
-      onKeyDown={onKeyDown}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      disabled={disabled}
-      placeholder={placeholder}
-      aria-label={ariaLabel || "Message input"}
-      spellCheck
-      maxLength={maxLength}
-    />
-  );
-});
