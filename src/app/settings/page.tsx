@@ -1,8 +1,8 @@
-// src/app/settings/page.tsx - Enhanced with facility info and theme toggle
+// src/app/settings/page.tsx - Updated to be read-only for secure fields
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor } from "lucide-react";
+import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
@@ -12,13 +12,11 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const supabase = getBrowserSupabase();
   
-  // Profile data
-  const [role, setRole] = useState("");
-  const [facilityName, setFacilityName] = useState("");
-  const [facilityState, setFacilityState] = useState("");
-  const [facilityId, setFacilityId] = useState("");
+  // Profile data (read-only for secure fields)
+  const [profile, setProfile] = useState<any>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(true);
   
   // UI state
   const [saving, setSaving] = useState(false);
@@ -35,21 +33,20 @@ export default function SettingsPage() {
 
       setEmail(user.email || "");
 
-      const { data: profile, error } = await supabase
+      const { data: profileData, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
         .single();
 
-      if (!error && profile) {
-        setRole(profile.role || "");
-        setFacilityName(profile.facility_name || "");
-        setFacilityState(profile.facility_state || "");
-        setFacilityId(profile.facility_id || "");
-        setFullName(profile.full_name || "");
+      if (!error && profileData) {
+        setProfile(profileData);
+        setFullName(profileData.full_name || "");
       }
     } catch (error) {
       console.error("Failed to load profile:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,22 +58,14 @@ export default function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const updates = {
-        role: role || null,
-        facility_name: facilityName || null,
-        facility_state: facilityState || null,
-        facility_id: facilityId || null,
-        full_name: fullName || null,
-        email: email || null,
-        updated_at: new Date().toISOString(),
-      };
-
+      // Only allow updating non-secure fields
       const { error } = await supabase
         .from("profiles")
-        .upsert({ 
-          user_id: user.id, 
-          ...updates 
-        });
+        .update({ 
+          full_name: fullName || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
@@ -111,32 +100,13 @@ export default function SettingsPage() {
     }
   ];
 
-  const stateOptions = [
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
-  ];
-
-  const roleOptions = [
-    "Administrator",
-    "Director of Nursing (DON)",
-    "Assistant Director of Nursing (ADON)",
-    "Registered Nurse (RN)",
-    "Licensed Practical Nurse (LPN)",
-    "Certified Nursing Assistant (CNA)",
-    "Social Services Director",
-    "Activities Director",
-    "Dietary Manager",
-    "Maintenance Director",
-    "Business Office Manager",
-    "Medical Director",
-    "Quality Assurance Coordinator",
-    "Infection Control Nurse",
-    "MDS Coordinator",
-    "Staff"
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto">
@@ -144,7 +114,7 @@ export default function SettingsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Manage your profile and preferences for personalized CareIQ responses
+            Manage your personal preferences. Contact your administrator to change facility or role information.
           </p>
         </div>
 
@@ -194,43 +164,27 @@ export default function SettingsPage() {
                 Email cannot be changed from settings
               </p>
             </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Role / Position
-              </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select your role</option>
-                {roleOptions.map(option => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
 
-        {/* Facility Information */}
+        {/* Facility Information (Read-only) */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <Building2 className="h-5 w-5" />
             Facility Information
+            <Lock className="h-4 w-4 text-gray-400" title="Managed by administrator" />
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Facility Name
+                Role / Position
               </label>
               <input
                 type="text"
-                value={facilityName}
-                onChange={(e) => setFacilityName(e.target.value)}
-                placeholder="e.g., Sunshine Manor Nursing Home"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={profile?.role || "Not assigned"}
+                readOnly
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
               />
             </div>
 
@@ -238,36 +192,30 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 State
               </label>
-              <select
-                value={facilityState}
-                onChange={(e) => setFacilityState(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select state</option>
-                {stateOptions.map(state => (
-                  <option key={state} value={state}>{state}</option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value={profile?.facility_state || "Not assigned"}
+                readOnly
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
+              />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Facility ID (Optional)
+                Facility Name
               </label>
               <input
                 type="text"
-                value={facilityId}
-                onChange={(e) => setFacilityId(e.target.value)}
-                placeholder="Internal facility identifier"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={profile?.facility_name || "Not assigned"}
+                readOnly
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
               />
             </div>
           </div>
 
-          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-300">
-              <strong>Why this matters:</strong> CareIQ uses your facility information to provide state-specific regulations, 
-              personalized compliance guidance, and access to your facility's custom knowledge base.
+          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+            <p className="text-sm text-yellow-800 dark:text-yellow-300">
+              <strong>Need changes?</strong> Contact your administrator to update facility information, role, or location settings.
             </p>
           </div>
         </div>
@@ -317,17 +265,6 @@ export default function SettingsPage() {
           >
             {saving ? "Saving..." : "Save Settings"}
           </button>
-        </div>
-
-        {/* Information Note */}
-        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-          <h3 className="font-medium text-gray-900 dark:text-white mb-2">How CareIQ Uses Your Information</h3>
-          <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-            <li>• <strong>Role:</strong> Provides answers appropriate to your position and responsibilities</li>
-            <li>• <strong>Facility & State:</strong> Includes state-specific regulations and local compliance requirements</li>
-            <li>• <strong>Facility Name:</strong> Access to your facility's uploaded policies and procedures</li>
-            <li>• <strong>All data is secure:</strong> Your information is encrypted and only used to improve your CareIQ experience</li>
-          </ul>
         </div>
 
         {/* Bottom padding */}
