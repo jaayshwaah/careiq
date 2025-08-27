@@ -1,4 +1,5 @@
 // src/app/not-found.tsx
+// Fixed version without ThemeProvider dependency
 
 export default function NotFound() {
   return (
@@ -6,13 +7,36 @@ export default function NotFound() {
       <head>
         <title>404 - Page Not Found</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            :root {
+              --bg-primary: #f8f9fb;
+              --text-primary: #1a1a1a;
+              --accent-blue: #007aff;
+            }
+            
+            @media (prefers-color-scheme: dark) {
+              :root {
+                --bg-primary: #0a0a0a;
+                --text-primary: #ffffff;
+                --accent-blue: #0a84ff;
+              }
+            }
+            
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+          `
+        }} />
       </head>
       <body style={{ 
         margin: 0, 
         padding: 0, 
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        backgroundColor: '#f8f9fb',
-        color: '#1a1a1a',
+        backgroundColor: 'var(--bg-primary)',
+        color: 'var(--text-primary)',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -33,7 +57,7 @@ export default function NotFound() {
               height: '80px',
               margin: '0 auto 1.5rem',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #007aff, #0056b3)',
+              background: 'linear-gradient(135deg, var(--accent-blue), #0056b3)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -48,7 +72,8 @@ export default function NotFound() {
               fontSize: '1.5rem', 
               fontWeight: '600', 
               marginBottom: '1rem',
-              margin: '0 0 1rem 0'
+              margin: '0 0 1rem 0',
+              color: 'var(--text-primary)'
             }}>
               Page Not Found
             </h1>
@@ -70,7 +95,7 @@ export default function NotFound() {
                 gap: '0.5rem',
                 padding: '12px 24px',
                 borderRadius: '16px',
-                background: 'linear-gradient(135deg, #007aff, #0056b3)',
+                background: 'linear-gradient(135deg, var(--accent-blue), #0056b3)',
                 color: 'white',
                 textDecoration: 'none',
                 fontWeight: '500',

@@ -1,6 +1,6 @@
 /* 
    FILE: src/components/ThemeProvider.tsx
-   This is a NEW FILE - create it in your components folder
+   Fixed version with proper SSR handling
 */
 
 "use client";
@@ -78,7 +78,7 @@ export function ThemeProvider({
     root.classList.add(resolvedTheme);
     
     // Update meta theme-color for mobile browsers
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]');
     const color = isDark ? "#0a0a0a" : "#f8f9fb";
     
     if (themeColorMeta) {
@@ -91,7 +91,7 @@ export function ThemeProvider({
     }
     
     // Update status bar style for iOS PWA
-    const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    let statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     const statusBarStyle = isDark ? "black-translucent" : "default";
     
     if (statusBarMeta) {
@@ -112,11 +112,6 @@ export function ThemeProvider({
       console.warn("Failed to save theme to storage:", error);
     }
   };
-
-  // Don't render anything until mounted to prevent hydration mismatch
-  if (!mounted) {
-    return <>{children}</>;
-  }
 
   const value: ThemeContextValue = {
     theme,
@@ -140,7 +135,7 @@ export function useTheme() {
   return context;
 }
 
-// Theme Toggle Button Component
+// Theme Toggle Button Component with SSR safety
 interface ThemeToggleProps {
   className?: string;
   size?: "sm" | "md" | "lg";
@@ -149,6 +144,31 @@ interface ThemeToggleProps {
 
 export function ThemeToggle({ className = "", size = "md", showLabel = false }: ThemeToggleProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch by not rendering until mounted
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    // Return a placeholder with the same dimensions
+    const sizeClasses = {
+      sm: "w-8 h-8",
+      md: "w-10 h-10", 
+      lg: "w-12 h-12",
+    };
+
+    return (
+      <div className={`
+        glass relative inline-flex items-center justify-center rounded-xl
+        transition-all duration-200 opacity-50
+        ${sizeClasses[size]} ${className}
+      `}>
+        <div className="w-4 h-4 rounded-full bg-current opacity-30" />
+      </div>
+    );
+  }
 
   const sizeClasses = {
     sm: "w-8 h-8",
@@ -244,13 +264,28 @@ export function ThemeToggle({ className = "", size = "md", showLabel = false }: 
   );
 }
 
-// Theme Picker Component (3-option toggle)
+// Theme Picker Component (3-option toggle) with SSR safety
 interface ThemePickerProps {
   className?: string;
 }
 
 export function ThemePicker({ className = "" }: ThemePickerProps) {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className={`glass inline-flex rounded-xl p-1 opacity-50 ${className}`}>
+        <div className="h-10 w-20 bg-current opacity-20 rounded-lg" />
+        <div className="h-10 w-20 bg-current opacity-20 rounded-lg mx-1" />
+        <div className="h-10 w-20 bg-current opacity-20 rounded-lg" />
+      </div>
+    );
+  }
 
   const themes: Array<{ value: Theme; label: string; icon: React.ReactNode }> = [
     {
