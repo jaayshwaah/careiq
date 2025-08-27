@@ -1,8 +1,7 @@
-// src/components/AppShell.tsx - Updated for ChatGPT-style layout
+// src/components/AppShell.tsx - Simplified for ChatGPT-style layout
 "use client";
 
 import { useState, useEffect } from "react";
-import Sidebar from "@/components/Sidebar";
 import { useAuth } from "@/components/AuthProvider";
 import { usePathname } from "next/navigation";
 
@@ -11,7 +10,6 @@ interface AppShellProps {
 }
 
 export default function AppShell({ children }: AppShellProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { isAuthenticated } = useAuth();
   const pathname = usePathname();
@@ -20,17 +18,15 @@ export default function AppShell({ children }: AppShellProps) {
     setMounted(true);
   }, []);
 
-  // Don't show sidebar on auth pages or admin pages (admin has its own layout)
+  // Don't show loading on auth pages or admin pages
   const isAuthPage = pathname?.startsWith("/login") || 
                      pathname?.startsWith("/register") || 
                      pathname?.startsWith("/(auth)");
   const isAdminPage = pathname?.startsWith("/admin");
-  const isHomePage = pathname === "/";
-  const showSidebar = mounted && !isAuthPage && !isAdminPage && isAuthenticated;
 
-  if (!mounted) {
+  if (!mounted && !isAuthPage) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="flex h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
           <p className="text-sm text-gray-600 dark:text-gray-400">Loading CareIQ...</p>
@@ -44,7 +40,7 @@ export default function AppShell({ children }: AppShellProps) {
     return <div className="min-h-screen bg-gray-50 dark:bg-gray-900">{children}</div>;
   }
 
-  // Auth pages don't need sidebar
+  // Auth pages don't need app shell
   if (isAuthPage) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
@@ -55,36 +51,10 @@ export default function AppShell({ children }: AppShellProps) {
     );
   }
 
-  // Homepage gets special treatment - full width without sidebar
-  if (isHomePage && isAuthenticated) {
-    return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex">
-        <Sidebar 
-          collapsed={sidebarCollapsed} 
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
-        />
-        <main className="flex-1 overflow-hidden">
-          {children}
-        </main>
-      </div>
-    );
-  }
-
-  // Chat pages and other authenticated pages
+  // Main app - let pages handle their own layout (ChatGPT style)
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
-      {showSidebar && (
-        <Sidebar 
-          collapsed={sidebarCollapsed} 
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
-        />
-      )}
-      
-      <main className={`flex-1 flex flex-col min-w-0 ${showSidebar ? '' : 'w-full'}`}>
-        <div className="flex-1 overflow-hidden">
-          {children}
-        </div>
-      </main>
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      {children}
     </div>
   );
 }

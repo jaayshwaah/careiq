@@ -1,9 +1,9 @@
-// src/components/Chat.tsx - Complete fixed version
+// src/components/Chat.tsx - ChatGPT-style chat interface
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Menu, Plus, Send } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
 type Msg = {
@@ -14,13 +14,14 @@ type Msg = {
   created_at: string;
 };
 
-function TypingDots() {
+function TypingIndicator() {
   return (
-    <div className="flex items-center gap-1">
-      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-      <span className="ml-2 text-sm text-gray-500">CareIQ is thinking...</span>
+    <div className="flex items-center gap-1 py-2">
+      <div className="flex gap-1">
+        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+      </div>
     </div>
   );
 }
@@ -41,7 +42,7 @@ function CopyButton({ content, className = "" }: { content: string; className?: 
   return (
     <button
       onClick={copyToClipboard}
-      className={`p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${className}`}
+      className={`p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${className}`}
       title="Copy response"
     >
       {copied ? (
@@ -53,46 +54,80 @@ function CopyButton({ content, className = "" }: { content: string; className?: 
   );
 }
 
-function CareIQLogo({ className = "" }: { className?: string }) {
+function MessageBubble({ message, isStreaming = false }: { message: Msg; isStreaming?: boolean }) {
+  const isUser = message.role === "user";
+  
   return (
-    <div className={`flex items-center justify-center bg-blue-600 rounded-full text-white font-bold ${className}`}>
-      <span className="text-sm">CIQ</span>
+    <div className={`group w-full ${isUser ? '' : 'bg-gray-50 dark:bg-gray-800'}`}>
+      <div className="max-w-3xl mx-auto px-4 py-4 flex gap-4">
+        {/* Avatar */}
+        <div className="flex-shrink-0">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            isUser 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-green-600 text-white'
+          }`}>
+            <span className="text-sm font-medium">
+              {isUser ? 'U' : 'C'}
+            </span>
+          </div>
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+              {isUser ? 'You' : 'CareIQ'}
+            </span>
+          </div>
+          
+          <div className="prose prose-sm max-w-none dark:prose-invert">
+            {message.content ? (
+              <div className="whitespace-pre-wrap break-words">
+                {message.content}
+              </div>
+            ) : isStreaming ? (
+              <TypingIndicator />
+            ) : null}
+          </div>
+          
+          {/* Actions */}
+          {!isUser && message.content && (
+            <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <CopyButton content={message.content} />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-// Simple Composer Component
-function Composer({
-  onSend,
-  placeholder = "Message CareIQ...",
-  disabled = false,
-}: {
+function MessageInput({ 
+  onSend, 
+  disabled = false 
+}: { 
   onSend: (text: string) => void;
-  placeholder?: string;
   disabled?: boolean;
 }) {
   const [value, setValue] = useState("");
-  const [sending, setSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+    }
+  }, [value]);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = value.trim();
-    if (!trimmed || disabled || sending) return;
-
-    setSending(true);
-    try {
-      await onSend(trimmed);
-      setValue("");
-      // Reset textarea height
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-      }
-    } catch (error) {
-      console.error('Send failed:', error);
-    } finally {
-      setSending(false);
-    }
+    if (!trimmed || disabled) return;
+    
+    onSend(trimmed);
+    setValue("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -102,36 +137,33 @@ function Composer({
     }
   };
 
-  // Auto-resize textarea
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(e.target.value);
-    const textarea = e.target;
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
-  };
-
   return (
-    <form onSubmit={handleSubmit} className="border rounded-xl bg-white dark:bg-gray-800 shadow-sm">
-      <div className="flex items-end p-3 gap-3">
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={handleInput}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          disabled={disabled || sending}
-          className="flex-1 resize-none border-0 bg-transparent outline-none max-h-[200px] min-h-[44px] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-          rows={1}
-        />
-        <button
-          type="submit"
-          disabled={!value.trim() || disabled || sending}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {sending ? "..." : "Send"}
-        </button>
+    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <div className="max-w-3xl mx-auto px-4 py-4">
+        <form onSubmit={handleSubmit} className="relative">
+          <div className="relative bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Message CareIQ..."
+              disabled={disabled}
+              className="w-full resize-none border-0 bg-transparent px-4 py-4 pr-12 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none"
+              style={{ minHeight: '56px', maxHeight: '200px' }}
+              rows={1}
+            />
+            <button
+              type="submit"
+              disabled={!value.trim() || disabled}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 flex items-center justify-center transition-colors"
+            >
+              <Send size={14} className={value.trim() && !disabled ? 'text-gray-900 dark:text-white' : 'text-gray-500'} />
+            </button>
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
   );
 }
 
@@ -146,19 +178,15 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   
   const controllerRef = useRef<AbortController | null>(null);
-  const listRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const suggestions = useMemo(
-    () => [
-      "What should I prep for the next survey?",
-      "Create a quick policy checklist",
-      "Summarize today's top compliance risks",
-      "Draft a CNA training outline",
-    ],
-    []
-  );
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs.length]);
 
   // Load messages
   useEffect(() => {
@@ -169,7 +197,6 @@ export default function Chat({ chatId }: { chatId: string }) {
         setLoading(true);
         setError(null);
         
-        // Get auth session
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) {
           router.push('/login');
@@ -227,13 +254,6 @@ export default function Chat({ chatId }: { chatId: string }) {
       }
     }
   }, [loading, msgs.length, hasProcessedInitialMessage, searchParams]);
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-    }
-  }, [msgs.length]);
 
   // Stop streaming
   const handleStop = () => {
@@ -392,41 +412,40 @@ export default function Chat({ chatId }: { chatId: string }) {
     }
   };
 
-  // Empty state suggestions
-  const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-      <div className="mb-6">
-        <CareIQLogo className="w-16 h-16 mx-auto mb-4" />
-        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-          Welcome to CareIQ
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Ask me anything about nursing home compliance and operations
-        </p>
-      </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
-        {suggestions.map((text) => (
-          <button
-            key={text}
-            onClick={() => handleSend(text)}
-            disabled={streaming}
-            className="p-4 text-left rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 dark:border-gray-700 dark:hover:border-blue-600 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
-          >
-            <span className="text-sm font-medium">{text}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  const createNewChat = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/chats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+        },
+        body: JSON.stringify({ title: 'New chat' }),
+      });
+
+      if (response.ok) {
+        const { chat } = await response.json();
+        if (chat?.id) {
+          router.push(`/chat/${chat.id}`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create new chat:', error);
+      const chatId = crypto.randomUUID();
+      router.push(`/chat/${chatId}`);
+    }
+  };
 
   // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading messages...</p>
+      <div className="flex h-screen bg-white dark:bg-gray-900">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading messages...</p>
+          </div>
         </div>
       </div>
     );
@@ -435,107 +454,132 @@ export default function Chat({ chatId }: { chatId: string }) {
   // Error state
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Try Again
-          </button>
+      <div className="flex h-screen bg-white dark:bg-gray-900">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Messages area */}
-      <div
-        ref={listRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
-        style={{ height: 'calc(100vh - 200px)' }}
-      >
-        {msgs.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <>
-            {msgs.map((m) => (
-              <div key={m.id} className="flex items-start gap-3">
-                {/* Avatar */}
-                <div className="flex-shrink-0">
-                  {m.role === "user" ? (
-                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-700">You</span>
-                    </div>
-                  ) : (
-                    <CareIQLogo className="w-8 h-8" />
-                  )}
-                </div>
+    <div className="flex h-screen bg-white dark:bg-gray-900">
+      {/* Mobile sidebar overlay */}
+      {showSidebar && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
 
-                {/* Message content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {m.role === "user" ? "You" : "CareIQ"}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(m.created_at).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 relative group">
-                    <div className="whitespace-pre-wrap text-gray-900 dark:text-white">
-                      {m.content}
-                    </div>
-                    
-                    {/* Copy button for assistant messages */}
-                    {m.role === "assistant" && m.content.trim() && (
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <CopyButton content={m.content} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            {/* Streaming indicator */}
-            {streaming && (
-              <div className="flex items-start gap-3">
-                <CareIQLogo className="w-8 h-8" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">CareIQ</span>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                    <TypingDots />
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+      {/* Sidebar */}
+      <div className={`
+        fixed md:relative h-full w-64 bg-gray-900 text-white transform transition-transform z-50
+        ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-4">
+          <button
+            onClick={createNewChat}
+            className="w-full flex items-center gap-2 px-3 py-2 border border-gray-600 rounded-md hover:bg-gray-800 transition-colors"
+          >
+            <Plus size={16} />
+            <span>New chat</span>
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto px-4">
+          <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Recent</div>
+          <div className="space-y-1">
+            <div className="text-sm text-gray-500 py-8 text-center">
+              No conversations yet
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-4 border-t border-gray-700">
+          <div className="text-sm text-gray-400">
+            Signed in as User
+          </div>
+        </div>
       </div>
 
-      {/* Composer */}
-      <div className="border-t p-4 bg-white dark:bg-gray-900">
-        <Composer
-          placeholder="Ask CareIQ about compliance, regulations, or operations..."
-          disabled={streaming}
-          onSend={handleSend}
-        />
+      {/* Main chat area */}
+      <div className="flex-1 flex flex-col">
+        {/* Mobile header */}
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setShowSidebar(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+          >
+            <Menu size={20} />
+          </button>
+          <h1 className="font-semibold">CareIQ</h1>
+          <div className="w-8" />
+        </div>
+
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto">
+          {msgs.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center max-w-md mx-auto p-6">
+                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-white font-bold text-lg">C</span>
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+                  How can I help you today?
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Ask me anything about nursing home compliance and operations
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {msgs.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+              
+              {/* Streaming indicator */}
+              {streaming && (
+                <MessageBubble 
+                  message={{
+                    id: 'streaming',
+                    chat_id: chatId,
+                    role: 'assistant',
+                    content: '',
+                    created_at: new Date().toISOString()
+                  }}
+                  isStreaming={true}
+                />
+              )}
+              
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </div>
+
+        {/* Input area */}
+        <MessageInput onSend={handleSend} disabled={streaming} />
         
         {/* Stop button when streaming */}
         {streaming && (
-          <div className="flex justify-center mt-3">
-            <button
-              onClick={handleStop}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              Stop generating
-            </button>
+          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-2">
+            <div className="max-w-3xl mx-auto px-4">
+              <button
+                onClick={handleStop}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Stop generating
+              </button>
+            </div>
           </div>
         )}
       </div>

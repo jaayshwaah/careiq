@@ -3,12 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { buildRagContext } from "@/lib/ai/buildRagContext";
 import { encryptPHI } from "@/lib/crypto/phi";
-import { recordAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
-// Enhanced system prompt
-const SYSTEM_PROMPT = `You are CareIQ, an expert assistant for U.S. nursing home operations and compliance.
+const SYSTEM_PROMPT = `You are CareIQ, an expert AI assistant for U.S. nursing home compliance and operations.
 
 Write responses in clean, professional prose without asterisks or markdown formatting.
 Use plain text with proper paragraphs. When listing items, use numbered lists or write in sentence form.
@@ -23,10 +21,6 @@ Keep responses concise but comprehensive, focused on actionable guidance.
 When you use retrieved knowledge, cite by bracketed number [1], [2], etc.`;
 
 export async function POST(req: NextRequest) {
-  const requestId = crypto.randomUUID();
-  const userIP = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
-  const userAgent = req.headers.get("user-agent") || "unknown";
-
   try {
     // Parse request
     const { chatId, content, temperature = 0.3, maxTokens = 1500 } = await req.json();
@@ -45,17 +39,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Verify chat ownership
-    const { data: chat, error: chatError } = await supa
-      .from("chats")
-      .select("id, user_id")
-      .eq("id", chatId)
-      .single();
-
-    if (chatError || !chat || chat.user_id !== user.id) {
-      return NextResponse.json({ error: "Chat not found or unauthorized" }, { status: 404 });
-    }
-
     // Get user profile for context
     const { data: profile } = await supa
       .from("profiles")
@@ -63,14 +46,14 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    // Build enhanced RAG context with facility-specific search
+    // Build RAG context
     let ragContext = "";
     try {
       ragContext = await buildRagContext({
         query: content,
         facilityId: profile?.facility_id,
         facilityState: profile?.facility_state,
-        topK: 8, // Increased for better context
+        topK: 6,
         accessToken,
         useVector: true,
       });
@@ -78,15 +61,15 @@ export async function POST(req: NextRequest) {
       console.warn("RAG context building failed:", error);
     }
 
-    // Get recent chat history (decrypt on the fly)
+    // Get recent chat history
     const { data: recentMessages } = await supa
       .from("messages")
       .select("role, content_enc, content_iv, content_tag")
       .eq("chat_id", chatId)
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(6);
 
-    // Decrypt and format messages
+    // Decrypt messages
     const messages = [];
     if (recentMessages) {
       const { decryptPHI } = await import("@/lib/crypto/phi");
@@ -100,101 +83,49 @@ export async function POST(req: NextRequest) {
           messages.push({ role: msg.role, content: decrypted });
         } catch (error) {
           console.warn("Failed to decrypt message:", error);
-          // Skip corrupted messages
         }
       }
     }
 
-    // Build enhanced system prompt with user context
+    // Build system prompt with context
     let systemPrompt = SYSTEM_PROMPT;
-    
-    if (profile) {
-      const roleContext = profile.role ? `You are speaking with a ${profile.role}` : "You are speaking with a healthcare professional";
-      const facilityContext = profile.facility_name 
-        ? `at ${profile.facility_name}` 
-        : "at a nursing facility";
-      const stateContext = profile.facility_state 
-        ? `in ${profile.facility_state}` 
-        : "";
-      const nameContext = profile.full_name 
-        ? ` (${profile.full_name})` 
-        : "";
-      
-      systemPrompt += `\n\nIMPORTANT CONTEXT: ${roleContext}${nameContext} ${facilityContext}${stateContext}.`;
-      
-      // Add role-specific guidance
-      if (profile.role?.toLowerCase().includes('administrator')) {
-        systemPrompt += `\nAs an administrator, focus on: operational efficiency, regulatory compliance, staff management, budgeting, and facility-wide policies. Provide strategic guidance and management perspectives.`;
-      } else if (profile.role?.toLowerCase().includes('director of nursing') || profile.role?.toLowerCase().includes('don')) {
-        systemPrompt += `\nAs Director of Nursing, focus on: clinical oversight, nursing staff management, care plan reviews, regulatory nursing requirements, and clinical quality improvement.`;
-      } else if (profile.role?.toLowerCase().includes('nurse') && !profile.role?.toLowerCase().includes('director')) {
-        systemPrompt += `\nAs a nurse, focus on: direct patient care, clinical procedures, medication administration, documentation requirements, and care plan implementation.`;
-      } else if (profile.role?.toLowerCase().includes('cna')) {
-        systemPrompt += `\nAs a CNA, focus on: direct resident care, daily living assistance, observation and reporting, documentation, and following care plans.`;
+    if (profile?.role) {
+      systemPrompt += `\n\nYou are speaking with a ${profile.role}`;
+      if (profile.facility_name) {
+        systemPrompt += ` at ${profile.facility_name}`;
       }
-      
-      // Add state-specific note
       if (profile.facility_state) {
-        systemPrompt += `\n\nSTATE-SPECIFIC: Pay special attention to ${profile.facility_state} state regulations and requirements. When federal and state regulations differ, clearly distinguish between them.`;
+        systemPrompt += ` in ${profile.facility_state}`;
       }
     }
-    
     if (ragContext) {
-      systemPrompt += `\n\n${ragContext}`;
-    }     if (ragContext) {
       systemPrompt += `\n\n${ragContext}`;
     }
 
     // Save user message first
     const userMsgEncrypted = encryptPHI(content);
-    const { data: userMessage, error: userMsgError } = await supa
-      .from("messages")
-      .insert({
-        chat_id: chatId,
-        role: "user",
-        content_enc: userMsgEncrypted.ciphertext.toString("base64"),
-        content_iv: userMsgEncrypted.iv.toString("base64"),
-        content_tag: userMsgEncrypted.tag.toString("base64"),
-      })
-      .select("id")
-      .single();
-
-    if (userMsgError) {
-      console.error("Failed to save user message:", userMsgError);
-      return NextResponse.json({ error: "Failed to save message" }, { status: 500 });
-    }
-
-    // Prepare messages for AI (keep context reasonable)
-    const aiMessages = [
-      { role: "system" as const, content: systemPrompt },
-      ...messages.slice(-6), // Keep last 6 messages for context
-      { role: "user" as const, content }
-    ];
-
-    // Audit log
-    try {
-      await recordAudit({
-        user_id: user.id,
-        action: "message.stream",
-        resource_type: "chat",
-        resource_id: chatId,
-        request_id: requestId,
-        ip: userIP,
-        user_agent: userAgent,
-        metadata: { messageCount: aiMessages.length - 1, hasRAG: !!ragContext },
-      });
-    } catch (auditError) {
-      console.warn("Audit logging failed:", auditError);
-    }
+    await supa.from("messages").insert({
+      chat_id: chatId,
+      role: "user",
+      content_enc: userMsgEncrypted.ciphertext.toString("base64"),
+      content_iv: userMsgEncrypted.iv.toString("base64"),
+      content_tag: userMsgEncrypted.tag.toString("base64"),
+    });
 
     // Get OpenRouter config
     const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
     const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
 
     if (!OPENROUTER_API_KEY) {
-      console.error("OPENROUTER_API_KEY not configured");
       return NextResponse.json({ error: "AI service not configured" }, { status: 503 });
     }
+
+    // Prepare messages for AI
+    const aiMessages = [
+      { role: "system" as const, content: systemPrompt },
+      ...messages.slice(-4),
+      { role: "user" as const, content }
+    ];
 
     // Call OpenRouter for streaming response
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -202,7 +133,7 @@ export async function POST(req: NextRequest) {
       headers: {
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "https://careiq-eight.vercel.app",
+        "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "https://careiq.vercel.app",
         "X-Title": process.env.OPENROUTER_SITE_NAME || "CareIQ",
       },
       body: JSON.stringify({
@@ -220,7 +151,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI service unavailable" }, { status: 503 });
     }
 
-    // Stream response
+    // Create readable stream
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
@@ -256,7 +187,6 @@ export async function POST(req: NextRequest) {
                   const content = parsed.choices?.[0]?.delta?.content || "";
                   if (content) {
                     fullResponse += content;
-                    // Send SSE formatted chunk
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
                   }
                 } catch (e) {
@@ -266,29 +196,24 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // Save assistant response to database
+          // Save assistant response
           if (fullResponse.trim()) {
-            try {
-              const assistantMsgEncrypted = encryptPHI(fullResponse);
-              await supa.from("messages").insert({
-                chat_id: chatId,
-                role: "assistant",
-                content_enc: assistantMsgEncrypted.ciphertext.toString("base64"),
-                content_iv: assistantMsgEncrypted.iv.toString("base64"),
-                content_tag: assistantMsgEncrypted.tag.toString("base64"),
-              });
+            const assistantMsgEncrypted = encryptPHI(fullResponse);
+            await supa.from("messages").insert({
+              chat_id: chatId,
+              role: "assistant",
+              content_enc: assistantMsgEncrypted.ciphertext.toString("base64"),
+              content_iv: assistantMsgEncrypted.iv.toString("base64"),
+              content_tag: assistantMsgEncrypted.tag.toString("base64"),
+            });
 
-              // Update chat timestamp
-              await supa
-                .from("chats")
-                .update({ updated_at: new Date().toISOString() })
-                .eq("id", chatId);
-            } catch (saveError) {
-              console.error("Failed to save assistant message:", saveError);
-            }
+            // Update chat timestamp
+            await supa
+              .from("chats")
+              .update({ updated_at: new Date().toISOString() })
+              .eq("id", chatId);
           }
 
-          // Send completion signal
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
 
@@ -312,19 +237,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error("Stream API error:", error);
-    
-    try {
-      await recordAudit({
-        action: "message.stream_error",
-        request_id: requestId,
-        ip: userIP,
-        user_agent: userAgent,
-        metadata: { error: String(error) },
-      });
-    } catch (auditError) {
-      console.warn("Error audit logging failed:", auditError);
-    }
-
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
