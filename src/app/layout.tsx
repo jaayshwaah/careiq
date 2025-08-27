@@ -7,6 +7,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/AuthProvider";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "CareIQ Chat",
@@ -44,7 +45,9 @@ export default function RootLayout({
       <body className="bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased">
         <ThemeProvider>
           <AuthProvider>
-            {children}
+            <AppShell>
+              {children}
+            </AppShell>
           </AuthProvider>
         </ThemeProvider>
       </body>
