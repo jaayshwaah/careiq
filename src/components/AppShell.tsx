@@ -1,4 +1,4 @@
-// src/components/AppShell.tsx - Updated to ensure proper rendering
+// src/components/AppShell.tsx - Updated for ChatGPT-style layout
 "use client";
 
 import { useState, useEffect } from "react";
@@ -25,7 +25,8 @@ export default function AppShell({ children }: AppShellProps) {
                      pathname?.startsWith("/register") || 
                      pathname?.startsWith("/(auth)");
   const isAdminPage = pathname?.startsWith("/admin");
-  const showSidebar = mounted && !isAuthPage && !isAdminPage;
+  const isHomePage = pathname === "/";
+  const showSidebar = mounted && !isAuthPage && !isAdminPage && isAuthenticated;
 
   if (!mounted) {
     return (
@@ -54,6 +55,22 @@ export default function AppShell({ children }: AppShellProps) {
     );
   }
 
+  // Homepage gets special treatment - full width without sidebar
+  if (isHomePage && isAuthenticated) {
+    return (
+      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex">
+        <Sidebar 
+          collapsed={sidebarCollapsed} 
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+        />
+        <main className="flex-1 overflow-hidden">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
+  // Chat pages and other authenticated pages
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
       {showSidebar && (
