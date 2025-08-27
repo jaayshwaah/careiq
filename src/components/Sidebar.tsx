@@ -14,7 +14,6 @@ import {
   CalendarDays,
   Shield,
 } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
@@ -210,7 +209,6 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 </div>
                 <h1 className="text-lg font-semibold">CareIQ</h1>
               </div>
-              <ThemeToggle />
             </div>
           )}
         </div>

@@ -59,23 +59,23 @@ export async function POST(req: NextRequest) {
     // Get user profile for context
     const { data: profile } = await supa
       .from("profiles")
-      .select("role, facility_id, facility_name, facility_state")
+      .select("role, facility_id, facility_name, facility_state, full_name")
       .eq("user_id", user.id)
       .single();
 
-    // Build RAG context (with error handling)
+    // Build enhanced RAG context with facility-specific search
     let ragContext = "";
     try {
       ragContext = await buildRagContext({
         query: content,
         facilityId: profile?.facility_id,
         facilityState: profile?.facility_state,
-        topK: 6,
+        topK: 8, // Increased for better context
         accessToken,
+        useVector: true,
       });
     } catch (error) {
       console.warn("RAG context building failed:", error);
-      // Continue without RAG context
     }
 
     // Get recent chat history (decrypt on the fly)
@@ -105,12 +105,43 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Build system prompt with context
+    // Build enhanced system prompt with user context
     let systemPrompt = SYSTEM_PROMPT;
+    
     if (profile) {
-      systemPrompt += `\n\nUser context: ${profile.role || "Staff member"} at ${profile.facility_name || "nursing facility"}${profile.facility_state ? ` in ${profile.facility_state}` : ""}.`;
+      const roleContext = profile.role ? `You are speaking with a ${profile.role}` : "You are speaking with a healthcare professional";
+      const facilityContext = profile.facility_name 
+        ? `at ${profile.facility_name}` 
+        : "at a nursing facility";
+      const stateContext = profile.facility_state 
+        ? `in ${profile.facility_state}` 
+        : "";
+      const nameContext = profile.full_name 
+        ? ` (${profile.full_name})` 
+        : "";
+      
+      systemPrompt += `\n\nIMPORTANT CONTEXT: ${roleContext}${nameContext} ${facilityContext}${stateContext}.`;
+      
+      // Add role-specific guidance
+      if (profile.role?.toLowerCase().includes('administrator')) {
+        systemPrompt += `\nAs an administrator, focus on: operational efficiency, regulatory compliance, staff management, budgeting, and facility-wide policies. Provide strategic guidance and management perspectives.`;
+      } else if (profile.role?.toLowerCase().includes('director of nursing') || profile.role?.toLowerCase().includes('don')) {
+        systemPrompt += `\nAs Director of Nursing, focus on: clinical oversight, nursing staff management, care plan reviews, regulatory nursing requirements, and clinical quality improvement.`;
+      } else if (profile.role?.toLowerCase().includes('nurse') && !profile.role?.toLowerCase().includes('director')) {
+        systemPrompt += `\nAs a nurse, focus on: direct patient care, clinical procedures, medication administration, documentation requirements, and care plan implementation.`;
+      } else if (profile.role?.toLowerCase().includes('cna')) {
+        systemPrompt += `\nAs a CNA, focus on: direct resident care, daily living assistance, observation and reporting, documentation, and following care plans.`;
+      }
+      
+      // Add state-specific note
+      if (profile.facility_state) {
+        systemPrompt += `\n\nSTATE-SPECIFIC: Pay special attention to ${profile.facility_state} state regulations and requirements. When federal and state regulations differ, clearly distinguish between them.`;
+      }
     }
+    
     if (ragContext) {
+      systemPrompt += `\n\n${ragContext}`;
+    }     if (ragContext) {
       systemPrompt += `\n\n${ragContext}`;
     }
 

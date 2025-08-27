@@ -437,11 +437,12 @@ export default function Chat({ chatId }: { chatId: string }) {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="h-full flex flex-col">
       {/* Messages area */}
       <div
         ref={listRef}
         className="flex-1 overflow-y-auto p-4 space-y-4"
+        style={{ height: 'calc(100vh - 200px)' }} // Ensure proper height calculation
       >
         {msgs.length === 0 ? (
           <EmptyState />
