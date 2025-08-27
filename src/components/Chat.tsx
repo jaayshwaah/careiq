@@ -1,4 +1,4 @@
-// src/components/Chat.tsx - Updated to handle initial messages
+// src/components/Chat.tsx - Complete fixed version
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -170,7 +170,128 @@ export default function Chat({ chatId }: { chatId: string }) {
         setError(null);
         
         // Get auth session
-        const response = await fetch("/api/messages/stream", {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          router.push('/login');
+          return;
+        }
+
+        const res = await fetch(`/api/messages/${encodeURIComponent(chatId)}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          cache: "no-store",
+        });
+        
+        if (!mounted) return;
+
+        if (res.ok) {
+          const json = await res.json();
+          const messages: Msg[] = json?.messages || [];
+          setMsgs(messages);
+        } else if (res.status === 401) {
+          router.push('/login');
+          return;
+        } else {
+          const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+          setError(errorData.error || `Error ${res.status}`);
+          setMsgs([]);
+        }
+      } catch (err) {
+        console.error('Failed to load messages:', err);
+        if (mounted) {
+          setError('Failed to load messages');
+          setMsgs([]);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+    
+    loadMessages();
+    return () => {
+      mounted = false;
+    };
+  }, [chatId, router, supabase]);
+
+  // Handle initial message from URL parameter
+  useEffect(() => {
+    if (!loading && !hasProcessedInitialMessage && msgs.length === 0) {
+      const initialMessage = searchParams.get('message');
+      if (initialMessage) {
+        setHasProcessedInitialMessage(true);
+        handleSend(initialMessage);
+      }
+    }
+  }, [loading, msgs.length, hasProcessedInitialMessage, searchParams]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [msgs.length]);
+
+  // Stop streaming
+  const handleStop = () => {
+    try {
+      controllerRef.current?.abort();
+    } catch (e) {
+      console.error('Failed to abort request:', e);
+    }
+    setStreaming(false);
+    controllerRef.current = null;
+  };
+
+  // Send message with streaming
+  const handleSend = async (content: string) => {
+    if (streaming || !content.trim()) return;
+
+    try {
+      // Get auth session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+
+      // Add user message immediately
+      const userMsg: Msg = {
+        id: `user-${Date.now()}`,
+        chat_id: chatId,
+        role: "user",
+        content: content.trim(),
+        created_at: new Date().toISOString(),
+      };
+      setMsgs(prev => [...prev, userMsg]);
+
+      // Generate title if this is the first message
+      if (msgs.length === 0) {
+        try {
+          fetch(`/api/chats/${encodeURIComponent(chatId)}/title`, {
+            method: "POST",
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            },
+          }).catch(err => console.warn('Title generation failed:', err));
+        } catch (e) {
+          console.warn('Title generation failed:', e);
+        }
+      }
+
+      // Start streaming
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      setStreaming(true);
+
+      const assistantId = `assistant-${Date.now()}`;
+      let assistantContent = "";
+
+      const response = await fetch("/api/messages/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -420,125 +541,4 @@ export default function Chat({ chatId }: { chatId: string }) {
       </div>
     </div>
   );
-} { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          router.push('/login');
-          return;
-        }
-
-        const res = await fetch(`/api/messages/${encodeURIComponent(chatId)}`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          cache: "no-store",
-        });
-        
-        if (!mounted) return;
-
-        if (res.ok) {
-          const json = await res.json();
-          const messages: Msg[] = json?.messages || [];
-          setMsgs(messages);
-        } else if (res.status === 401) {
-          router.push('/login');
-          return;
-        } else {
-          const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
-          setError(errorData.error || `Error ${res.status}`);
-          setMsgs([]);
-        }
-      } catch (err) {
-        console.error('Failed to load messages:', err);
-        if (mounted) {
-          setError('Failed to load messages');
-          setMsgs([]);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
-    
-    loadMessages();
-    return () => {
-      mounted = false;
-    };
-  }, [chatId, router, supabase]);
-
-  // Handle initial message from URL parameter
-  useEffect(() => {
-    if (!loading && !hasProcessedInitialMessage && msgs.length === 0) {
-      const initialMessage = searchParams.get('message');
-      if (initialMessage) {
-        setHasProcessedInitialMessage(true);
-        handleSend(initialMessage);
-      }
-    }
-  }, [loading, msgs.length, hasProcessedInitialMessage, searchParams]);
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-    }
-  }, [msgs.length]);
-
-  // Stop streaming
-  const handleStop = () => {
-    try {
-      controllerRef.current?.abort();
-    } catch (e) {
-      console.error('Failed to abort request:', e);
-    }
-    setStreaming(false);
-    controllerRef.current = null;
-  };
-
-  // Send message with streaming
-  const handleSend = async (content: string) => {
-    if (streaming || !content.trim()) return;
-
-    try {
-      // Get auth session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        router.push('/login');
-        return;
-      }
-
-      // Add user message immediately
-      const userMsg: Msg = {
-        id: `user-${Date.now()}`,
-        chat_id: chatId,
-        role: "user",
-        content: content.trim(),
-        created_at: new Date().toISOString(),
-      };
-      setMsgs(prev => [...prev, userMsg]);
-
-      // Generate title if this is the first message
-      if (msgs.length === 0) {
-        try {
-          fetch(`/api/chats/${encodeURIComponent(chatId)}/title`, {
-            method: "POST",
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            },
-          }).catch(err => console.warn('Title generation failed:', err));
-        } catch (e) {
-          console.warn('Title generation failed:', e);
-        }
-      }
-
-      // Start streaming
-      const controller = new AbortController();
-      controllerRef.current = controller;
-      setStreaming(true);
-
-      const assistantId = `assistant-${Date.now()}`;
-      let assistantContent = "";
-
-      const
+}
