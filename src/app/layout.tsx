@@ -6,6 +6,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
   title: "CareIQ Chat",
@@ -42,7 +43,9 @@ export default function RootLayout({
       </head>
       <body className="bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased">
         <ThemeProvider>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
