@@ -1,14 +1,12 @@
 /* 
    FILE: src/components/MessageList.tsx
-   Replace entire file with this enhanced version
+   Enhanced message list with auto-follow, regeneration, and advanced features
 */
 
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, Paperclip, RefreshCcw, Copy, Check } from "lucide-react";
-import { useAutoFollow } from "@/hooks/useAutoFollow";
-import Toast from "./Toast";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { ArrowDown, Paperclip, RefreshCcw, Copy, Check, ThumbsUp, ThumbsDown, MoreHorizontal, Bookmark } from "lucide-react";
 
 export type ChatRole = "system" | "user" | "assistant";
 
@@ -19,6 +17,7 @@ export type Attachment = {
   url?: string;
   size?: number;
   text?: string;
+  preview?: string;
 };
 
 export type ChatMessage = {
@@ -27,26 +26,109 @@ export type ChatMessage = {
   content: string;
   createdAt?: number | string;
   attachments?: Attachment[];
+  isStreaming?: boolean;
+  error?: string;
 };
 
 type MessageListProps = {
   messages: ChatMessage[];
   onRegenerate?: () => void;
-  followNowSignal?: number;
+  onEdit?: (messageId: string, newContent: string) => void;
+  onDelete?: (messageId: string) => void;
+  onBookmark?: (message: ChatMessage) => void;
+  onFeedback?: (messageId: string, type: 'up' | 'down') => void;
   isAssistantStreaming?: boolean;
   className?: string;
 };
 
-// Enhanced thinking dots with liquid animation
-function ThinkingDots() {
+// Auto-follow hook for smooth scrolling behavior
+function useAutoFollow() {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isAutoFollow, setIsAutoFollow] = useState(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: smooth ? "smooth" : "auto"
+    });
+  }, []);
+
+  const resumeAutoFollow = useCallback(() => {
+    setIsAutoFollow(true);
+    scrollToBottom(true);
+  }, [scrollToBottom]);
+
+  // Check if user is at bottom
+  const checkScrollPosition = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+    
+    setIsAtBottom(atBottom);
+    setShowScrollButton(!atBottom);
+    
+    if (!atBottom) {
+      setIsAutoFollow(false);
+    }
+  }, []);
+
+  // Auto-follow when messages change and we're in auto-follow mode
+  useEffect(() => {
+    if (isAutoFollow) {
+      const timer = setTimeout(() => scrollToBottom(true), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isAutoFollow, scrollToBottom]);
+
+  // Listen for scroll events
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', checkScrollPosition, { passive: true });
+    return () => container.removeEventListener('scroll', checkScrollPosition);
+  }, [checkScrollPosition]);
+
+  // Resume auto-follow on external signals
+  useEffect(() => {
+    const handleResumeAutoFollow = () => resumeAutoFollow();
+    window.addEventListener('careiq:resume-autofollow', handleResumeAutoFollow);
+    return () => window.removeEventListener('careiq:resume-autofollow', handleResumeAutoFollow);
+  }, [resumeAutoFollow]);
+
+  return {
+    containerRef,
+    bottomRef,
+    isAtBottom,
+    isAutoFollow,
+    showScrollButton,
+    scrollToBottom,
+    resumeAutoFollow,
+  };
+}
+
+// Enhanced thinking indicator
+function ThinkingIndicator() {
   return (
-    <div className="flex items-center space-x-2">
-      <div className="thinking-dots">
-        <div className="thinking-dot"></div>
-        <div className="thinking-dot"></div>
-        <div className="thinking-dot"></div>
+    <div className="flex items-center space-x-1">
+      <div className="flex space-x-1">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+            style={{ animationDelay: `${i * 0.1}s`, animationDuration: '0.6s' }}
+          />
+        ))}
       </div>
-      <span className="text-[var(--text-secondary)] text-sm ml-2">Thinking...</span>
+      <span className="text-sm text-gray-500 ml-2">Thinking...</span>
     </div>
   );
 }
@@ -54,76 +136,267 @@ function ThinkingDots() {
 export default function MessageList({
   messages,
   onRegenerate,
-  followNowSignal,
+  onEdit,
+  onDelete,
+  onBookmark,
+  onFeedback,
   isAssistantStreaming = false,
   className = "",
 }: MessageListProps) {
   const {
     containerRef,
-    bottomSentinelRef,
-    isAtBottom,
-    isAutoFollow,
-    scrollToBottom,
+    bottomRef,
+    showScrollButton,
     resumeAutoFollow,
   } = useAutoFollow();
 
-  const [showNewReplyToast, setShowNewReplyToast] = useState(false);
-  const lastAssistantTextLenRef = useRef<number>(0);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
 
-  // If parent bumps followNowSignal, resume auto-follow
-  useEffect(() => {
-    if (typeof followNowSignal === "number") {
-      resumeAutoFollow();
+  // Copy to clipboard with feedback
+  const copyToClipboard = async (text: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(messageId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
     }
-  }, [followNowSignal, resumeAutoFollow]);
+  };
 
-  // Derived length of last assistant content to detect token growth
-  const assistantTextLen = useMemo(() => {
-    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-    return lastAssistant ? (lastAssistant.content || "").length : 0;
-  }, [messages]);
+  // Start editing message
+  const startEdit = (messageId: string, currentContent: string) => {
+    setEditingId(messageId);
+    setEditContent(currentContent);
+  };
 
-  // Show toast when assistant tokens grow while scrolled up
-  useEffect(() => {
-    if (!isAssistantStreaming) {
-      setShowNewReplyToast(false);
-      lastAssistantTextLenRef.current = assistantTextLen;
-      return;
+  // Save edit
+  const saveEdit = () => {
+    if (editingId && onEdit) {
+      onEdit(editingId, editContent);
     }
-    const grew = assistantTextLen > lastAssistantTextLenRef.current;
-    if (grew && !isAtBottom) {
-      setShowNewReplyToast(true);
-    }
-    lastAssistantTextLenRef.current = assistantTextLen;
-  }, [assistantTextLen, isAssistantStreaming, isAtBottom]);
+    setEditingId(null);
+    setEditContent("");
+  };
 
-  // Keep auto-follow when enabled
-  useEffect(() => {
-    if (isAutoFollow) {
-      const raf = requestAnimationFrame(() => scrollToBottom(false));
-      return () => cancelAnimationFrame(raf);
+  // Cancel edit
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditContent("");
+  };
+
+  // Format timestamp
+  const formatTime = (timestamp?: number | string) => {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    if (isToday) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-  }, [messages.length, isAutoFollow, scrollToBottom]);
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Render file attachment
+  const renderAttachment = (attachment: Attachment) => {
+    const isImage = attachment.type?.startsWith('image/') || attachment.preview;
+    
+    return (
+      <div key={attachment.id || attachment.name} className="mt-2">
+        {isImage && attachment.preview ? (
+          <img
+            src={attachment.preview}
+            alt={attachment.name}
+            className="max-w-sm rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => window.open(attachment.preview, '_blank')}
+          />
+        ) : (
+          <div className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">
+            <Paperclip className="h-4 w-4 text-gray-500" />
+            <span className="font-medium">{attachment.name}</span>
+            {attachment.size && (
+              <span className="text-gray-500">
+                ({(attachment.size / 1024 / 1024).toFixed(1)} MB)
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Message component
+  const MessageRow = ({ message, index }: { message: ChatMessage; index: number }) => {
+    const isUser = message.role === "user";
+    const isLast = index === messages.length - 1;
+    const isEditing = editingId === message.id;
+    const showRegenerate = !isUser && isLast && onRegenerate && !isAssistantStreaming;
+
+    return (
+      <div className={`group flex w-full ${isUser ? "justify-end" : "justify-start"} mb-6`}>
+        <div
+          className={`
+            relative max-w-[85%] rounded-2xl px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md
+            ${isUser
+              ? "bg-blue-500 text-white rounded-br-md"
+              : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-bl-md"
+            }
+            ${message.error ? "border-red-300 dark:border-red-600" : ""}
+          `}
+        >
+          {/* Timestamp */}
+          {message.createdAt && (
+            <div className={`text-xs mb-2 opacity-70 ${
+              isUser ? "text-white/70" : "text-gray-500 dark:text-gray-400"
+            }`}>
+              {formatTime(message.createdAt)}
+            </div>
+          )}
+
+          {/* Message content */}
+          {isEditing ? (
+            <div className="space-y-2">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                rows={3}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={saveEdit}
+                  className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  className="px-3 py-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm hover:bg-gray-400 dark:hover:bg-gray-500"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Error state */}
+              {message.error && (
+                <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-400">
+                  ⚠️ {message.error}
+                </div>
+              )}
+
+              {/* Text content */}
+              <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                {message.content || (message.isStreaming ? <ThinkingIndicator /> : "")}
+              </div>
+
+              {/* Attachments */}
+              {message.attachments && message.attachments.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {message.attachments.map(renderAttachment)}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Action buttons */}
+          {!isEditing && (
+            <div className="absolute -bottom-2 right-4 opacity-0 group-hover:opacity-100 transition-all duration-200">
+              <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 px-2 py-1">
+                {/* Copy button */}
+                <button
+                  onClick={() => copyToClipboard(message.content, message.id)}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                  title="Copy message"
+                >
+                  {copiedId === message.id ? (
+                    <Check className="h-3.5 w-3.5 text-green-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-gray-500" />
+                  )}
+                </button>
+
+                {/* Bookmark button */}
+                {onBookmark && (
+                  <button
+                    onClick={() => onBookmark(message)}
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    title="Bookmark message"
+                  >
+                    <Bookmark className="h-3.5 w-3.5 text-gray-500" />
+                  </button>
+                )}
+
+                {/* Edit button (user messages only) */}
+                {isUser && onEdit && (
+                  <button
+                    onClick={() => startEdit(message.id, message.content)}
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    title="Edit message"
+                  >
+                    <MoreHorizontal className="h-3.5 w-3.5 text-gray-500" />
+                  </button>
+                )}
+
+                {/* Regenerate button (assistant messages only) */}
+                {showRegenerate && (
+                  <button
+                    onClick={onRegenerate}
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    title="Regenerate response"
+                  >
+                    <RefreshCcw className="h-3.5 w-3.5 text-gray-500" />
+                  </button>
+                )}
+
+                {/* Feedback buttons (assistant messages only) */}
+                {!isUser && onFeedback && (
+                  <>
+                    <button
+                      onClick={() => onFeedback(message.id, 'up')}
+                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                      title="Good response"
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5 text-gray-500" />
+                    </button>
+                    <button
+                      onClick={() => onFeedback(message.id, 'down')}
+                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                      title="Poor response"
+                    >
+                      <ThumbsDown className="h-3.5 w-3.5 text-gray-500" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className={["relative flex h-full w-full flex-col", className].join(" ")}>
-      {/* Scroll container with enhanced styling */}
+    <div className={`relative flex h-full w-full flex-col ${className}`}>
+      {/* Messages container */}
       <div
         ref={containerRef}
-        className="scroll-area relative h-full w-full overflow-y-auto px-4 py-6 sm:px-6"
-        aria-label="Conversation"
+        className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
+        style={{
+          scrollBehavior: "smooth",
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgb(156 163 175) transparent",
+        }}
       >
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-          {messages.map((m, i) => (
-            <MessageRow
-              key={m.id}
-              message={m}
-              showRegenerate={Boolean(onRegenerate) && i === messages.length - 1 && m.role === "assistant"}
-              onRegenerate={onRegenerate}
-            />
+        <div className="mx-auto max-w-4xl">
+          {messages.map((message, index) => (
+            <MessageRow key={message.id} message={message} index={index} />
           ))}
           
-          {/* Enhanced thinking indicator */}
+          {/* Streaming indicator */}
           {isAssistantStreaming && (
             (() => {
               const lastMessage = messages[messages.length - 1];
@@ -131,163 +404,29 @@ export default function MessageList({
                 (lastMessage.role === "assistant" && (!lastMessage.content || lastMessage.content.trim() === ""));
               
               return shouldShowThinking ? (
-                <div className="flex w-full justify-start">
-                  <div className="message-assistant animate-scaleIn">
-                    <ThinkingDots />
+                <div className="flex w-full justify-start mb-6">
+                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+                    <ThinkingIndicator />
                   </div>
                 </div>
               ) : null;
             })()
           )}
           
-          <div ref={bottomSentinelRef} className="h-1 w-full" />
+          <div ref={bottomRef} className="h-1" />
         </div>
       </div>
 
-      {/* Enhanced jump to latest FAB */}
-      <button
-        type="button"
-        onClick={() => resumeAutoFollow()}
-        aria-label="Jump to latest"
-        className={`
-          fab z-50 transition-all duration-300
-          ${isAtBottom ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"}
-        `}
-      >
-        <ArrowDown className="h-5 w-5" />
-        <span className="sr-only">Jump to latest message</span>
-      </button>
-
-      {/* Enhanced new reply toast */}
-      <Toast
-        open={showNewReplyToast && !isAtBottom}
-        label="New reply"
-        onClick={() => {
-          setShowNewReplyToast(false);
-          resumeAutoFollow();
-        }}
-      />
-    </div>
-  );
-}
-
-function MessageRow({
-  message,
-  showRegenerate,
-  onRegenerate,
-}: {
-  message: ChatMessage;
-  showRegenerate?: boolean;
-  onRegenerate?: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  const isUser = message.role === "user";
-
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(message.content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy message:", error);
-    }
-  };
-
-  const formatTime = (timestamp?: number | string) => {
-    if (!timestamp) return "";
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  return (
-    <div className={`flex w-full group ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`
-          max-w-[85%] rounded-2xl px-5 py-4 text-[15px] leading-6 shadow-sm relative
-          transition-all duration-200 hover:scale-[1.01]
-          ${isUser
-            ? "message-user"
-            : "message-assistant"
-          }
-        `}
-      >
-        {/* Timestamp */}
-        {message.createdAt && (
-          <div className={`text-xs opacity-60 mb-2 ${isUser ? 'text-white/70' : 'text-[var(--text-tertiary)]'}`}>
-            {formatTime(message.createdAt)}
-          </div>
-        )}
-
-        {/* Message content */}
-        <div className="whitespace-pre-wrap">
-          {message.content}
-        </div>
-
-        {/* Enhanced attachment chips */}
-        {Array.isArray(message.attachments) && message.attachments.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {message.attachments.map((a, idx) => (
-              <div
-                key={a.id || `${message.id}-att-${idx}`}
-                className={`
-                  inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs
-                  transition-all duration-200 hover:scale-105 cursor-pointer
-                  ${isUser 
-                    ? 'bg-white/20 text-white/90 hover:bg-white/30' 
-                    : 'glass text-[var(--text-primary)] hover:glass-heavy'
-                  }
-                `}
-                title={a.name}
-              >
-                <Paperclip className="h-3.5 w-3.5" />
-                <span className="truncate max-w-[12rem]">{a.name}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Message actions */}
-        <div className="absolute -bottom-2 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <div className="flex items-center gap-1">
-            {/* Copy button */}
-            <button
-              type="button"
-              onClick={copyToClipboard}
-              title="Copy message"
-              className={`
-                inline-flex items-center justify-center w-8 h-8 rounded-full
-                transition-all duration-200 hover:scale-110 focus-ring
-                ${isUser 
-                  ? 'bg-white/20 text-white/80 hover:bg-white/30' 
-                  : 'glass text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }
-              `}
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-[var(--accent-green)]" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </button>
-
-            {/* Regenerate button for assistant messages */}
-            {showRegenerate && (
-              <button
-                type="button"
-                onClick={onRegenerate}
-                title="Regenerate response"
-                className="
-                  inline-flex items-center justify-center w-8 h-8 rounded-full
-                  glass text-[var(--text-secondary)] hover:text-[var(--text-primary)]
-                  transition-all duration-200 hover:scale-110 focus-ring
-                "
-              >
-                <RefreshCcw className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Scroll to bottom button */}
+      {showScrollButton && (
+        <button
+          onClick={() => resumeAutoFollow()}
+          className="fixed bottom-24 right-6 w-12 h-12 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40 hover:scale-105"
+          title="Jump to latest message"
+        >
+          <ArrowDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+        </button>
+      )}
     </div>
   );
 }

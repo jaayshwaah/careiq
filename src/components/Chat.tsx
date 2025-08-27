@@ -1,8 +1,10 @@
+// src/components/Chat.tsx - Updated with streaming support
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Composer from "@/components/Composer";
+import { getBrowserSupabase } from "@/lib/supabaseClient";
 
 type Msg = {
   id: string;
@@ -24,14 +26,13 @@ function TypingDots() {
 
 export default function Chat({ chatId }: { chatId: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const supabase = getBrowserSupabase();
 
   // Messages
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Composer
-  const [input, setInput] = useState("");
+  // Streaming
   const [streaming, setStreaming] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
@@ -39,10 +40,10 @@ export default function Chat({ chatId }: { chatId: string }) {
 
   const suggestions = useMemo(
     () => [
-      "Draft a hiring email for CNAs",
-      "Summarize this policy PDF I’ll upload",
-      "Create a CNA in-service outline",
-      "Build an onboarding checklist",
+      "What should I prep for the next survey?",
+      "Create a quick policy checklist",
+      "Summarize today's top compliance risks",
+      "Draft a CNA training outline",
     ],
     []
   );
@@ -52,9 +53,20 @@ export default function Chat({ chatId }: { chatId: string }) {
     let mounted = true;
     async function loadMessages() {
       try {
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          router.push('/login');
+          return;
+        }
+
         const res = await fetch(`/api/messages/${encodeURIComponent(chatId)}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          },
           cache: "no-store",
         });
+        
         if (res.ok) {
           const json = await res.json();
           const messages: Msg[] = json?.messages || [];
@@ -63,13 +75,16 @@ export default function Chat({ chatId }: { chatId: string }) {
             setLoading(false);
             scrollToBottom("auto");
           }
+        } else if (res.status === 401) {
+          router.push('/login');
         } else {
           if (mounted) {
             setMsgs([]);
             setLoading(false);
           }
         }
-      } catch {
+      } catch (error) {
+        console.error('Failed to load messages:', error);
         if (mounted) {
           setMsgs([]);
           setLoading(false);
@@ -80,7 +95,7 @@ export default function Chat({ chatId }: { chatId: string }) {
     return () => {
       mounted = false;
     };
-  }, [chatId]);
+  }, [chatId, router, supabase]);
 
   // Keep viewport at bottom
   useEffect(() => {
@@ -106,55 +121,73 @@ export default function Chat({ chatId }: { chatId: string }) {
   };
 
   // Send message with streaming
-  const handleSend = async (content: string) => {
-    if (streaming) return;
-    const trimmed = content.trim();
-    if (!trimmed) return;
-
-    // Add optimistic user message
-    const userMsg: Msg = {
-      id: crypto.randomUUID(),
-      chat_id: chatId,
-      role: "user",
-      content: trimmed,
-      created_at: new Date().toISOString(),
-    };
-    setMsgs((prev) => [...prev, userMsg]);
-
-    // >>> NEW: derive & persist a title from the first user message (server only sets if still default)
-    try {
-      await fetch(`/api/chats/${encodeURIComponent(chatId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstMessage: trimmed }),
-      });
-    } catch {}
-    // <<< NEW
-
-    setInput("");
-
-    // Begin streaming assistant response
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    setStreaming(true);
+  const handleSend = async (content: string, files?: File[]) => {
+    if (streaming || !content.trim()) return;
 
     try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+
+      // Add optimistic user message
+      const userMsg: Msg = {
+        id: crypto.randomUUID(),
+        chat_id: chatId,
+        role: "user",
+        content: content.trim(),
+        created_at: new Date().toISOString(),
+      };
+      setMsgs((prev) => [...prev, userMsg]);
+
+      // Auto-generate title if this is likely the first message
+      if (msgs.length === 0) {
+        try {
+          await fetch(`/api/chats/${encodeURIComponent(chatId)}/title`, {
+            method: "POST",
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            },
+          });
+        } catch (titleError) {
+          console.warn('Failed to generate title:', titleError);
+        }
+      }
+
+      // Begin streaming assistant response
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      setStreaming(true);
+
+      const assistantId = crypto.randomUUID();
+      setStreamingId(assistantId);
+
       const response = await fetch("/api/messages/stream", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId, content: trimmed }),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ 
+          chatId, 
+          content: content.trim(),
+          // TODO: Handle files when file processing is implemented
+        }),
         signal: controller.signal,
       });
 
       if (!response.ok || !response.body) {
-        throw new Error("No stream body");
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      setStreamingId(crypto.randomUUID());
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let fullContent = "";
+      let assistantContent = "";
+      let hasStartedAssistantMessage = false;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -163,29 +196,34 @@ export default function Chat({ chatId }: { chatId: string }) {
         const chunk = decoder.decode(value, { stream: true });
         buffer += chunk;
 
-        // Process SSE event
+        // Process SSE events
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
+        
         for (const line of lines) {
           const trimmedLine = line.trim();
           if (!trimmedLine.startsWith("data:")) continue;
+          
           const payload = trimmedLine.slice(5).trim();
-          if (!payload) continue;
-          if (payload === "[DONE]") continue;
+          if (!payload || payload === "[DONE]") continue;
 
           try {
             const obj = JSON.parse(payload);
             const token = obj?.content;
             if (token) {
-              fullContent += token;
+              assistantContent += token;
+              
               setMsgs((prev) => {
                 const clone = [...prev];
-                const last = clone[clone.length - 1];
-                if (last && last.role === "assistant") {
-                  last.content += token;
+                const lastMsg = clone[clone.length - 1];
+                
+                if (lastMsg && lastMsg.id === assistantId) {
+                  // Update existing assistant message
+                  lastMsg.content += token;
                 } else {
+                  // Create new assistant message
                   clone.push({
-                    id: streamingId || crypto.randomUUID(),
+                    id: assistantId,
                     chat_id: chatId,
                     role: "assistant",
                     content: token,
@@ -194,36 +232,43 @@ export default function Chat({ chatId }: { chatId: string }) {
                 }
                 return clone;
               });
+              
+              hasStartedAssistantMessage = true;
             }
-          } catch {
-            // ignore partial frames
+          } catch (error) {
+            // ignore partial/malformed JSON frames
+            console.debug('Skipping malformed SSE frame:', error);
           }
         }
       }
 
-      // Ensure one final assistant message exists (if stream ended without adding)
-      if (!fullContent) {
+      // Ensure we have at least an empty assistant message if streaming failed
+      if (!hasStartedAssistantMessage) {
         setMsgs((prev) => [
           ...prev,
           {
-            id: streamingId || crypto.randomUUID(),
+            id: assistantId,
             chat_id: chatId,
             role: "assistant",
-            content: "…",
+            content: "I apologize, but I couldn't generate a response. Please try again.",
             created_at: new Date().toISOString(),
           },
         ]);
       }
-    } catch (e) {
-      console.error(e);
+
+    } catch (error: any) {
+      console.error("Streaming error:", error);
+      
+      // Add error message to chat
       setMsgs((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           chat_id: chatId,
           role: "assistant",
-          content:
-            "Sorry — the model call failed. Please check your OpenRouter key/credits.",
+          content: error.name === 'AbortError' 
+            ? "Message cancelled." 
+            : "Sorry, I encountered an error. Please check your connection and try again.",
           created_at: new Date().toISOString(),
         },
       ]);
@@ -250,7 +295,7 @@ export default function Chat({ chatId }: { chatId: string }) {
           {suggestions.map((text) => (
             <button
               key={text}
-              onClick={() => setInput(text)}
+              onClick={() => handleSend(text)}
               className="rounded-2xl bg-white/60 px-3 py-2 text-sm font-medium shadow-soft hover:bg-white/80 dark:bg-white/10 dark:text-white dark:hover:bg-white/15 transition-colors"
               disabled={streaming}
             >
@@ -264,13 +309,14 @@ export default function Chat({ chatId }: { chatId: string }) {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Messages area */}
       <div
         ref={listRef}
         className="flex-1 overflow-auto rounded-2xl bg-white/60 p-3 shadow-soft ring-1 ring-black/10 dark:bg-white/5 dark:ring-white/10"
       >
         {loading ? (
           <div className="p-6 text-center text-sm text-black/50 dark:text-white/60">
-            Loading…
+            Loading messages…
           </div>
         ) : msgs.length === 0 ? (
           <EmptyState />
@@ -280,36 +326,56 @@ export default function Chat({ chatId }: { chatId: string }) {
               <div
                 key={m.id}
                 className={[
-                  "rounded-2xl px-3 py-2 ring-1",
+                  "rounded-2xl px-3 py-2 ring-1 relative group",
                   m.role === "user"
-                    ? "bg-white text-black ring-black/10 dark:bg-white/90 dark:text-black"
-                    : "bg-black text-white ring-black/0 dark:bg-black",
+                    ? "bg-white text-black ring-black/10 dark:bg-white/90 dark:text-black ml-auto max-w-[80%]"
+                    : "bg-black text-white ring-black/0 dark:bg-black mr-auto max-w-[85%]",
                 ].join(" ")}
               >
-                <div className="text-xs opacity-60">
-                  {new Date(m.created_at).toLocaleString()}
+                <div className="text-xs opacity-60 mb-1">
+                  {new Date(m.created_at).toLocaleTimeString()}
                 </div>
-                <div className="whitespace-pre-wrap">{m.content}</div>
+                <div className="whitespace-pre-wrap leading-relaxed">
+                  {m.content}
+                </div>
               </div>
             ))}
+            
+            {/* Streaming indicator */}
             {streaming && (
-              <div className="rounded-2xl bg-black px-3 py-2 text-white">
-                <TypingDots />
+              <div className="rounded-2xl bg-black px-3 py-2 text-white mr-auto max-w-[85%]">
+                <div className="flex items-center gap-2">
+                  <TypingDots />
+                  <span className="text-xs opacity-60">CareIQ is thinking...</span>
+                </div>
               </div>
             )}
           </div>
         )}
       </div>
 
+      {/* Composer */}
       <div className="mt-3">
         <Composer
-          placeholder="Message CareIQ…"
+          placeholder="Ask CareIQ about compliance, regulations, or operations..."
           disabled={streaming}
           onSend={handleSend}
-          value={input}
-          onChange={setInput}
-          size="md"
+          showAttach={true}
+          showVoice={false} // Will enable when speech recognition is added
+          autoFocus={true}
         />
+        
+        {/* Stop button when streaming */}
+        {streaming && (
+          <div className="flex justify-center mt-2">
+            <button
+              onClick={handleStop}
+              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Stop generating
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
