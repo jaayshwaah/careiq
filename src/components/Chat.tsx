@@ -64,7 +64,12 @@ function CopyButton({ content, className = "" }: { content: string; className?: 
   );
 }
 
-function MessageBubble({ message, isStreaming = false, onEdit }: { message: Msg; isStreaming?: boolean; onEdit?: (id: string, content: string) => void }) {
+function MessageBubble({ message, isStreaming = false, onEdit, onBookmark }: { 
+  message: Msg; 
+  isStreaming?: boolean; 
+  onEdit?: (id: string, content: string) => void;
+  onBookmark?: (message: Msg) => void;
+}) {
   const isUser = message.role === "user";
   
   return (
@@ -107,7 +112,7 @@ function MessageBubble({ message, isStreaming = false, onEdit }: { message: Msg;
             <div className="flex items-center gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <CopyButton content={message.content} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" />
               <button
-                onClick={() => handleBookmark(message)}
+                onClick={() => onBookmark?.(message)}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                 title="Bookmark response"
               >
@@ -238,8 +243,6 @@ function MessageInput({
   );
 }
 
-type ChatRow = { id: string; title: string; created_at?: string; updated_at?: string };
-
 export default function Chat({ chatId }: { chatId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -254,7 +257,6 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [composerValue, setComposerValue] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -272,31 +274,6 @@ export default function Chat({ chatId }: { chatId: string }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs.length]);
-
-  // Load user profile (for role-aware suggestions later)
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/profile');
-        if (res.ok) {
-          const data = await res.json();
-          setUserProfile(data.profile || null);
-        }
-      } catch { /* ignore */ }
-    })();
-  }, []);
-
-  // Global keyboard shortcut: Ctrl/Cmd+K focuses sidebar search
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        (document.getElementById('sidebar-search-input') as HTMLInputElement | null)?.focus();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   // Load messages
   useEffect(() => {
@@ -354,37 +331,12 @@ export default function Chat({ chatId }: { chatId: string }) {
     };
   }, [chatId, router, supabase]);
 
-  // Load chat list for sidebar
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
-        const res = await fetch('/api/chats', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` },
-          cache: 'no-store'
-        });
-        if (!mounted) return;
-        if (res.ok) {
-          const json = await res.json();
-          setChats(json?.chats || []);
-        }
-      } catch (e) {
-        // ignore
-      }
-    })();
-    return () => { mounted = false; };
-  }, [chatId, supabase]);
-
   // Handle initial message from URL parameter
   useEffect(() => {
     if (!loading && !hasProcessedInitialMessage && msgs.length === 0) {
       const initialMessage = searchParams.get('message');
       if (initialMessage) {
         setHasProcessedInitialMessage(true);
-        // Auto-send the initial message passed from the home page
-        // so the user lands directly into a streaming response.
         void handleSend(initialMessage);
       }
     }
@@ -558,27 +510,6 @@ export default function Chat({ chatId }: { chatId: string }) {
         ));
       }
 
-      // Auto-title after first exchange completes
-      if (wasFirstTurn) {
-        const userWordCount = content.trim().split(/\s+/).filter(Boolean).length;
-        if (userWordCount > 3 && assistantContent.trim()) {
-          setTimeout(() => {
-            fetch('/api/title', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ chatId, userText: content.trim(), assistantText: assistantContent.trim() })
-            })
-              .then(r => r.json().catch(() => ({})))
-              .then((j) => {
-                if (j?.title) {
-                  setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: j.title } : c));
-                }
-              })
-              .catch(() => {});
-          }, 1500);
-        }
-      }
-
     } catch (error: any) {
       console.error("Streaming error:", error);
       
@@ -598,31 +529,6 @@ export default function Chat({ chatId }: { chatId: string }) {
     } finally {
       setStreaming(false);
       controllerRef.current = null;
-    }
-  };
-
-  const createNewChat = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('/api/chats', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
-        },
-        body: JSON.stringify({ title: 'New chat' }),
-      });
-
-      if (response.ok) {
-        const { chat } = await response.json();
-        if (chat?.id) {
-          router.push(`/chat/${chat.id}`);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to create new chat:', error);
-      const chatId = crypto.randomUUID();
-      router.push(`/chat/${chatId}`);
     }
   };
 
@@ -646,40 +552,6 @@ export default function Chat({ chatId }: { chatId: string }) {
       });
     } catch (e) {
       console.warn('Bookmark failed', e);
-    }
-  };
-
-  // Rename and delete chats (quick inline actions)
-  const renameChat = async (id: string) => {
-    const title = prompt('Rename chat');
-    if (!title) return;
-    await fetch(`/api/chats/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) });
-    setChats(prev => prev.map(c => c.id === id ? { ...c, title } : c));
-  };
-
-  const togglePin = (id: string) => {
-    setPinned(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      localStorage.setItem('careiq-pins', JSON.stringify(Array.from(next)));
-      return next;
-    });
-  };
-  const assignFolder = (id: string) => {
-    const name = prompt('Assign to folder (create or type existing name)');
-    if (name === null) return;
-    setFolders(prev => {
-      const next = { ...prev, [id]: name.trim() };
-      localStorage.setItem('careiq-folders', JSON.stringify(next));
-      return next;
-    });
-  };
-  const deleteChat = async (id: string) => {
-    if (!confirm('Delete this chat?')) return;
-    await fetch(`/api/chats/${encodeURIComponent(id)}`, { method: 'DELETE' });
-    setChats(prev => prev.filter(c => c.id !== id));
-    if (id === chatId && chats[0]) {
-      router.push(`/chat/${chats[0].id}`);
     }
   };
 
@@ -718,167 +590,166 @@ export default function Chat({ chatId }: { chatId: string }) {
 
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
-        {/* Header: actions */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
-          <div className="font-semibold text-gray-900 dark:text-white text-lg">CareIQ Assistant</div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowTemplates(true)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              title="Chat templates"
-            >
-              <FileText size={18} />
-            </button>
-            <button
-              onClick={() => setShowShare(true)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              title="Share chat"
-            >
-              <Users size={18} />
-            </button>
-            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
-            <button
-              onClick={async () => {
-                try {
-                  const res = await fetch('/api/export/pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      title: 'CareIQ Chat Export',
-                      messages: msgs.map(m => ({ role: m.role, content: m.content, createdAt: m.created_at }))
-                    })
-                  });
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `careiq-chat-${new Date().toISOString().slice(0,10)}.pdf`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                } catch (e) { console.error('Export failed', e); }
-              }}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              title="Export PDF"
-            >
-              <Download size={18} />
-            </button>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              title="Chat settings"
-            >
-              <SettingsIcon size={18} />
-            </button>
+      {/* Header: actions */}
+      <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
+        <div className="font-semibold text-gray-900 dark:text-white text-lg">CareIQ Assistant</div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowTemplates(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="Chat templates"
+          >
+            <FileText size={18} />
+          </button>
+          <button
+            onClick={() => setShowShare(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="Share chat"
+          >
+            <Users size={18} />
+          </button>
+          <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/export/pdf', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    title: 'CareIQ Chat Export',
+                    messages: msgs.map(m => ({ role: m.role, content: m.content, createdAt: m.created_at }))
+                  })
+                });
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `careiq-chat-${new Date().toISOString().slice(0,10)}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (e) { console.error('Export failed', e); }
+            }}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="Export PDF"
+          >
+            <Download size={18} />
+          </button>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="Chat settings"
+          >
+            <SettingsIcon size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto relative bg-gray-50/30 dark:bg-gray-900">
+        {msgs.length === 0 ? (
+          <div className="flex items-center justify-center h-full py-12">
+            <div className="text-center max-w-2xl mx-auto px-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <span className="text-white font-bold text-xl">CIQ</span>
+              </div>
+              <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-3">How can I help you today?</h1>
+              <p className="text-gray-600 dark:text-gray-400 text-lg mb-8 leading-relaxed">
+                I'm your AI nursing home compliance assistant. Ask me anything about regulations, 
+                staff training, survey preparation, or daily operations.
+              </p>
+              
+              <div className="flex gap-3 justify-center mb-8">
+                <button
+                  onClick={() => setShowTemplates(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all hover:scale-105 shadow-lg"
+                >
+                  <FileText size={16} />
+                  Use Template
+                </button>
+                <button
+                  onClick={() => {
+                    const composer = document.getElementById('composer-input');
+                    if (composer) composer.focus();
+                  }}
+                  className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium transition-all hover:scale-105"
+                >
+                  Start Fresh
+                </button>
+              </div>
+              
+              <div className="mt-8">
+                <Suggestions onPick={setComposerValue} targetId="composer-input" />
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* Messages area (virtualized) */}
-        <div className="flex-1 overflow-y-auto relative bg-gray-50/30 dark:bg-gray-900">
-          {msgs.length === 0 ? (
-            <div className="flex items-center justify-center h-full py-12">
-              <div className="text-center max-w-2xl mx-auto px-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                  <span className="text-white font-bold text-xl">CIQ</span>
-                </div>
-                <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-3">How can I help you today?</h1>
-                <p className="text-gray-600 dark:text-gray-400 text-lg mb-8 leading-relaxed">
-                  I'm your AI nursing home compliance assistant. Ask me anything about regulations, 
-                  staff training, survey preparation, or daily operations.
-                </p>
-                
-                <div className="flex gap-3 justify-center mb-8">
-                  <button
-                    onClick={() => setShowTemplates(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all hover:scale-105 shadow-lg"
-                  >
-                    <FileText size={16} />
-                    Use Template
-                  </button>
-                  <button
-                    onClick={() => {
-                      const composer = document.getElementById('composer-input');
-                      if (composer) composer.focus();
-                    }}
-                    className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium transition-all hover:scale-105"
-                  >
-                    <Plus size={16} />
-                    Start Fresh
-                  </button>
-                </div>
-                
-                <div className="mt-8">
-                  <Suggestions onPick={setComposerValue} targetId="composer-input" />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <MessageList
-              ref={virtuosoRef}
-              messages={msgs}
-              streaming={streaming}
-              onRegenerate={handleRegenerate}
-              onBookmark={handleBookmark}
-              onEdit={(id, content) => { setEditingMessageId(id); setComposerValue(content); }}
-              onAtBottomChange={setAtBottom}
-            />
-          )}
-          {!atBottom && (
-            <div className="absolute bottom-6 right-6">
-              <button
-                onClick={() => {
-                  try { virtuosoRef.current?.scrollToIndex?.({ index: Math.max(0, msgs.length - 1), align: 'end', behavior: 'smooth' }); } catch {}
-                }}
-                className="flex items-center gap-2 px-4 py-2 text-sm rounded-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors backdrop-blur-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-                Jump to bottom
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Attachments preview */}
-        {attachedFiles.length > 0 && (
-          <div className="max-w-4xl mx-auto w-full px-4 pb-2">
-            <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-200/50 dark:border-blue-800/50 rounded-xl p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Paperclip size={16} className="text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                  {attachedFiles.length} file{attachedFiles.length !== 1 ? 's' : ''} attached
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {attachedFiles.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
-                    <div className="w-4 h-4 bg-blue-100 dark:bg-blue-900 rounded flex items-center justify-center">
-                      <FileText size={10} className="text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <span className="text-sm text-gray-900 dark:text-white truncate max-w-[200px]">{f.name}</span>
-                    <button 
-                      className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/20 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 flex items-center justify-center text-xs font-bold transition-colors" 
-                      onClick={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))}
-                      title="Remove file"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+        ) : (
+          <MessageList
+            ref={virtuosoRef}
+            messages={msgs}
+            streaming={streaming}
+            onRegenerate={handleRegenerate}
+            onBookmark={handleBookmark}
+            onEdit={(id, content) => { setEditingMessageId(id); setComposerValue(content); }}
+            onAtBottomChange={setAtBottom}
+          />
+        )}
+        {!atBottom && (
+          <div className="absolute bottom-6 right-6">
+            <button
+              onClick={() => {
+                try { virtuosoRef.current?.scrollToIndex?.({ index: Math.max(0, msgs.length - 1), align: 'end', behavior: 'smooth' }); } catch {}
+              }}
+              className="flex items-center gap-2 px-4 py-2 text-sm rounded-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors backdrop-blur-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+              Jump to bottom
+            </button>
           </div>
         )}
+      </div>
 
-        {/* Drag and drop target */}
-        <div
-          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-          onDrop={(e) => {
-            e.preventDefault();
-            const files = Array.from(e.dataTransfer.files || []);
-            if (files.length) setAttachedFiles(prev => [...prev, ...files]);
-          }}
-        >
+      {/* Attachments preview */}
+      {attachedFiles.length > 0 && (
+        <div className="max-w-4xl mx-auto w-full px-4 pb-2">
+          <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-200/50 dark:border-blue-800/50 rounded-xl p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Paperclip size={16} className="text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                {attachedFiles.length} file{attachedFiles.length !== 1 ? 's' : ''} attached
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {attachedFiles.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
+                  <div className="w-4 h-4 bg-blue-100 dark:bg-blue-900 rounded flex items-center justify-center">
+                    <FileText size={10} className="text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <span className="text-sm text-gray-900 dark:text-white truncate max-w-[200px]">{f.name}</span>
+                  <button 
+                    className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/20 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 flex items-center justify-center text-xs font-bold transition-colors" 
+                    onClick={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                    title="Remove file"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Drag and drop target */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const files = Array.from(e.dataTransfer.files || []);
+          if (files.length) setAttachedFiles(prev => [...prev, ...files]);
+        }}
+      >
         {/* Input area */}
         <MessageInput
           onSend={handleSend}
@@ -890,25 +761,24 @@ export default function Chat({ chatId }: { chatId: string }) {
             setAttachedFiles(prev => [...prev, ...Array.from(files)]);
           }}
         />
-        </div>
-        
-        {/* Stop button when streaming */}
-        {streaming && (
-          <div className="border-t border-gray-200/50 dark:border-gray-700/50 bg-white dark:bg-gray-900 py-3">
-            <div className="max-w-4xl mx-auto px-4">
-              <div className="flex items-center justify-center">
-                <button
-                  onClick={handleStop}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-all hover:scale-105 shadow-lg"
-                >
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                  Stop generating
-                </button>
-              </div>
+      </div>
+      
+      {/* Stop button when streaming */}
+      {streaming && (
+        <div className="border-t border-gray-200/50 dark:border-gray-700/50 bg-white dark:bg-gray-900 py-3">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="flex items-center justify-center">
+              <button
+                onClick={handleStop}
+                className="flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-all hover:scale-105 shadow-lg"
+              >
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                Stop generating
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Templates modal */}
       {showTemplates && (
@@ -963,7 +833,6 @@ export default function Chat({ chatId }: { chatId: string }) {
                 </button>
                 <button
                   onClick={() => {
-                    // TODO: Implement sharing logic
                     setShowShare(false);
                   }}
                   className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
@@ -984,7 +853,6 @@ export default function Chat({ chatId }: { chatId: string }) {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(`${window.location.origin}/chat/${chatId}?shared=true`);
-                    // TODO: Show toast notification
                   }}
                   className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                 >
