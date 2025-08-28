@@ -684,13 +684,13 @@ export default function Chat({ chatId }: { chatId: string }) {
 
       {/* Sidebar */}
       <div className={`
-        fixed md:relative h-full w-64 bg-gray-900 text-white transform transition-transform z-50
+        fixed md:relative h-full w-64 bg-white text-gray-900 dark:bg-gray-900 dark:text-white transform transition-transform z-50 border-r border-gray-200 dark:border-gray-700
         ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="p-4">
           <button
             onClick={createNewChat}
-            className="w-full flex items-center gap-2 px-3 py-2 border border-gray-600 rounded-md hover:bg-gray-800 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800 transition-colors"
           >
             <Plus size={16} />
             <span>New chat</span>
@@ -701,45 +701,45 @@ export default function Chat({ chatId }: { chatId: string }) {
               placeholder="Search chats..."
               value={chatSearch}
               onChange={(e) => setChatSearch(e.target.value)}
-              className="w-full bg-gray-800/60 border border-gray-700 rounded-md py-2 pl-3 pr-3 text-sm placeholder-gray-400"
+              className="w-full bg-white border border-gray-300 rounded-md py-2 pl-3 pr-3 text-sm placeholder-gray-500 dark:bg-gray-800/60 dark:border-gray-700 dark:placeholder-gray-400"
             />
           </div>
         </div>
         
         <div className="flex-1 overflow-y-auto px-4">
-          <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Pinned</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Pinned</div>
           <div className="space-y-1 mb-4">
             {chats.filter(c => pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).length === 0 ? (
-              <div className="text-xs text-gray-500">No pinned chats</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">No pinned chats</div>
             ) : (
               chats.filter(c => pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).map(c => (
-                <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-md px-2 py-2 cursor-pointer ${c.id === chatId ? 'bg-gray-800' : 'hover:bg-gray-800/60'}`}
+                <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-md px-2 py-2 cursor-pointer ${c.id === chatId ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800/60'}`}
                      onClick={() => router.push(`/chat/${c.id}`)}>
-                  <div className="truncate text-sm">{c.title || 'Untitled chat'}</div>
+                  <div className="truncate text-sm text-gray-900 dark:text-white">{c.title || 'Untitled chat'}</div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                    <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} className="p-1 hover:bg-gray-700 rounded" title="Unpin"><Star size={12} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1 hover:bg-gray-700 rounded"><Pencil size={12} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1 hover:bg-gray-700 rounded"><Trash2 size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" title="Unpin"><Star size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"><Pencil size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"><Trash2 size={12} /></button>
                   </div>
                 </div>
               ))
             )}
           </div>
 
-          <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">All</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">All</div>
           <div className="space-y-1">
             {chats.filter(c => !pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).length === 0 ? (
-              <div className="text-sm text-gray-500 py-8 text-center">No conversations yet</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">No conversations yet</div>
             ) : (
               chats.filter(c => !pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).map((c) => (
-                <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-md px-2 py-2 cursor-pointer ${c.id === chatId ? 'bg-gray-800' : 'hover:bg-gray-800/60'}`}
+                <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-md px-2 py-2 cursor-pointer ${c.id === chatId ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800/60'}`}
                      onClick={() => router.push(`/chat/${c.id}`)}>
-                  <div className="truncate text-sm">{c.title || 'Untitled chat'}</div>
+                  <div className="truncate text-sm text-gray-900 dark:text-white">{c.title || 'Untitled chat'}</div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                    <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} className="p-1 hover:bg-gray-700 rounded" title="Pin"><Star size={12} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); assignFolder(c.id); }} className="p-1 hover:bg-gray-700 rounded" title="Assign folder"><FolderPlus size={12} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1 hover:bg-gray-700 rounded"><Pencil size={12} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1 hover:bg-gray-700 rounded"><Trash2 size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" title="Pin"><Star size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); assignFolder(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" title="Assign folder"><FolderPlus size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"><Pencil size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"><Trash2 size={12} /></button>
                   </div>
                 </div>
               ))
@@ -747,8 +747,8 @@ export default function Chat({ chatId }: { chatId: string }) {
           </div>
         </div>
         
-        <div className="p-4 border-t border-gray-700">
-          <div className="text-sm text-gray-400">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
             Signed in as User
           </div>
         </div>
