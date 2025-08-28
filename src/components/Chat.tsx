@@ -3,8 +3,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, Check, Menu, Plus, Send, Pencil, Trash2, RotateCw, Bookmark } from "lucide-react";
+import { Copy, Check, Menu, Plus, Send, Pencil, Trash2, RotateCw, Bookmark, Paperclip, Download, Search as SearchIcon, Settings as SettingsIcon, Share2, Star, FolderPlus } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
+import Suggestions from "@/components/Suggestions";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 
 type Msg = {
   id: string;
@@ -54,7 +58,7 @@ function CopyButton({ content, className = "" }: { content: string; className?: 
   );
 }
 
-function MessageBubble({ message, isStreaming = false }: { message: Msg; isStreaming?: boolean }) {
+function MessageBubble({ message, isStreaming = false, onEdit }: { message: Msg; isStreaming?: boolean; onEdit?: (id: string, content: string) => void }) {
   const isUser = message.role === "user";
   
   return (
@@ -83,9 +87,30 @@ function MessageBubble({ message, isStreaming = false }: { message: Msg; isStrea
           
           <div className="prose prose-sm max-w-none dark:prose-invert">
             {message.content ? (
-              <div className="whitespace-pre-wrap break-words">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight as any]}
+                components={{
+                  code({ inline, className, children, ...props }) {
+                    const lang = (className || "").replace("language-", "");
+                    if (inline) return <code className={className} {...props}>{children}</code>;
+                    const text = String(children || "");
+                    return (
+                      <div className="relative group/code">
+                        <button
+                          onClick={() => navigator.clipboard.writeText(text)}
+                          className="absolute right-2 top-2 text-xs px-2 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover/code:opacity-100"
+                          title="Copy code"
+                          type="button"
+                        >Copy</button>
+                        <pre className={className}><code>{text}</code></pre>
+                      </div>
+                    );
+                  },
+                }}
+              >
                 {message.content}
-              </div>
+              </ReactMarkdown>
             ) : isStreaming ? (
               <TypingIndicator />
             ) : null}
@@ -97,21 +122,42 @@ function MessageBubble({ message, isStreaming = false }: { message: Msg; isStrea
               <CopyButton content={message.content} />
             </div>
           )}
+          {isUser && (
+            <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => onEdit?.(message.id, message.content)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                title="Edit and regenerate"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function MessageInput({ 
-  onSend, 
-  disabled = false 
-}: { 
+function MessageInput({
+  onSend,
+  disabled = false,
+  value,
+  onChangeValue,
+  onAttach,
+}: {
   onSend: (text: string) => void;
   disabled?: boolean;
+  value?: string;
+  onChangeValue?: (v: string) => void;
+  onAttach?: (files: FileList | null) => void;
 }) {
-  const [value, setValue] = useState("");
+  const [internalValue, setInternalValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const currentValue = value !== undefined ? value : internalValue;
+  const setValue = (v: string) => (onChangeValue ? onChangeValue(v) : setInternalValue(v));
 
   // Auto-resize textarea
   useEffect(() => {
@@ -123,7 +169,7 @@ function MessageInput({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = value.trim();
+    const trimmed = currentValue.trim();
     if (!trimmed || disabled) return;
     
     onSend(trimmed);
@@ -142,23 +188,35 @@ function MessageInput({
       <div className="max-w-3xl mx-auto px-4 py-4">
         <form onSubmit={handleSubmit} className="relative">
           <div className="relative bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.txt,.md" className="hidden" onChange={(e) => onAttach?.(e.target.files)} />
+            <div className="absolute left-2 top-1/2 -translate-y-1/2">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="w-8 h-8 rounded-full text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 flex items-center justify-center"
+                title="Attach files"
+              >
+                <Paperclip size={16} />
+              </button>
+            </div>
             <textarea
+              id="composer-input"
               ref={textareaRef}
-              value={value}
+              value={currentValue}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Message CareIQ..."
               disabled={disabled}
-              className="w-full resize-none border-0 bg-transparent px-4 py-4 pr-12 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none"
+              className="w-full resize-none border-0 bg-transparent pl-10 pr-12 py-4 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none"
               style={{ minHeight: '56px', maxHeight: '200px' }}
               rows={1}
             />
             <button
               type="submit"
-              disabled={!value.trim() || disabled}
+              disabled={!currentValue.trim() || disabled}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 flex items-center justify-center transition-colors"
             >
-              <Send size={14} className={value.trim() && !disabled ? 'text-gray-900 dark:text-white' : 'text-gray-500'} />
+              <Send size={14} className={currentValue.trim() && !disabled ? 'text-gray-900 dark:text-white' : 'text-gray-500'} />
             </button>
           </div>
         </form>
@@ -182,6 +240,23 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [composerValue, setComposerValue] = useState("");
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [chatSearch, setChatSearch] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [pinned, setPinned] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('careiq-pins') || '[]')); } catch { return new Set(); }
+  });
+  const [folders, setFolders] = useState<Record<string,string>>(() => {
+    try { return JSON.parse(localStorage.getItem('careiq-folders') || '{}'); } catch { return {}; }
+  });
+  const [showSettings, setShowSettings] = useState(false);
+  const [temperature, setTemperature] = useState<number>(() => {
+    try { return Number(JSON.parse(localStorage.getItem(`careiq-chat-settings-${chatId}`) || '{}').temperature ?? 0.3); } catch { return 0.3; }
+  });
   
   const controllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -190,6 +265,19 @@ export default function Chat({ chatId }: { chatId: string }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs.length]);
+
+  // Load user profile (for role-aware suggestions later)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/profile');
+        if (res.ok) {
+          const data = await res.json();
+          setUserProfile(data.profile || null);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   // Load messages
   useEffect(() => {
@@ -276,7 +364,7 @@ export default function Chat({ chatId }: { chatId: string }) {
       const initialMessage = searchParams.get('message');
       if (initialMessage) {
         setHasProcessedInitialMessage(true);
-        handleSend(initialMessage);
+        setComposerValue(initialMessage);
       }
     }
   }, [loading, msgs.length, hasProcessedInitialMessage, searchParams]);
@@ -304,15 +392,60 @@ export default function Chat({ chatId }: { chatId: string }) {
         return;
       }
 
-      // Add user message immediately
-      const userMsg: Msg = {
-        id: `user-${Date.now()}`,
-        chat_id: chatId,
-        role: "user",
-        content: content.trim(),
-        created_at: new Date().toISOString(),
-      };
-      setMsgs(prev => [...prev, userMsg]);
+      // Persist edit to server when editing
+      if (editingMessageId) {
+        try {
+          await fetch('/api/messages/edit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify({ id: editingMessageId, content })
+          });
+        } catch {}
+      }
+
+      // If attachments present, upload first
+      let note = "";
+      if (attachedFiles.length > 0) {
+        setUploading(true);
+        try {
+          const form = new FormData();
+          for (const f of attachedFiles) form.append('files', f);
+          form.append('documentType', 'Facility Policy');
+          form.append('description', 'Uploaded from chat');
+          const res = await fetch('/api/upload-facility-docs', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
+            body: form,
+          });
+          const json = await res.json().catch(() => null);
+          if (res.ok && json?.summary?.successful > 0) {
+            const names = attachedFiles.map(f => f.name).join(', ');
+            note = `\n\n[Attached documents ingested: ${names}]`;
+          }
+        } catch (e) {
+          console.warn('Attachment upload failed', e);
+        } finally {
+          setUploading(false);
+          setAttachedFiles([]);
+        }
+      }
+
+      // Add or update user message immediately
+      const newContent = (content.trim() + note).trim();
+      if (editingMessageId) {
+        setMsgs(prev => prev.map(m => m.id === editingMessageId ? { ...m, content: newContent } : m));
+      } else {
+        const userMsg: Msg = {
+          id: `user-${Date.now()}`,
+          chat_id: chatId,
+          role: "user",
+          content: newContent,
+          created_at: new Date().toISOString(),
+        };
+        setMsgs(prev => [...prev, userMsg]);
+      }
+      setComposerValue("");
+      setEditingMessageId(null);
 
       // Generate title if this is the first message
       if (msgs.length === 0) {
@@ -345,7 +478,8 @@ export default function Chat({ chatId }: { chatId: string }) {
         },
         body: JSON.stringify({ 
           chatId, 
-          content: content.trim()
+          content: content.trim(),
+          temperature
         }),
         signal: controller.signal,
       });
@@ -493,6 +627,24 @@ export default function Chat({ chatId }: { chatId: string }) {
     await fetch(`/api/chats/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) });
     setChats(prev => prev.map(c => c.id === id ? { ...c, title } : c));
   };
+
+  const togglePin = (id: string) => {
+    setPinned(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      localStorage.setItem('careiq-pins', JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
+  const assignFolder = (id: string) => {
+    const name = prompt('Assign to folder (create or type existing name)');
+    if (name === null) return;
+    setFolders(prev => {
+      const next = { ...prev, [id]: name.trim() };
+      localStorage.setItem('careiq-folders', JSON.stringify(next));
+      return next;
+    });
+  };
   const deleteChat = async (id: string) => {
     if (!confirm('Delete this chat?')) return;
     await fetch(`/api/chats/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -558,19 +710,49 @@ export default function Chat({ chatId }: { chatId: string }) {
             <Plus size={16} />
             <span>New chat</span>
           </button>
+          <div className="mt-3 relative">
+            <input
+              type="text"
+              placeholder="Search chats..."
+              value={chatSearch}
+              onChange={(e) => setChatSearch(e.target.value)}
+              className="w-full bg-gray-800/60 border border-gray-700 rounded-md py-2 pl-3 pr-3 text-sm placeholder-gray-400"
+            />
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto px-4">
-          <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Recent</div>
-          <div className="space-y-1">
-            {chats.length === 0 ? (
-              <div className="text-sm text-gray-500 py-8 text-center">No conversations yet</div>
+          <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Pinned</div>
+          <div className="space-y-1 mb-4">
+            {chats.filter(c => pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).length === 0 ? (
+              <div className="text-xs text-gray-500">No pinned chats</div>
             ) : (
-              chats.map((c) => (
+              chats.filter(c => pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).map(c => (
                 <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-md px-2 py-2 cursor-pointer ${c.id === chatId ? 'bg-gray-800' : 'hover:bg-gray-800/60'}`}
                      onClick={() => router.push(`/chat/${c.id}`)}>
                   <div className="truncate text-sm">{c.title || 'Untitled chat'}</div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                    <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} className="p-1 hover:bg-gray-700 rounded" title="Unpin"><Star size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1 hover:bg-gray-700 rounded"><Pencil size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1 hover:bg-gray-700 rounded"><Trash2 size={12} /></button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">All</div>
+          <div className="space-y-1">
+            {chats.filter(c => !pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).length === 0 ? (
+              <div className="text-sm text-gray-500 py-8 text-center">No conversations yet</div>
+            ) : (
+              chats.filter(c => !pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).map((c) => (
+                <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-md px-2 py-2 cursor-pointer ${c.id === chatId ? 'bg-gray-800' : 'hover:bg-gray-800/60'}`}
+                     onClick={() => router.push(`/chat/${c.id}`)}>
+                  <div className="truncate text-sm">{c.title || 'Untitled chat'}</div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                    <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} className="p-1 hover:bg-gray-700 rounded" title="Pin"><Star size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); assignFolder(c.id); }} className="p-1 hover:bg-gray-700 rounded" title="Assign folder"><FolderPlus size={12} /></button>
                     <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1 hover:bg-gray-700 rounded"><Pencil size={12} /></button>
                     <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1 hover:bg-gray-700 rounded"><Trash2 size={12} /></button>
                   </div>
@@ -589,16 +771,71 @@ export default function Chat({ chatId }: { chatId: string }) {
 
       {/* Main chat area */}
       <div className="flex-1 flex flex-col">
-        {/* Mobile header */}
-        <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => setShowSidebar(true)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-          >
+        {/* Header: search + export */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <button onClick={() => setShowSidebar(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
             <Menu size={20} />
           </button>
-          <h1 className="font-semibold">CareIQ</h1>
-          <div className="w-8" />
+          <div className="flex-1 max-w-xl mx-4 relative">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+          	type="text"
+          	placeholder="Search messages..."
+          	value={searchQuery}
+          	onChange={(e) => setSearchQuery(e.target.value)}
+          	className="w-full pl-9 pr-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+            />
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/export/pdf', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    title: 'CareIQ Chat Export',
+                    messages: msgs.map(m => ({ role: m.role, content: m.content, createdAt: m.created_at }))
+                  })
+                });
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `careiq-chat-${new Date().toISOString().slice(0,10)}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (e) { console.error('Export failed', e); }
+            }}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+            title="Export PDF"
+          >
+            <Download size={18} />
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const data = { messages: msgs };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `careiq-chat-${new Date().toISOString().slice(0,10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (e) {}
+            }}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+            title="Export JSON"
+          >
+            <Share2 size={18} />
+          </button>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+            title="Chat settings"
+          >
+            <SettingsIcon size={18} />
+          </button>
         </div>
 
         {/* Messages area */}
@@ -615,13 +852,18 @@ export default function Chat({ chatId }: { chatId: string }) {
                 <p className="text-gray-600 dark:text-gray-400">
                   Ask me anything about nursing home compliance and operations
                 </p>
+                <div className="mt-6">
+                  <Suggestions onPick={setComposerValue} targetId="composer-input" />
+                </div>
               </div>
             </div>
           ) : (
             <>
-              {msgs.map((message, idx) => (
+              {msgs
+                .filter(m => !searchQuery || m.content.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map((message, idx) => (
                 <div key={message.id}>
-                  <MessageBubble message={message} />
+                  <MessageBubble message={message} onEdit={(id, content) => { setEditingMessageId(id); setComposerValue(content); }} />
                   {message.role === 'assistant' && message.content && (
                     <div className="max-w-3xl mx-auto px-4 -mt-2 mb-4 flex gap-2">
                       <button onClick={() => handleRegenerate(idx)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1"><RotateCw size={12}/> Regenerate</button>
@@ -650,8 +892,42 @@ export default function Chat({ chatId }: { chatId: string }) {
           )}
         </div>
 
+        {/* Attachments preview */}
+        {attachedFiles.length > 0 && (
+          <div className="max-w-3xl mx-auto w-full px-4 mt-2">
+            <div className="flex flex-wrap gap-2">
+              {attachedFiles.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-full">
+                  <Paperclip size={14} />
+                  <span className="text-xs truncate max-w-[220px]">{f.name}</span>
+                  <button className="text-blue-700 hover:text-blue-900" onClick={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))}>×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Drag and drop target */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const files = Array.from(e.dataTransfer.files || []);
+            if (files.length) setAttachedFiles(prev => [...prev, ...files]);
+          }}
+        >
         {/* Input area */}
-        <MessageInput onSend={handleSend} disabled={streaming} />
+        <MessageInput
+          onSend={handleSend}
+          disabled={streaming || uploading}
+          value={composerValue}
+          onChangeValue={setComposerValue}
+          onAttach={(files) => {
+            if (!files) return;
+            setAttachedFiles(prev => [...prev, ...Array.from(files)]);
+          }}
+        />
+        </div>
         
         {/* Stop button when streaming */}
         {streaming && (
@@ -667,6 +943,29 @@ export default function Chat({ chatId }: { chatId: string }) {
           </div>
         )}
       </div>
+
+      {/* Settings modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Chat Settings</h3>
+              <button onClick={() => setShowSettings(false)} className="text-sm px-2 py-1 border rounded">Close</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Temperature: {temperature.toFixed(2)}</label>
+                <input type="range" min="0" max="1" step="0.01" value={temperature} onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setTemperature(val);
+                  localStorage.setItem(`careiq-chat-settings-${chatId}`, JSON.stringify({ temperature: val }));
+                }} className="w-full" />
+              </div>
+              <div className="text-xs text-gray-500">Settings are stored locally per chat.</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

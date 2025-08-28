@@ -25,6 +25,10 @@
     "pdfkit": "^0.17.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-markdown": "9.0.3",
+    "remark-gfm": "4.0.0",
+    "rehype-highlight": "7.0.1",
+    "highlight.js": "11.9.0",
     "tailwind-merge": "2.5.4",
     "tailwindcss-animate": "1.0.7"
   },
