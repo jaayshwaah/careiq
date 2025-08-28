@@ -19,12 +19,13 @@ type Msg = {
 
 function TypingIndicator() {
   return (
-    <div className="flex items-center gap-1 py-2">
-      <div className="flex gap-1">
-        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+    <div className="flex items-center gap-2 py-3">
+      <div className="flex gap-1.5">
+        <div className="w-2.5 h-2.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+        <div className="w-2.5 h-2.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+        <div className="w-2.5 h-2.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
       </div>
+      <span className="text-sm text-gray-500 dark:text-gray-400">CareIQ is thinking...</span>
     </div>
   );
 }
@@ -45,13 +46,19 @@ function CopyButton({ content, className = "" }: { content: string; className?: 
   return (
     <button
       onClick={copyToClipboard}
-      className={`p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${className}`}
+      className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${className}`}
       title="Copy response"
     >
       {copied ? (
-        <Check className="h-4 w-4 text-green-500" />
+        <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+          <Check className="h-4 w-4" />
+          <span className="text-xs font-medium">Copied!</span>
+        </div>
       ) : (
-        <Copy className="h-4 w-4 text-gray-500" />
+        <div className="flex items-center gap-1.5">
+          <Copy className="h-4 w-4" />
+          <span className="text-xs font-medium">Copy</span>
+        </div>
       )}
     </button>
   );
@@ -61,44 +68,58 @@ function MessageBubble({ message, isStreaming = false, onEdit }: { message: Msg;
   const isUser = message.role === "user";
   
   return (
-    <div className={`group w-full ${isUser ? '' : 'bg-gray-50 dark:bg-gray-800'}`}>
-      <div className="max-w-3xl mx-auto px-4 py-4 flex gap-4">
+    <div className={`group w-full ${isUser ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/50'} border-b border-gray-100/50 dark:border-gray-800/50`}>
+      <div className="max-w-4xl mx-auto px-4 py-6 flex gap-4">
         {/* Avatar */}
         <div className="flex-shrink-0">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shadow-sm ${
             isUser 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-green-600 text-white'
+              ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white' 
+              : 'bg-gradient-to-br from-green-600 to-green-700 text-white'
           }`}>
-            <span className="text-sm font-medium">
-              {isUser ? 'U' : 'C'}
+            <span className="text-sm font-bold">
+              {isUser ? 'You' : 'CIQ'}
             </span>
           </div>
         </div>
         
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2">
             <span className="text-sm font-semibold text-gray-900 dark:text-white">
-              {isUser ? 'You' : 'CareIQ'}
+              {isUser ? 'You' : 'CareIQ Assistant'}
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {new Date(message.created_at).toLocaleTimeString()}
             </span>
           </div>
           
-          <div className="prose prose-sm max-w-none dark:prose-invert">
-            {message.content ? <span className="block" /> : isStreaming ? <TypingIndicator /> : null}
+          <div className="prose prose-base max-w-none dark:prose-invert text-gray-900 dark:text-gray-100 leading-relaxed">
+            {message.content ? (
+              <div className="whitespace-pre-wrap">{message.content}</div>
+            ) : isStreaming ? (
+              <TypingIndicator />
+            ) : null}
           </div>
           
           {/* Actions */}
           {!isUser && message.content && (
-            <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-              <CopyButton content={message.content} />
+            <div className="flex items-center gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <CopyButton content={message.content} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" />
+              <button
+                onClick={() => handleBookmark(message)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="Bookmark response"
+              >
+                <Bookmark className="h-4 w-4" />
+              </button>
             </div>
           )}
           {isUser && (
-            <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={() => onEdit?.(message.id, message.content)}
-                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                 title="Edit and regenerate"
               >
                 <Pencil className="h-4 w-4" />
@@ -156,19 +177,20 @@ function MessageInput({
   };
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-      <div className="max-w-3xl mx-auto px-4 py-4">
+    <div className="border-t border-gray-200/50 dark:border-gray-700/50 bg-white dark:bg-gray-900">
+      <div className="max-w-4xl mx-auto px-4 py-4">
         <form onSubmit={handleSubmit} className="relative">
-          <div className="relative bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg focus-within:shadow-xl transition-all focus-within:border-blue-500/50">
             <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.txt,.md" className="hidden" onChange={(e) => onAttach?.(e.target.files)} />
-            <div className="absolute left-2 top-1/2 -translate-y-1/2">
+            <div className="absolute left-3 bottom-3">
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="w-8 h-8 rounded-full text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 flex items-center justify-center"
+                disabled={disabled}
+                className="w-9 h-9 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Attach files"
               >
-                <Paperclip size={16} />
+                <Paperclip size={18} />
               </button>
             </div>
             <textarea
@@ -179,17 +201,36 @@ function MessageInput({
               onKeyDown={handleKeyDown}
               placeholder="Message CareIQ..."
               disabled={disabled}
-              className="w-full resize-none border-0 bg-transparent pl-10 pr-12 py-4 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none"
-              style={{ minHeight: '56px', maxHeight: '200px' }}
+              className="w-full resize-none border-0 bg-transparent pl-14 pr-14 py-4 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none text-base leading-6"
+              style={{ minHeight: '64px', maxHeight: '200px' }}
               rows={1}
             />
-            <button
-              type="submit"
-              disabled={!currentValue.trim() || disabled}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 flex items-center justify-center transition-colors"
-            >
-              <Send size={14} className={currentValue.trim() && !disabled ? 'text-gray-900 dark:text-white' : 'text-gray-500'} />
-            </button>
+            <div className="absolute right-3 bottom-3 flex items-center gap-2">
+              {disabled && (
+                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs">Generating...</span>
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={!currentValue.trim() || disabled}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                  currentValue.trim() && !disabled
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg hover:scale-105'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                <Send size={16} />
+              </button>
+            </div>
+          </div>
+          
+          {/* Shortcut hints */}
+          <div className="flex items-center justify-center mt-3 text-xs text-gray-500 dark:text-gray-400 space-x-4">
+            <span>Press Enter to send</span>
+            <span>•</span>
+            <span>Shift + Enter for new line</span>
           </div>
         </form>
       </div>
@@ -685,73 +726,97 @@ export default function Chat({ chatId }: { chatId: string }) {
   }
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
       {/* Mobile sidebar overlay */}
       {showSidebar && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setShowSidebar(false)}
         />
       )}
 
       {/* Sidebar */}
       <div className={`
-        fixed md:relative h-full w-64 bg-white text-gray-900 dark:bg-gray-900 dark:text-white transform transition-transform z-50 border-r border-gray-200 dark:border-gray-700
-        ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        fixed lg:relative h-full w-[280px] bg-white text-gray-900 dark:bg-gray-900 dark:text-white transform transition-all duration-300 ease-in-out z-50 border-r border-gray-200/80 dark:border-gray-700/50 shadow-xl lg:shadow-none
+        ${showSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="p-4">
+        <div className="p-3">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4 px-1">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-sm">
+                <span className="text-white font-bold text-xs">CIQ</span>
+              </div>
+              <span className="font-semibold text-gray-900 dark:text-white text-sm">CareIQ</span>
+            </div>
+            <button
+              onClick={() => setShowSidebar(false)}
+              className="lg:hidden p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
           <button
             onClick={createNewChat}
-            className="w-full flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-750 rounded-lg transition-colors text-sm font-medium border border-gray-200/50 dark:border-gray-700/50"
           >
             <Plus size={16} />
             <span>New chat</span>
           </button>
+          
           <div className="mt-3 relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
             <input
               type="text"
               placeholder="Search chats..."
               value={chatSearch}
               onChange={(e) => setChatSearch(e.target.value)}
-              className="w-full bg-white border border-gray-300 rounded-md py-2 pl-3 pr-3 text-sm placeholder-gray-500 dark:bg-gray-800/60 dark:border-gray-700 dark:placeholder-gray-400"
+              className="w-full bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/50 rounded-lg py-2 pl-9 pr-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-colors"
             />
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto px-4">
-          <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Pinned</div>
-          <div className="space-y-1 mb-4">
+        <div className="flex-1 overflow-y-auto px-3">
+          <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1 font-medium">Pinned</div>
+          <div className="space-y-0.5 mb-4">
             {chats.filter(c => pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).length === 0 ? (
               <div className="text-xs text-gray-500 dark:text-gray-400">No pinned chats</div>
             ) : (
               chats.filter(c => pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).map(c => (
-                <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-md px-2 py-2 cursor-pointer ${c.id === chatId ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800/60'}`}
+                <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 cursor-pointer transition-colors ${c.id === chatId ? 'bg-gray-100 dark:bg-gray-800 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}
                      onClick={() => router.push(`/chat/${c.id}`)}>
-                  <div className="truncate text-sm text-gray-900 dark:text-white">{c.title || 'Untitled chat'}</div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                    <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" title="Unpin"><Star size={12} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"><Pencil size={12} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"><Trash2 size={12} /></button>
+                  <div className="truncate text-sm text-gray-900 dark:text-white font-medium">{c.title || 'Untitled chat'}</div>
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors" title="Unpin"><Star size={11} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors"><Pencil size={11} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors"><Trash2 size={11} /></button>
                   </div>
                 </div>
               ))
             )}
           </div>
 
-          <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">All</div>
-          <div className="space-y-1">
+          <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1 font-medium">Recent</div>
+          <div className="space-y-0.5">
             {chats.filter(c => !pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).length === 0 ? (
               <div className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">No conversations yet</div>
             ) : (
               chats.filter(c => !pinned.has(c.id) && (!chatSearch || (c.title||'').toLowerCase().includes(chatSearch.toLowerCase()))).map((c) => (
-                <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-md px-2 py-2 cursor-pointer ${c.id === chatId ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800/60'}`}
+                <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 cursor-pointer transition-colors ${c.id === chatId ? 'bg-gray-100 dark:bg-gray-800 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}
                      onClick={() => router.push(`/chat/${c.id}`)}>
-                  <div className="truncate text-sm text-gray-900 dark:text-white">{c.title || 'Untitled chat'}</div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                    <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" title="Pin"><Star size={12} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); assignFolder(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" title="Assign folder"><FolderPlus size={12} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"><Pencil size={12} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"><Trash2 size={12} /></button>
+                  <div className="truncate text-sm text-gray-900 dark:text-white font-medium">{c.title || 'Untitled chat'}</div>
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors" title="Pin"><Star size={11} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); assignFolder(c.id); }} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors" title="Assign folder"><FolderPlus size={11} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors"><Pencil size={11} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors"><Trash2 size={11} /></button>
                   </div>
                 </div>
               ))
@@ -759,102 +824,102 @@ export default function Chat({ chatId }: { chatId: string }) {
           </div>
         </div>
         
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Signed in as User
+        <div className="p-3 border-t border-gray-200/50 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/30">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Signed in as User
+            </div>
+            <div className="flex items-center gap-1">
+              <button className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Settings">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
         {/* Header: search + export (sticky) */}
-        <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
-          <button onClick={() => setShowSidebar(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-            <Menu size={20} />
-          </button>
-          <div className="flex-1" />
-          <button
-            onClick={async () => {
-              try {
-                const res = await fetch('/api/export/pdf', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    title: 'CareIQ Chat Export',
-                    messages: msgs.map(m => ({ role: m.role, content: m.content, createdAt: m.created_at }))
-                  })
-                });
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `careiq-chat-${new Date().toISOString().slice(0,10)}.pdf`;
-                a.click();
-                URL.revokeObjectURL(url);
-              } catch (e) { console.error('Export failed', e); }
-            }}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-            title="Export PDF"
-          >
-            <Download size={18} />
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                const data = { messages: msgs };
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `careiq-chat-${new Date().toISOString().slice(0,10)}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-              } catch (e) {}
-            }}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-            title="Export JSON"
-          >
-            <Share2 size={18} />
-          </button>
-          <button
-            onClick={() => setShowTemplates(true)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-            title="Chat templates"
-          >
-            <FileText size={18} />
-          </button>
-          <button
-            onClick={() => setShowShare(true)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-            title="Share chat"
-          >
-            <Users size={18} />
-          </button>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-            title="Chat settings"
-          >
-            <SettingsIcon size={18} />
-          </button>
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-gray-200/50 dark:border-gray-700/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowSidebar(true)} className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+              <Menu size={18} />
+            </button>
+            <div className="font-semibold text-gray-900 dark:text-white text-sm">CareIQ Assistant</div>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowTemplates(true)}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Chat templates"
+            >
+              <FileText size={16} />
+            </button>
+            <button
+              onClick={() => setShowShare(true)}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Share chat"
+            >
+              <Users size={16} />
+            </button>
+            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/export/pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      title: 'CareIQ Chat Export',
+                      messages: msgs.map(m => ({ role: m.role, content: m.content, createdAt: m.created_at }))
+                    })
+                  });
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `careiq-chat-${new Date().toISOString().slice(0,10)}.pdf`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch (e) { console.error('Export failed', e); }
+              }}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Export PDF"
+            >
+              <Download size={16} />
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Chat settings"
+            >
+              <SettingsIcon size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Messages area (virtualized) */}
-        <div className="flex-1 overflow-y-auto relative">
+        <div className="flex-1 overflow-y-auto relative bg-gray-50/30 dark:bg-gray-900">
           {msgs.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center max-w-md mx-auto p-6">
-                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-white font-bold text-lg">C</span>
+            <div className="flex items-center justify-center h-full py-12">
+              <div className="text-center max-w-2xl mx-auto px-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <span className="text-white font-bold text-xl">CIQ</span>
                 </div>
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">How can I help you today?</h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">Ask me anything about nursing home compliance and operations</p>
+                <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-3">How can I help you today?</h1>
+                <p className="text-gray-600 dark:text-gray-400 text-lg mb-8 leading-relaxed">
+                  I'm your AI nursing home compliance assistant. Ask me anything about regulations, 
+                  staff training, survey preparation, or daily operations.
+                </p>
                 
-                <div className="flex gap-3 justify-center mb-6">
+                <div className="flex gap-3 justify-center mb-8">
                   <button
                     onClick={() => setShowTemplates(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all hover:scale-105 shadow-lg"
                   >
                     <FileText size={16} />
                     Use Template
@@ -864,14 +929,16 @@ export default function Chat({ chatId }: { chatId: string }) {
                       const composer = document.getElementById('composer-input');
                       if (composer) composer.focus();
                     }}
-                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium transition-all hover:scale-105"
                   >
                     <Plus size={16} />
                     Start Fresh
                   </button>
                 </div>
                 
-                <div className="mt-6"><Suggestions onPick={setComposerValue} targetId="composer-input" /></div>
+                <div className="mt-8">
+                  <Suggestions onPick={setComposerValue} targetId="composer-input" />
+                </div>
               </div>
             </div>
           ) : (
@@ -886,13 +953,16 @@ export default function Chat({ chatId }: { chatId: string }) {
             />
           )}
           {!atBottom && (
-            <div className="absolute bottom-4 right-4">
+            <div className="absolute bottom-6 right-6">
               <button
                 onClick={() => {
                   try { virtuosoRef.current?.scrollToIndex?.({ index: Math.max(0, msgs.length - 1), align: 'end', behavior: 'smooth' }); } catch {}
                 }}
-                className="px-3 py-2 text-xs rounded-full bg-blue-600 text-white shadow hover:bg-blue-700"
+                className="flex items-center gap-2 px-4 py-2 text-sm rounded-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors backdrop-blur-sm"
               >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
                 Jump to bottom
               </button>
             </div>
@@ -901,15 +971,31 @@ export default function Chat({ chatId }: { chatId: string }) {
 
         {/* Attachments preview */}
         {attachedFiles.length > 0 && (
-          <div className="max-w-3xl mx-auto w-full px-4 mt-2">
-            <div className="flex flex-wrap gap-2">
-              {attachedFiles.map((f, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-full">
-                  <Paperclip size={14} />
-                  <span className="text-xs truncate max-w-[220px]">{f.name}</span>
-                  <button className="text-blue-700 hover:text-blue-900" onClick={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))}>×</button>
-                </div>
-              ))}
+          <div className="max-w-4xl mx-auto w-full px-4 pb-2">
+            <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-200/50 dark:border-blue-800/50 rounded-xl p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Paperclip size={16} className="text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  {attachedFiles.length} file{attachedFiles.length !== 1 ? 's' : ''} attached
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {attachedFiles.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
+                    <div className="w-4 h-4 bg-blue-100 dark:bg-blue-900 rounded flex items-center justify-center">
+                      <FileText size={10} className="text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <span className="text-sm text-gray-900 dark:text-white truncate max-w-[200px]">{f.name}</span>
+                    <button 
+                      className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/20 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 flex items-center justify-center text-xs font-bold transition-colors" 
+                      onClick={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                      title="Remove file"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -938,14 +1024,17 @@ export default function Chat({ chatId }: { chatId: string }) {
         
         {/* Stop button when streaming */}
         {streaming && (
-          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-2">
-            <div className="max-w-3xl mx-auto px-4">
-              <button
-                onClick={handleStop}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                Stop generating
-              </button>
+          <div className="border-t border-gray-200/50 dark:border-gray-700/50 bg-white dark:bg-gray-900 py-3">
+            <div className="max-w-4xl mx-auto px-4">
+              <div className="flex items-center justify-center">
+                <button
+                  onClick={handleStop}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-all hover:scale-105 shadow-lg"
+                >
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  Stop generating
+                </button>
+              </div>
             </div>
           </div>
         )}
