@@ -476,7 +476,7 @@ const KnowledgeManagement = () => {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-6">
+      <div className="bg-gradient-to-r from-blue-600/90 to-blue-700/90 text-white rounded-lg p-6 glass">
         <h1 className="text-2xl font-bold mb-2">Knowledge Base Management</h1>
         <p className="text-blue-100">
           Upload, organize, and manage your facility's regulatory and policy documents for AI-powered assistance.

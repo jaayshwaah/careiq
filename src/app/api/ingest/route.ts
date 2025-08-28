@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       last_updated = null,
       category = null,
       facility_id = null,
-      state = null, // <-- NEW
+      state = null, // optional state for categorization
     } = payload;
 
     let raw = content || "";
@@ -56,19 +56,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "No content submitted" }, { status: 400 });
     }
 
-    const chunks = chunkText(raw, { maxLen: 1200, overlap: 120 });
-    const embeddings = await embedTexts(chunks);
+    // Chunk into manageable pieces and embed
+    const chunkObjs = chunkText(raw, { chunkSize: 1200, overlap: 120, title: title ?? undefined, metadata: { source_url, facility_id, state, category } });
+    const chunkTexts = chunkObjs.map((c) => c.content);
+    const embeddings = await embedTexts(chunkTexts);
 
-    const toInsert = chunks.map((chunk, i) => ({
+    // Simple auto-categorization if none supplied
+    const detectCategory = (name: string, txt: string): string => {
+      const hay = `${name}\n${txt}`.toLowerCase();
+      if (hay.match(/\b(42 cfr|cms|f\-?tag|f\d{3})\b/)) return "CMS Regulation";
+      if (hay.match(/\b(joint commission|jcaho|accreditation)\b/)) return "Joint Commission";
+      if (hay.match(/\b(cdc|infection control|public health)\b/)) return "CDC Guidelines";
+      if (hay.match(/\b(state|texas|california|florida|new york|illinois)\b/)) return "State Regulation";
+      return "Facility Policy";
+    };
+
+    const autoCategory = category || detectCategory(String(source_url || title || ""), raw);
+
+    const toInsert = chunkObjs.map((chunk, i) => ({
       facility_id,
-      state,                 // <-- NEW
-      category,
+      state,
+      category: autoCategory,
       title: title || `Doc chunk ${i + 1}`,
-      content: chunk,
+      content: chunk.content,
       source_url,
       last_updated,
       embedding: embeddings[i],
-      metadata: { seq: i, total: chunks.length, state, facility_id, category, source_url },
+      metadata: { seq: i, total: chunkObjs.length, state, facility_id, category: autoCategory, source_url },
     }));
 
     if (toInsert.length === 0) {

@@ -39,6 +39,55 @@ export async function POST() {
       `
     });
 
+    // Create survey_prep_progress table
+    const { error: surveyPrepError } = await supabase.rpc('exec_sql', {
+      sql: `
+        CREATE TABLE IF NOT EXISTS survey_prep_progress (
+          user_id UUID PRIMARY KEY,
+          checklist_data JSONB DEFAULT '{}'::jsonb,
+          notes JSONB DEFAULT '{}'::jsonb,
+          assignments JSONB DEFAULT '{}'::jsonb,
+          survey_type TEXT,
+          facility_type TEXT,
+          last_updated TIMESTAMPTZ DEFAULT NOW()
+        );
+      `
+    });
+
+    // Create bookmarks table
+    const { error: bookmarksError } = await supabase.rpc('exec_sql', {
+      sql: `
+        CREATE TABLE IF NOT EXISTS bookmarks (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL,
+          chat_id UUID,
+          message_id UUID,
+          message_text TEXT NOT NULL,
+          tags TEXT[] DEFAULT ARRAY[]::TEXT[],
+          category TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS bookmarks_user_id_idx ON bookmarks(user_id);
+      `
+    });
+
+    // Create compliance_events table (used by calendar)
+    const { error: calendarError } = await supabase.rpc('exec_sql', {
+      sql: `
+        CREATE TABLE IF NOT EXISTS compliance_events (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL,
+          title TEXT NOT NULL,
+          date DATE NOT NULL,
+          category TEXT,
+          notes TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS compliance_events_user_id_idx ON compliance_events(user_id);
+        CREATE INDEX IF NOT EXISTS compliance_events_date_idx ON compliance_events(date);
+      `
+    });
+
     // If RPC doesn't work, try direct SQL (fallback)
     if (chatsError || messagesError) {
       // Direct table creation as fallback
@@ -51,7 +100,10 @@ export async function POST() {
       message: "Database initialized successfully",
       errors: {
         chats: chatsError?.message,
-        messages: messagesError?.message
+        messages: messagesError?.message,
+        surveyPrep: surveyPrepError?.message,
+        bookmarks: bookmarksError?.message,
+        calendar: calendarError?.message,
       }
     });
 

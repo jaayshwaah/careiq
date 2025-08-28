@@ -46,6 +46,16 @@ export async function POST(req: NextRequest) {
     const results = [];
     const supabaseAdmin = supabaseService(); // Use service role for uploads
 
+    // helper: smart category detection
+    const detectCategory = (name: string, txt: string): string => {
+      const hay = `${name}\n${txt}`.toLowerCase();
+      if (hay.match(/\b(42 cfr|cms|f\-?tag|f\d{3})\b/)) return "CMS Regulation";
+      if (hay.match(/\b(joint commission|jcaho|accreditation)\b/)) return "Joint Commission";
+      if (hay.match(/\b(cdc|infection control|public health)\b/)) return "CDC Guidelines";
+      if (hay.match(/\b(state|texas|california|florida|new york|illinois)\b/)) return "State Regulation";
+      return "Facility Policy";
+    };
+
     for (const file of files) {
       try {
         console.log(`Processing ${file.name} for facility ${profile.facility_name}`);
@@ -79,34 +89,39 @@ export async function POST(req: NextRequest) {
         }
 
         // Create chunks with facility-specific metadata
-        const chunks = chunkText(content, { 
-          maxLen: 1200, 
-          overlap: 120 
+        const chunkObjs = chunkText(content, { 
+          chunkSize: 1200, 
+          overlap: 120,
+          title: file.name,
+          metadata: { facility_id: profile.facility_id, facility_name: profile.facility_name, facility_state: profile.facility_state }
         });
+        const texts = chunkObjs.map(c => c.content);
         
         // Generate embeddings
-        const embeddings = await embedTexts(chunks);
+        const embeddings = await embedTexts(texts);
 
         // Prepare knowledge base entries with facility-specific information
-        const knowledgeEntries = chunks.map((chunk, i) => ({
+        const autoCategory = documentType || detectCategory(file.name, content);
+
+        const knowledgeEntries = chunkObjs.map((chunk, i) => ({
           facility_id: profile.facility_id,
           facility_name: profile.facility_name,
           state: profile.facility_state,
-          category: documentType,
-          title: `${profile.facility_name} - ${file.name}${chunks.length > 1 ? ` (Part ${i + 1}/${chunks.length})` : ''}`,
-          content: chunk,
+          category: autoCategory,
+          title: `${profile.facility_name} - ${file.name}${chunkObjs.length > 1 ? ` (Part ${i + 1}/${chunkObjs.length})` : ''}`,
+          content: chunk.content,
           source_url: null, // Internal document
           last_updated: new Date().toISOString(),
           embedding: embeddings[i],
           metadata: {
             original_filename: file.name,
-            document_type: documentType,
+            document_type: autoCategory,
             description: description,
             uploaded_by: user.id,
             uploaded_by_role: profile.role,
             facility_specific: true,
             chunk_index: i,
-            total_chunks: chunks.length,
+            total_chunks: chunkObjs.length,
             file_size: file.size,
             upload_date: new Date().toISOString()
           }
@@ -128,7 +143,7 @@ export async function POST(req: NextRequest) {
           results.push({
             filename: file.name,
             status: 'success',
-            chunks: chunks.length,
+            chunks: chunkObjs.length,
             characters: content.length
           });
           

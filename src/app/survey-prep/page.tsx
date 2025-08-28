@@ -332,14 +332,36 @@ const SurveyPreparation = () => {
   ];
 
   useEffect(() => {
-    // Load saved progress
-    const savedProgress = localStorage.getItem('survey-prep-progress');
-    if (savedProgress) {
-      const data = JSON.parse(savedProgress);
-      setCheckedItems(new Set(data.checkedItems || []));
-      setNotes(data.notes || {});
-      setTeamAssignments(data.teamAssignments || {});
-    }
+    // Load from API, fall back to localStorage
+    const load = async () => {
+      try {
+        const params = new URLSearchParams({ surveyType: selectedSurveyType, facilityType });
+        const res = await fetch(`/api/survey-prep?${params.toString()}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.progress) setCheckedItems(new Set(Object.keys(json.progress).filter((k) => json.progress[k])));
+          if (json?.notes) setNotes(json.notes);
+          if (json?.assignments) setTeamAssignments(json.assignments);
+        } else {
+          const saved = localStorage.getItem('survey-prep-progress');
+          if (saved) {
+            const data = JSON.parse(saved);
+            setCheckedItems(new Set(data.checkedItems || []));
+            setNotes(data.notes || {});
+            setTeamAssignments(data.teamAssignments || {});
+          }
+        }
+      } catch (e) {
+        const saved = localStorage.getItem('survey-prep-progress');
+        if (saved) {
+          const data = JSON.parse(saved);
+          setCheckedItems(new Set(data.checkedItems || []));
+          setNotes(data.notes || {});
+          setTeamAssignments(data.teamAssignments || {});
+        }
+      }
+    };
+    load();
   }, []);
 
   const saveProgress = () => {
@@ -350,6 +372,31 @@ const SurveyPreparation = () => {
       lastSaved: new Date().toISOString()
     };
     localStorage.setItem('survey-prep-progress', JSON.stringify(data));
+    // Also send to API (debounced by outer useEffect)
+    saveToServer();
+  };
+
+  let saveTimer: any = null as any;
+  const saveToServer = () => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try {
+        const checklistData = Object.fromEntries(Array.from(checkedItems).map((id) => [id, true]));
+        await fetch('/api/survey-prep', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            checklistData,
+            surveyType: selectedSurveyType,
+            facilityType,
+            notes,
+            assignments: teamAssignments,
+          }),
+        });
+      } catch (e) {
+        // silent fail; localStorage acts as fallback
+      }
+    }, 500);
   };
 
   useEffect(() => {
@@ -763,7 +810,7 @@ const SurveyPreparation = () => {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg p-6">
+      <div className="bg-gradient-to-r from-purple-600/90 to-blue-600/90 text-white rounded-lg p-6 glass">
         <h1 className="text-2xl font-bold mb-2">Survey Preparation Assistant</h1>
         <p className="text-purple-100">
           Comprehensive checklist and team coordination for regulatory survey readiness.
