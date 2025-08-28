@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut } from "lucide-react";
+import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
@@ -25,10 +25,71 @@ export default function SettingsPage() {
   // UI state
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Billing state
+  const [subscription, setSubscription] = useState<any>(null);
+  const [loadingBilling, setLoadingBilling] = useState(false);
 
   useEffect(() => {
     loadProfile();
   }, []);
+
+  const loadSubscription = async () => {
+    if (!profile?.role?.includes('administrator')) return;
+    
+    setLoadingBilling(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: subData, error } = await supabase
+        .from("user_subscriptions")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!error && subData) {
+        setSubscription(subData);
+      }
+    } catch (error) {
+      console.error("Failed to load subscription:", error);
+    } finally {
+      setLoadingBilling(false);
+    }
+  };
+
+  const createPortalLink = async () => {
+    setLoadingBilling(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/stripe/create-portal-link', {
+        method: 'POST',
+        headers: {
+          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+        },
+      });
+
+      if (response.ok) {
+        const { url } = await response.json();
+        window.open(url, '_blank');
+      } else {
+        throw new Error('Failed to create portal link');
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to open billing portal' });
+      setTimeout(() => setMessage(null), 5000);
+    } finally {
+      setLoadingBilling(false);
+    }
+  };
+
+  // Load subscription when profile loads and user is admin
+  useEffect(() => {
+    if (profile?.role?.includes('administrator')) {
+      loadSubscription();
+    }
+  }, [profile]);
 
   const loadProfile = async () => {
     try {
@@ -286,6 +347,86 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Billing Section - Admin Only */}
+        {profile?.role?.includes('administrator') && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Billing & Subscription
+            </h2>
+            
+            <div className="space-y-4">
+              {subscription ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Subscription Status
+                      </label>
+                      <div className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                        subscription.status === 'active' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          : subscription.status === 'trialing'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                      }`}>
+                        {subscription.status === 'active' ? 'Active' :
+                         subscription.status === 'trialing' ? 'Trial' :
+                         subscription.status === 'canceled' ? 'Canceled' : 
+                         subscription.status || 'Unknown'}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Current Period End
+                      </label>
+                      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white">
+                        {subscription.current_period_end 
+                          ? new Date(subscription.current_period_end).toLocaleDateString()
+                          : 'Not available'
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  {subscription.cancel_at_period_end && (
+                    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                      <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                        <strong>Cancellation Scheduled:</strong> Your subscription will not renew after the current period ends.
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={createPortalLink}
+                    disabled={loadingBilling}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {loadingBilling ? (
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ExternalLink size={16} />
+                    )}
+                    Manage Subscription
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Active Subscription</h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    Your facility doesn't have an active CareIQ subscription.
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Contact support to set up billing for your facility.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Save Button */}
         <div className="flex justify-between items-center">
