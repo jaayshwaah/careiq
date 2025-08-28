@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Plus, Menu } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
@@ -23,7 +23,6 @@ const suggestions = [
 export default function HomePage() {
   const [message, setMessage] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
   const { isAuthenticated } = useAuth();
@@ -122,103 +121,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="h-dvh flex md:grid md:grid-cols-[280px_1fr] bg-neutral-50 dark:bg-neutral-950">
-      {/* Sidebar */}
-      <aside className={`border-r border-neutral-200 dark:border-neutral-800 overflow-hidden fixed md:relative h-full w-[280px] transform transition-transform z-50 bg-white text-gray-900 dark:bg-gray-900 dark:text-white ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        {/* CareIQ Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-sm">CIQ</span>
-            </div>
-            <h1 className="text-lg font-semibold">CareIQ</h1>
-          </div>
-          <button
-            onClick={() => createNewChat()}
-            disabled={isCreating}
-            className="w-full flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white disabled:text-gray-500 rounded-lg transition-colors"
-          >
-            <Plus size={16} />
-            <span>New chat</span>
-          </button>
-        </div>
-        
-        {/* Navigation Menu */}
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          <div className="space-y-6">
-            {/* Quick Actions */}
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Quick Actions</div>
-              <div className="space-y-1">
-                <button
-                  onClick={() => createNewChat()}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm"
-                >
-                  💬 Start New Chat
-                </button>
-                <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm">
-                  📋 Survey Prep Checklist
-                </button>
-                <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm">
-                  🎓 Staff Training
-                </button>
-              </div>
-            </div>
-
-            {/* Main Features */}
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Features</div>
-              <div className="space-y-1">
-                <a href="/dashboard" className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm block">
-                  📊 Facility Dashboard
-                </a>
-                <a href="/notifications" className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm block">
-                  🔔 Smart Notifications
-                </a>
-                <a href="/survey-prep" className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm block">
-                  🎯 Survey Preparation
-                </a>
-                <a href="/calendar" className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm block">
-                  📅 Compliance Calendar
-                </a>
-                <a href="/knowledge" className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm block">
-                  📚 Knowledge Base
-                </a>
-                <a href="/analytics" className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm block">
-                  📈 Analytics
-                </a>
-              </div>
-            </div>
-
-            {/* Recent Chats */}
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Recent Chats</div>
-              <div className="space-y-1">
-                <div className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">No conversations yet</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Signed in as User</div>
-            <a href="/settings" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-              ⚙️
-            </a>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <main className="flex flex-col flex-1 min-w-0">
-        {/* Top bar */}
-        <header className="sticky top-0 z-10 border-b border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-950/80 backdrop-blur h-14 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowSidebar(true)} className="md:hidden p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"><Menu size={18} /></button>
-            <h1 className="font-medium">CareIQ</h1>
-          </div>
-        </header>
+    <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
 
         {/* Body (scroll) */}
         <section className="flex-1 overflow-y-auto">
@@ -271,9 +174,9 @@ export default function HomePage() {
         </section>
 
         {/* Composer (sticky bottom) */}
-        <div className="sticky bottom-0 z-10 border-t border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-950/80 backdrop-blur px-3 md:px-4 py-3">
-          <div className="mx-auto max-w-3xl rounded-xl md:rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
-            <div className="relative">
+        <div className="sticky bottom-0 z-10 border-t border-neutral-200 dark:border-neutral-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur px-4 py-4">
+          <div className="mx-auto max-w-4xl">
+            <div className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg focus-within:shadow-xl transition-all focus-within:border-blue-500/50">
               <textarea
                 ref={textareaRef}
                 value={message}
@@ -282,28 +185,31 @@ export default function HomePage() {
                 placeholder="Message CareIQ..."
                 disabled={isCreating}
                 autoFocus
-                className="w-full resize-none border-0 bg-transparent px-4 py-4 pr-12 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none text-base"
-                style={{ minHeight: '48px', maxHeight: '120px' }}
+                className="w-full resize-none border-0 bg-transparent px-6 py-4 pr-16 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none text-base leading-6"
+                style={{ minHeight: '64px', maxHeight: '200px' }}
                 rows={1}
               />
               <button
                 onClick={handleSend}
                 disabled={!message.trim() || isCreating}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 flex items-center justify-center"
+                className={`absolute right-3 bottom-3 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                  message.trim() && !isCreating
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg hover:scale-105'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                }`}
               >
                 {isCreating ? (
-                  <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <Send size={14} className="text-gray-700 dark:text-gray-200" />
+                  <Send size={18} />
                 )}
               </button>
             </div>
-            <div className="text-center py-2">
+            <div className="text-center mt-3">
               <p className="text-xs text-gray-500 dark:text-gray-400">CareIQ can make mistakes. Verify important compliance information.</p>
             </div>
           </div>
         </div>
-      </main>
     </div>
   );
 }

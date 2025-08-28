@@ -2,14 +2,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock } from "lucide-react";
+import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
+import { useAuth } from "@/components/AuthProvider";
+import { useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
 type Theme = "light" | "dark" | "system";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const { signOut } = useAuth();
+  const router = useRouter();
   const supabase = getBrowserSupabase();
   
   // Profile data (read-only for secure fields)
@@ -108,15 +112,42 @@ export default function SettingsPage() {
     );
   }
 
+  const handleSignOut = async () => {
+    if (confirm('Are you sure you want to sign out?')) {
+      try {
+        await signOut();
+        router.push('/login');
+      } catch (error) {
+        console.error('Sign out failed:', error);
+      }
+    }
+  };
+
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-4xl mx-auto p-6 space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Manage your personal preferences. Contact your administrator to change facility or role information.
-          </p>
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Settings</h1>
+              <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">
+                Manage your personal preferences and account settings
+              </p>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+            >
+              <LogOut size={16} />
+              Sign Out
+            </button>
+          </div>
         </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Message */}
         {message && (
@@ -257,18 +288,20 @@ export default function SettingsPage() {
         </div>
 
         {/* Save Button */}
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Changes are saved automatically
+          </div>
           <button
             onClick={saveProfile}
             disabled={saving}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
-            {saving ? "Saving..." : "Save Settings"}
+            {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
-
-        {/* Bottom padding */}
-        <div className="pb-8" />
+        
+        </div>
       </div>
     </div>
   );
