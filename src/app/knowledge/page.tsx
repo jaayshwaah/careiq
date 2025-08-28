@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Upload, 
   FileText, 
@@ -19,8 +20,15 @@ import {
   Clock,
   BarChart3
 } from 'lucide-react';
+import { useAuth } from '@/components/AuthProvider';
+import { getBrowserSupabase } from '@/lib/supabaseClient';
 
 const KnowledgeManagement = () => {
+  const router = useRouter();
+  const { isAuthenticated, user } = useAuth();
+  const supabase = getBrowserSupabase();
+  
+  const [profile, setProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('upload');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -53,10 +61,42 @@ const KnowledgeManagement = () => {
     { value: 'Survey Findings', icon: AlertCircle, color: 'orange', description: 'Regulatory survey results and citations' }
   ];
 
+  // Load user profile and check admin access
   useEffect(() => {
-    loadDocuments();
-    loadStats();
-  }, []);
+    const loadProfile = async () => {
+      if (!isAuthenticated || !user?.id) {
+        router.push('/login');
+        return;
+      }
+      
+      try {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+          
+        if (!profileData?.role?.includes('administrator')) {
+          router.push('/dashboard');
+          return;
+        }
+        
+        setProfile(profileData);
+      } catch (error) {
+        console.error("Failed to load profile:", error);
+        router.push('/dashboard');
+      }
+    };
+    
+    loadProfile();
+  }, [isAuthenticated, user, router, supabase]);
+
+  useEffect(() => {
+    if (profile?.role?.includes('administrator')) {
+      loadDocuments();
+      loadStats();
+    }
+  }, [profile]);
 
   const loadDocuments = async () => {
     setLoading(true);
@@ -473,6 +513,11 @@ const KnowledgeManagement = () => {
       </div>
     </div>
   );
+
+  // Show nothing while checking auth or if not admin
+  if (!isAuthenticated || !profile?.role?.includes('administrator')) {
+    return null;
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">

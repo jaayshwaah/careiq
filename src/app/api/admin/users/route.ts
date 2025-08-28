@@ -11,11 +11,33 @@ export async function GET(req: NextRequest) {
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
     const supa = supabaseServerWithAuth(token);
 
-    // Get all users via admin function
-    const { data, error } = await supa.rpc('admin_list_users');
+    // Try to get users via admin function first
+    let { data, error } = await supa.rpc('admin_list_users');
     
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      // Fallback to direct profiles query if RPC doesn't exist
+      const { data: profiles, error: profilesError } = await supa
+        .from('profiles')
+        .select(`
+          user_id,
+          email,
+          full_name,
+          role,
+          facility_name,
+          facility_state,
+          facility_id,
+          is_admin,
+          created_at,
+          updated_at,
+          approved_at
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (profilesError) {
+        return NextResponse.json({ ok: false, error: profilesError.message }, { status: 500 });
+      }
+      
+      data = profiles;
     }
 
     return NextResponse.json({ ok: true, users: data || [] });
@@ -26,35 +48,89 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const {
-      target_user_id,
-      role,
-      facility_name,
-      facility_state,
-      full_name,
-      email
-    } = await req.json();
+    const body = await req.json();
+    const { action, ...userData } = body;
 
     const auth = req.headers.get("authorization") || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
     const supa = supabaseServerWithAuth(token);
 
-    // Create/update profile via admin function
-    const { data, error } = await supa.rpc('admin_create_profile', {
-      target_user_id,
-      user_role: role,
-      user_facility_id: null, // Can be extended
-      user_facility_name: facility_name,
-      user_facility_state: facility_state,
-      user_full_name: full_name,
-      user_email: email,
-    });
+    if (action === 'create_profile' || !action) {
+      // Create/update profile via admin function
+      const { data, error } = await supa.rpc('admin_create_profile', {
+        target_user_id: userData.target_user_id || userData.user_id,
+        user_role: userData.role,
+        user_facility_id: userData.facility_id || '',
+        user_facility_name: userData.facility_name || '',
+        user_facility_state: userData.facility_state || '',
+        user_full_name: userData.full_name,
+        user_email: userData.email,
+      });
+
+      if (error) {
+        return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ ok: true, profile_id: data, message: "Profile created successfully" });
+    }
+
+    if (action === 'update_permissions') {
+      // Use update_user_permissions function if available
+      const { data, error } = await supa.rpc('update_user_permissions', {
+        target_user_id: userData.user_id,
+        new_role: userData.role,
+        set_admin: userData.is_admin
+      });
+
+      if (error) {
+        // Fallback to direct update
+        const { error: updateError } = await supa
+          .from('profiles')
+          .update({
+            role: userData.role,
+            is_admin: userData.is_admin,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userData.user_id);
+        
+        if (updateError) {
+          return NextResponse.json({ ok: false, error: updateError.message }, { status: 500 });
+        }
+      }
+
+      return NextResponse.json({ ok: true, message: "Permissions updated successfully" });
+    }
+
+    return NextResponse.json({ ok: false, error: "Invalid action" }, { status: 400 });
+  } catch (error: any) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('user_id');
+
+    if (!userId) {
+      return NextResponse.json({ ok: false, error: "User ID required" }, { status: 400 });
+    }
+
+    const auth = req.headers.get("authorization") || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
+    const supa = supabaseServerWithAuth(token);
+
+    // Delete profile (this will cascade delete related data)
+    const { error } = await supa
+      .from('profiles')
+      .delete()
+      .eq('user_id', userId);
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, profile_id: data });
+    return NextResponse.json({ ok: true, message: "User deleted successfully" });
   } catch (error: any) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }

@@ -88,6 +88,28 @@ export async function POST() {
       `
     });
 
+    // Create ppd_calculations table
+    const { error: ppdError } = await supabase.rpc('exec_sql', {
+      sql: `
+        CREATE TABLE IF NOT EXISTS ppd_calculations (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL,
+          date DATE NOT NULL,
+          census INTEGER NOT NULL CHECK (census > 0),
+          rn_hours DECIMAL(8,2) DEFAULT 0 CHECK (rn_hours >= 0),
+          lpn_hours DECIMAL(8,2) DEFAULT 0 CHECK (lpn_hours >= 0),
+          cna_hours DECIMAL(8,2) DEFAULT 0 CHECK (cna_hours >= 0),
+          total_nursing_hours DECIMAL(8,2) NOT NULL CHECK (total_nursing_hours >= 0),
+          ppd DECIMAL(8,2) NOT NULL CHECK (ppd >= 0),
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE(user_id, date)
+        );
+        CREATE INDEX IF NOT EXISTS ppd_calculations_user_id_idx ON ppd_calculations(user_id);
+        CREATE INDEX IF NOT EXISTS ppd_calculations_date_idx ON ppd_calculations(date DESC);
+        CREATE INDEX IF NOT EXISTS ppd_calculations_user_date_idx ON ppd_calculations(user_id, date DESC);
+      `
+    });
+
     // If RPC doesn't work, try direct SQL (fallback)
     if (chatsError || messagesError) {
       // Direct table creation as fallback
@@ -104,6 +126,7 @@ export async function POST() {
         surveyPrep: surveyPrepError?.message,
         bookmarks: bookmarksError?.message,
         calendar: calendarError?.message,
+        ppd: ppdError?.message,
       }
     });
 

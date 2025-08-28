@@ -19,6 +19,8 @@ import {
   Star,
   Pencil,
   Trash2,
+  Wrench,
+  Calculator,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -40,6 +42,7 @@ const navigationItems = [
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/survey-prep", label: "Survey Prep", icon: Shield },
   { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/ppd-calculator", label: "PPD Calculator", icon: Calculator },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
@@ -180,6 +183,11 @@ export default function AppleSidebar({ className = "" }: AppleSidebarProps) {
       <div className="px-3 py-4 border-b border-gray-200/30 dark:border-gray-700/30">
         <div className="space-y-1">
           {navigationItems.map((item) => {
+            // Hide knowledge tab for non-admin users
+            if (item.href === '/knowledge' && !userProfile?.role?.includes('administrator')) {
+              return null;
+            }
+            
             const Icon = item.icon;
             const isActive = isCurrentPath(item.href);
             
@@ -198,6 +206,21 @@ export default function AppleSidebar({ className = "" }: AppleSidebarProps) {
               </Link>
             );
           })}
+          
+          {/* CareIQ Developer Admin Button */}
+          {userProfile?.email?.endsWith('@careiq.com') && (
+            <Link
+              href="/admin"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all duration-200 border-t border-gray-200/30 dark:border-gray-700/30 mt-2 pt-4 ${
+                isCurrentPath('/admin')
+                  ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+              }`}
+            >
+              <Wrench size={18} className={isCurrentPath('/admin') ? "text-purple-600 dark:text-purple-400" : ""} />
+              CareIQ Admin
+            </Link>
+          )}
         </div>
       </div>
 
