@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, Users, FileText, Calendar, Bell } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, Users, FileText, Calendar, Bell, Calculator, Timer } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
+import { getBrowserSupabase } from '@/lib/supabaseClient';
 
 interface MetricCard {
   title: string;
@@ -24,7 +25,12 @@ interface RecentActivity {
 }
 
 export default function FacilityDashboard() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const supabase = getBrowserSupabase();
+  const [currentPPD, setCurrentPPD] = useState<number | null>(null);
+  const [loadingPPD, setLoadingPPD] = useState(true);
+  const [surveyCountdown, setSurveyCountdown] = useState<{days: number, hours: number, minutes: number} | null>(null);
+  
   const [metrics, setMetrics] = useState<MetricCard[]>([
     {
       title: 'Compliance Score',
@@ -102,6 +108,57 @@ export default function FacilityDashboard() {
     { title: 'Policy Review: Medication Management', date: '2024-02-12', type: 'policy', priority: 'medium' }
   ]);
 
+  // Load current PPD data
+  const loadCurrentPPD = async () => {
+    if (!user?.id) return;
+    
+    setLoadingPPD(true);
+    try {
+      const { data, error } = await supabase
+        .from('ppd_calculations')
+        .select('ppd')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(1);
+        
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setCurrentPPD(data[0].ppd);
+      }
+    } catch (error) {
+      console.error('Failed to load PPD data:', error);
+    } finally {
+      setLoadingPPD(false);
+    }
+  };
+
+  // Calculate survey countdown
+  const calculateSurveyCountdown = () => {
+    const surveyDate = new Date('2024-02-15'); // This should come from user settings or be dynamic
+    const now = new Date();
+    const timeDiff = surveyDate.getTime() - now.getTime();
+    
+    if (timeDiff > 0) {
+      const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+      setSurveyCountdown({ days, hours, minutes });
+    } else {
+      setSurveyCountdown(null);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadCurrentPPD();
+      calculateSurveyCountdown();
+      
+      // Update countdown every minute
+      const interval = setInterval(calculateSurveyCountdown, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, user]);
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -166,6 +223,82 @@ export default function FacilityDashboard() {
               </div>
             );
           })}
+        </div>
+
+        {/* Survey Countdown & PPD Widget Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Survey Countdown Widget */}
+          {surveyCountdown && (
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg border border-orange-200 dark:border-orange-700 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-300 flex items-center gap-2">
+                  <Timer className="h-5 w-5" />
+                  Survey Window Countdown
+                </h3>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{surveyCountdown.days}</div>
+                  <div className="text-sm text-orange-700 dark:text-orange-300">Days</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{surveyCountdown.hours}</div>
+                  <div className="text-sm text-orange-700 dark:text-orange-300">Hours</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{surveyCountdown.minutes}</div>
+                  <div className="text-sm text-orange-700 dark:text-orange-300">Minutes</div>
+                </div>
+              </div>
+              <div className="mt-4 text-center">
+                <Link 
+                  href="/survey-prep" 
+                  className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200 text-sm font-medium underline"
+                >
+                  Start Survey Preparation →
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Current PPD Widget */}
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-700 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-green-900 dark:text-green-300 flex items-center gap-2">
+                <Calculator className="h-5 w-5" />
+                Current PPD
+              </h3>
+              <Link 
+                href="/ppd-calculator" 
+                className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 text-sm font-medium"
+              >
+                View Calculator
+              </Link>
+            </div>
+            <div className="text-center">
+              {loadingPPD ? (
+                <div className="animate-pulse">
+                  <div className="text-4xl font-bold text-green-600 dark:text-green-400">--</div>
+                </div>
+              ) : currentPPD !== null ? (
+                <>
+                  <div className="text-4xl font-bold text-green-600 dark:text-green-400">{currentPPD.toFixed(2)}</div>
+                  <div className="text-sm text-green-700 dark:text-green-300">Hours Per Patient Day</div>
+                  <div className="text-xs text-green-600 dark:text-green-400 mt-1">Latest calculation</div>
+                </>
+              ) : (
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-400 mb-2">No PPD Data</div>
+                  <Link 
+                    href="/ppd-calculator" 
+                    className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 text-sm font-medium underline"
+                  >
+                    Calculate Your First PPD →
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

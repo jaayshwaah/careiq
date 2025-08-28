@@ -212,6 +212,34 @@ export async function POST(req: NextRequest) {
               .from("chats")
               .update({ updated_at: new Date().toISOString() })
               .eq("id", chatId);
+
+            // Auto-title after first exchange (user + assistant)
+            try {
+              const { data: totalMessages } = await supa
+                .from("messages")
+                .select("id", { count: "exact" })
+                .eq("chat_id", chatId);
+
+              // Only auto-title if this is the first complete exchange (2 messages: user + assistant)
+              if (totalMessages && totalMessages.length === 2) {
+                // Call title generation API in background
+                fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/title`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    chatId,
+                    userText: content,
+                    assistantText: fullResponse,
+                  }),
+                }).catch(error => {
+                  console.warn('Auto-title failed:', error);
+                });
+              }
+            } catch (error) {
+              console.warn('Auto-title check failed:', error);
+            }
           }
 
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));

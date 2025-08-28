@@ -44,7 +44,6 @@ const navigationItems = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/ppd-calculator", label: "PPD Calculator", icon: Calculator },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 export default function AppleSidebar({ className = "" }: AppleSidebarProps) {
@@ -55,6 +54,9 @@ export default function AppleSidebar({ className = "" }: AppleSidebarProps) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [editingChatId, setEditingChatId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [brandingSettings, setBrandingSettings] = useState<any>(null);
   const supabase = getBrowserSupabase();
 
   // Load user profile
@@ -67,6 +69,20 @@ export default function AppleSidebar({ className = "" }: AppleSidebarProps) {
         .eq("user_id", user.id)
         .single();
       setUserProfile(profile);
+      
+      // Load branding settings if admin
+      if (profile?.role?.includes('administrator')) {
+        try {
+          const { data: branding } = await supabase
+            .from("branding_settings")
+            .select("*")
+            .eq("user_id", user.id)
+            .single();
+          setBrandingSettings(branding);
+        } catch (error) {
+          console.warn("Failed to load branding settings:", error);
+        }
+      }
     } catch (error) {
       console.warn("Failed to load profile:", error);
     }
@@ -132,6 +148,75 @@ export default function AppleSidebar({ className = "" }: AppleSidebarProps) {
     }
   };
 
+  // Edit chat title
+  const handleEditChat = (chat: Chat) => {
+    setEditingChatId(chat.id);
+    setEditingTitle(chat.title);
+  };
+
+  const handleSaveTitle = async () => {
+    if (!editingChatId || !editingTitle.trim()) return;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const response = await fetch(`/api/chats/${editingChatId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ title: editingTitle.trim() }),
+      });
+
+      if (response.ok) {
+        setChats(prev => prev.map(chat => 
+          chat.id === editingChatId 
+            ? { ...chat, title: editingTitle.trim() }
+            : chat
+        ));
+        setEditingChatId(null);
+        setEditingTitle("");
+      }
+    } catch (error) {
+      console.error('Failed to update chat title:', error);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingChatId(null);
+    setEditingTitle("");
+  };
+
+  // Delete chat
+  const handleDeleteChat = async (chatId: string) => {
+    if (!confirm('Are you sure you want to delete this chat?')) return;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const response = await fetch(`/api/chats/${chatId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        setChats(prev => prev.filter(chat => chat.id !== chatId));
+        
+        // If we're currently viewing the deleted chat, redirect to home
+        if (pathname === `/chat/${chatId}`) {
+          router.push('/');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -162,17 +247,56 @@ export default function AppleSidebar({ className = "" }: AppleSidebarProps) {
       <div className="px-6 py-5 border-b border-gray-200/30 dark:border-gray-700/30">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
-              <span className="text-white font-semibold text-sm">CIQ</span>
+            <div 
+              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
+              style={{
+                background: brandingSettings?.primary_color 
+                  ? `linear-gradient(to bottom right, ${brandingSettings.primary_color}, ${brandingSettings.primary_color}CC)`
+                  : 'linear-gradient(to bottom right, #3b82f6, #2563eb)'
+              }}
+            >
+              {brandingSettings?.logo_url ? (
+                <img 
+                  src={brandingSettings.logo_url} 
+                  alt="Company logo" 
+                  className="w-full h-full object-contain rounded-lg"
+                />
+              ) : (
+                <span className="text-white font-semibold text-sm">
+                  {brandingSettings?.company_name 
+                    ? brandingSettings.company_name.charAt(0).toUpperCase() 
+                    : 'CIQ'}
+                </span>
+              )}
             </div>
-            <span className="font-semibold text-gray-900 dark:text-white text-lg">CareIQ</span>
+            <span className="font-semibold text-gray-900 dark:text-white text-lg">
+              {brandingSettings?.company_name || 'CareIQ'}
+            </span>
           </div>
         </div>
         
         {/* New Chat Button */}
         <button
           onClick={createNewChat}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-white rounded-lg font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+          style={{
+            backgroundColor: brandingSettings?.primary_color || '#3b82f6',
+            ':hover': {
+              backgroundColor: brandingSettings?.primary_color 
+                ? `${brandingSettings.primary_color}DD` 
+                : '#2563eb'
+            }
+          }}
+          onMouseOver={(e) => {
+            if (brandingSettings?.primary_color) {
+              e.currentTarget.style.backgroundColor = `${brandingSettings.primary_color}DD`;
+            }
+          }}
+          onMouseOut={(e) => {
+            if (brandingSettings?.primary_color) {
+              e.currentTarget.style.backgroundColor = brandingSettings.primary_color;
+            }
+          }}
         >
           <Plus size={18} />
           New Chat
@@ -254,50 +378,72 @@ export default function AppleSidebar({ className = "" }: AppleSidebarProps) {
             <div className="space-y-1">
               {filteredChats.map((chat) => {
                 const isActive = pathname === `/chat/${chat.id}`;
+                const isEditing = editingChatId === chat.id;
                 
                 return (
                   <div
                     key={chat.id}
-                    className={`group flex items-center gap-3 p-2 rounded-lg transition-all duration-200 cursor-pointer ${
+                    className={`group flex items-center gap-3 p-2 rounded-lg transition-all duration-200 ${
                       isActive 
                         ? "bg-blue-50 dark:bg-blue-900/20" 
                         : "hover:bg-gray-100 dark:hover:bg-gray-800/30"
                     }`}
-                    onClick={() => router.push(`/chat/${chat.id}`)}
                   >
                     <MessageCircle 
                       size={16} 
                       className={isActive ? "text-blue-600 dark:text-blue-400" : "text-gray-400"} 
                     />
                     <div className="flex-1 min-w-0">
-                      <div className={`text-sm font-medium truncate ${
-                        isActive 
-                          ? "text-blue-700 dark:text-blue-400" 
-                          : "text-gray-900 dark:text-white"
-                      }`}>
-                        {chat.title || "Untitled chat"}
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onBlur={handleSaveTitle}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveTitle();
+                            if (e.key === 'Escape') handleCancelEdit();
+                          }}
+                          className="text-sm font-medium bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full"
+                          autoFocus
+                        />
+                      ) : (
+                        <div 
+                          className={`text-sm font-medium truncate cursor-pointer ${
+                            isActive 
+                              ? "text-blue-700 dark:text-blue-400" 
+                              : "text-gray-900 dark:text-white"
+                          }`}
+                          onClick={() => router.push(`/chat/${chat.id}`)}
+                        >
+                          {chat.title || "Untitled chat"}
+                        </div>
+                      )}
+                    </div>
+                    {!isEditing && (
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditChat(chat);
+                          }}
+                          className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md text-gray-500 hover:text-gray-700"
+                          title="Rename chat"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteChat(chat.id);
+                          }}
+                          className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md text-red-500 hover:text-red-700"
+                          title="Delete chat"
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
-                    </div>
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Handle edit
-                        }}
-                        className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Handle delete
-                        }}
-                        className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md text-red-500"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+                    )}
                   </div>
                 );
               })}

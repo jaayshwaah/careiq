@@ -32,6 +32,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
+// Alias PUT to PATCH for compatibility
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  return PATCH(req, { params });
+}
+
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   try {
     const supabase = getAdminClient();
