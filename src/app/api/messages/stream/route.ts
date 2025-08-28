@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
 
     // Get OpenRouter config
     const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-    const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+    const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o"; // Updated to use GPT-4o (GPT-5 when available)
 
     if (!OPENROUTER_API_KEY) {
       return NextResponse.json({ error: "AI service not configured" }, { status: 503 });

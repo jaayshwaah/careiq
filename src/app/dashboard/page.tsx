@@ -30,6 +30,9 @@ export default function FacilityDashboard() {
   const [currentPPD, setCurrentPPD] = useState<number | null>(null);
   const [loadingPPD, setLoadingPPD] = useState(true);
   const [surveyCountdown, setSurveyCountdown] = useState<{days: number, hours: number, minutes: number} | null>(null);
+  const [facilityAnalysis, setFacilityAnalysis] = useState<any>(null);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   
   const [metrics, setMetrics] = useState<MetricCard[]>([
     {
@@ -145,6 +148,38 @@ export default function FacilityDashboard() {
       setSurveyCountdown({ days, hours, minutes });
     } else {
       setSurveyCountdown(null);
+    }
+  };
+
+  // Load facility analysis
+  const loadFacilityAnalysis = async () => {
+    setLoadingAnalysis(true);
+    setAnalysisError(null);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const response = await fetch('/api/facility-analysis', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setFacilityAnalysis(result.data);
+      } else {
+        const error = await response.json();
+        setAnalysisError(error.error || 'Failed to load facility analysis');
+      }
+    } catch (error) {
+      console.error('Failed to load facility analysis:', error);
+      setAnalysisError('Failed to load facility analysis');
+    } finally {
+      setLoadingAnalysis(false);
     }
   };
 
@@ -295,6 +330,156 @@ export default function FacilityDashboard() {
                   >
                     Calculate Your First PPD →
                   </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Facility Analysis Widget */}
+        <div className="mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Facility Performance Analysis
+                </h2>
+                <button
+                  onClick={loadFacilityAnalysis}
+                  disabled={loadingAnalysis}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+                >
+                  {loadingAnalysis ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <CheckCircle size={16} />
+                  )}
+                  {loadingAnalysis ? 'Analyzing...' : 'Analyze Facility'}
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              {analysisError ? (
+                <div className="text-center py-8">
+                  <div className="text-red-600 dark:text-red-400 mb-4">
+                    <AlertTriangle className="w-12 h-12 mx-auto mb-2" />
+                    {analysisError}
+                  </div>
+                  <button
+                    onClick={loadFacilityAnalysis}
+                    className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 text-sm font-medium underline"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : facilityAnalysis ? (
+                <div className="space-y-6">
+                  {/* Facility Overview */}
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                      {facilityAnalysis.facility.name}
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">{facilityAnalysis.facility.overallRating}/5</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Overall</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">{facilityAnalysis.facility.healthInspections}/5</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Health Inspections</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">{facilityAnalysis.facility.qualityMeasures}/5</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Quality</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-600">{facilityAnalysis.facility.staffing}/5</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Staffing</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-indigo-600">{facilityAnalysis.facility.shortStay}/5</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Short Stay</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-pink-600">{facilityAnalysis.facility.longStay}/5</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Long Stay</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AI Recommendations */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-3">🎯 Priority Improvement Areas</h4>
+                      <ul className="space-y-2">
+                        {facilityAnalysis.analysis.priorityAreas?.map((area: string, index: number) => (
+                          <li key={index} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                            <span className="text-red-500 mt-1">•</span>
+                            {area}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-3">⭐ Star Rating Strategies</h4>
+                      <ul className="space-y-2">
+                        {facilityAnalysis.analysis.starRatingStrategies?.map((strategy: string, index: number) => (
+                          <li key={index} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                            <span className="text-yellow-500 mt-1">•</span>
+                            {strategy}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-3">📋 Staff Training Focus</h4>
+                      <ul className="space-y-2">
+                        {facilityAnalysis.analysis.staffTraining?.map((training: string, index: number) => (
+                          <li key={index} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            {training}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-3">✅ Quality Enhancements</h4>
+                      <ul className="space-y-2">
+                        {facilityAnalysis.analysis.qualityEnhancements?.map((enhancement: string, index: number) => (
+                          <li key={index} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                            <span className="text-green-500 mt-1">•</span>
+                            {enhancement}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-gray-500 dark:text-gray-400 text-center pt-4 border-t border-gray-200 dark:border-gray-700">
+                    Analysis generated on {new Date(facilityAnalysis.generatedAt).toLocaleDateString()}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    AI-Powered Facility Analysis
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-md mx-auto">
+                    Get personalized improvement recommendations based on your facility's Medicare Care Compare data and star ratings.
+                  </p>
+                  <button
+                    onClick={loadFacilityAnalysis}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Generate Analysis
+                  </button>
                 </div>
               )}
             </div>
