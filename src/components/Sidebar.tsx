@@ -50,6 +50,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       'josh@careiq.app',
       'joshking@careiq.app', 
       'admin@careiq.app',
+      'jking@pioneervalleyhealth.com',
       // Add your email here for immediate admin access
     ];
     
