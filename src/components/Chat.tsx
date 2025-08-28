@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, Check, Menu, Plus, Send } from "lucide-react";
+import { Copy, Check, Menu, Plus, Send, Pencil, Trash2, RotateCw, Bookmark } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
 type Msg = {
@@ -167,6 +167,8 @@ function MessageInput({
   );
 }
 
+type ChatRow = { id: string; title: string; created_at?: string; updated_at?: string };
+
 export default function Chat({ chatId }: { chatId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -174,6 +176,7 @@ export default function Chat({ chatId }: { chatId: string }) {
 
   // State
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [chats, setChats] = useState<ChatRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -243,6 +246,29 @@ export default function Chat({ chatId }: { chatId: string }) {
       mounted = false;
     };
   }, [chatId, router, supabase]);
+
+  // Load chat list for sidebar
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const res = await fetch('/api/chats', {
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+          cache: 'no-store'
+        });
+        if (!mounted) return;
+        if (res.ok) {
+          const json = await res.json();
+          setChats(json?.chats || []);
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, [chatId, supabase]);
 
   // Handle initial message from URL parameter
   useEffect(() => {
@@ -437,6 +463,45 @@ export default function Chat({ chatId }: { chatId: string }) {
     }
   };
 
+  // Regenerate assistant response based on preceding user message
+  const handleRegenerate = async (assistantIndex: number) => {
+    const prevUser = [...msgs].slice(0, assistantIndex).reverse().find(m => m.role === 'user');
+    if (prevUser?.content) await handleSend(prevUser.content);
+  };
+
+  // Bookmark assistant message
+  const handleBookmark = async (message: Msg) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch('/api/bookmarks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ message: message.content, chat_id: chatId }),
+      });
+    } catch (e) {
+      console.warn('Bookmark failed', e);
+    }
+  };
+
+  // Rename and delete chats (quick inline actions)
+  const renameChat = async (id: string) => {
+    const title = prompt('Rename chat');
+    if (!title) return;
+    await fetch(`/api/chats/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) });
+    setChats(prev => prev.map(c => c.id === id ? { ...c, title } : c));
+  };
+  const deleteChat = async (id: string) => {
+    if (!confirm('Delete this chat?')) return;
+    await fetch(`/api/chats/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    setChats(prev => prev.filter(c => c.id !== id));
+    if (id === chatId && chats[0]) {
+      router.push(`/chat/${chats[0].id}`);
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -498,9 +563,20 @@ export default function Chat({ chatId }: { chatId: string }) {
         <div className="flex-1 overflow-y-auto px-4">
           <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Recent</div>
           <div className="space-y-1">
-            <div className="text-sm text-gray-500 py-8 text-center">
-              No conversations yet
-            </div>
+            {chats.length === 0 ? (
+              <div className="text-sm text-gray-500 py-8 text-center">No conversations yet</div>
+            ) : (
+              chats.map((c) => (
+                <div key={c.id} className={`group flex items-center justify-between gap-2 rounded-md px-2 py-2 cursor-pointer ${c.id === chatId ? 'bg-gray-800' : 'hover:bg-gray-800/60'}`}
+                     onClick={() => router.push(`/chat/${c.id}`)}>
+                  <div className="truncate text-sm">{c.title || 'Untitled chat'}</div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                    <button onClick={(e) => { e.stopPropagation(); renameChat(c.id); }} className="p-1 hover:bg-gray-700 rounded"><Pencil size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} className="p-1 hover:bg-gray-700 rounded"><Trash2 size={12} /></button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
         
@@ -543,8 +619,16 @@ export default function Chat({ chatId }: { chatId: string }) {
             </div>
           ) : (
             <>
-              {msgs.map((message) => (
-                <MessageBubble key={message.id} message={message} />
+              {msgs.map((message, idx) => (
+                <div key={message.id}>
+                  <MessageBubble message={message} />
+                  {message.role === 'assistant' && message.content && (
+                    <div className="max-w-3xl mx-auto px-4 -mt-2 mb-4 flex gap-2">
+                      <button onClick={() => handleRegenerate(idx)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1"><RotateCw size={12}/> Regenerate</button>
+                      <button onClick={() => handleBookmark(message)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1"><Bookmark size={12}/> Bookmark</button>
+                    </div>
+                  )}
+                </div>
               ))}
               
               {/* Streaming indicator */}

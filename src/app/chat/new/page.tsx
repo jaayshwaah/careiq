@@ -15,7 +15,7 @@ export default async function NewChatPage() {
   // Forward cookies to preserve session/auth for the API route
   const cookieHeader = cookies().getAll().map((c) => `${c.name}=${c.value}`).join("; ");
 
-  const res = await fetch(`${origin}/api/conversations`, {
+  const res = await fetch(`${origin}/api/chats`, {
     method: "POST",
     // Make sure this never caches
     cache: "no-store",
@@ -41,7 +41,7 @@ export default async function NewChatPage() {
     return redirect("/");
   }
 
-  const id = data?.id;
+  const id = data?.chat?.id || data?.id || data?.chat_id;
   if (!id || typeof id !== "string") {
     return redirect("/");
   }
