@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, Check, Menu, Plus, Send, Pencil, Trash2, RotateCw, Bookmark, Paperclip, Download, Search as SearchIcon, Settings as SettingsIcon, Share2, Star, FolderPlus } from "lucide-react";
+import { Copy, Check, Menu, Plus, Send, Pencil, Trash2, RotateCw, Bookmark, Paperclip, Download, Settings as SettingsIcon, Share2, Star, FolderPlus } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 import Suggestions from "@/components/Suggestions";
 import MessageList from "@/components/chat/MessageList";
@@ -215,7 +215,6 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [chatSearch, setChatSearch] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [atBottom, setAtBottom] = useState(true);
@@ -349,7 +348,9 @@ export default function Chat({ chatId }: { chatId: string }) {
       const initialMessage = searchParams.get('message');
       if (initialMessage) {
         setHasProcessedInitialMessage(true);
-        setComposerValue(initialMessage);
+        // Auto-send the initial message passed from the home page
+        // so the user lands directly into a streaming response.
+        void handleSend(initialMessage);
       }
     }
   }, [loading, msgs.length, hasProcessedInitialMessage, searchParams]);
@@ -432,20 +433,7 @@ export default function Chat({ chatId }: { chatId: string }) {
       setComposerValue("");
       setEditingMessageId(null);
 
-      // Generate title if this is the first message
-      if (msgs.length === 0) {
-        try {
-          fetch(`/api/chats/${encodeURIComponent(chatId)}/title`, {
-            method: "POST",
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            },
-          }).catch(err => console.warn('Title generation failed:', err));
-        } catch (e) {
-          console.warn('Title generation failed:', e);
-        }
-      }
+      const wasFirstTurn = msgs.length === 0;
 
       // Start streaming
       const controller = new AbortController();
@@ -533,6 +521,27 @@ export default function Chat({ chatId }: { chatId: string }) {
             ? { ...msg, content: "I apologize, but I couldn't generate a response. Please try again." }
             : msg
         ));
+      }
+
+      // Auto-title after first exchange completes
+      if (wasFirstTurn) {
+        const userWordCount = content.trim().split(/\s+/).filter(Boolean).length;
+        if (userWordCount > 3 && assistantContent.trim()) {
+          setTimeout(() => {
+            fetch('/api/title', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chatId, userText: content.trim(), assistantText: assistantContent.trim() })
+            })
+              .then(r => r.json().catch(() => ({})))
+              .then((j) => {
+                if (j?.title) {
+                  setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: j.title } : c));
+                }
+              })
+              .catch(() => {});
+          }, 1500);
+        }
       }
 
     } catch (error: any) {
@@ -761,16 +770,7 @@ export default function Chat({ chatId }: { chatId: string }) {
           <button onClick={() => setShowSidebar(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
             <Menu size={20} />
           </button>
-          <div className="flex-1 max-w-xl mx-4 relative">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-          	type="text"
-          	placeholder="Search messages..."
-          	value={searchQuery}
-          	onChange={(e) => setSearchQuery(e.target.value)}
-          	className="w-full pl-9 pr-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
-            />
-          </div>
+          <div className="flex-1" />
           <button
             onClick={async () => {
               try {
@@ -844,7 +844,6 @@ export default function Chat({ chatId }: { chatId: string }) {
               onRegenerate={handleRegenerate}
               onBookmark={handleBookmark}
               onEdit={(id, content) => { setEditingMessageId(id); setComposerValue(content); }}
-              filter={searchQuery}
               onAtBottomChange={setAtBottom}
             />
           )}

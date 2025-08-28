@@ -1,32 +1,30 @@
-// src/app/api/title/route.ts
-import { NextResponse } from "next/server";
-import { getORConfig, orChatComplete, ORMessage } from "@/lib/openrouter";
+// src/app/api/title/route.ts - resilient chat titling
+import { NextRequest, NextResponse } from "next/server";
+import { generateTitle } from "@/lib/titler";
+import { supabaseService } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
-  let body: any = {};
+export async function POST(req: NextRequest) {
   try {
-    body = await req.json();
-  } catch {}
+    const { chatId, userText, assistantText } = await req.json();
+    if (!chatId || !userText || !assistantText) {
+      return NextResponse.json({ ok: false, error: "chatId, userText, assistantText required" }, { status: 400 });
+    }
 
-  const text: string = (body?.text || "").toString().slice(0, 8000); // guard
-  const cfg = getORConfig();
+    let title = "New Chat";
+    try {
+      title = await generateTitle({ userText, assistantText, timeoutMs: 2000 });
+    } catch {}
 
-  const system: ORMessage = {
-    role: "system",
-    content:
-      "You are a title writer. Return ONLY a very short, clear chat title (max 6 words), no quotes, no punctuation.",
-  };
-  const user: ORMessage = {
-    role: "user",
-    content: `Write a short chat title for this content:\n\n${text}`,
-  };
+    // Persist to chats table (best-effort)
+    try {
+      const supa = supabaseService();
+      await supa.from("chats").update({ title }).eq("id", chatId);
+    } catch {}
 
-  const res = await orChatComplete([system, user], cfg.titleModel, false);
-  const data = await res.json().catch(() => ({} as any));
-  const title =
-    data?.choices?.[0]?.message?.content?.trim()?.replace(/^["'“”]+|["'“”]+$/g, "") || "";
-
-  return NextResponse.json({ title });
+    return NextResponse.json({ ok: true, title });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: e?.message || "internal error" }, { status: 500 });
+  }
 }
