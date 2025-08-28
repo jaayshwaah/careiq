@@ -20,9 +20,17 @@ export default function LoginPage() {
 
   // already signed in? go home
   useEffect(() => {
+    let isMounted = true;
+    
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.href = "/";
+      if (isMounted && data.session) {
+        window.location.href = "/";
+      }
     });
+
+    return () => {
+      isMounted = false;
+    };
   }, [supabase]);
 
   const redirectTo =
@@ -35,7 +43,11 @@ export default function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      window.location.href = "/";
+      
+      // Small delay to ensure auth state propagates
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 100);
     } catch (err: any) {
       setMsg(err?.message || "Sign-in failed.");
     } finally {

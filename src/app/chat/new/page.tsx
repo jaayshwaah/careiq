@@ -25,7 +25,7 @@ export default function NewChatPage() {
   const [isCreating, setIsCreating] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const supabase = getBrowserSupabase();
 
   // Auto-resize textarea
@@ -95,6 +95,14 @@ export default function NewChatPage() {
     // focus composer
     requestAnimationFrame(() => textareaRef.current?.focus());
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     router.push('/login');
