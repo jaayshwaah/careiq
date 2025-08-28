@@ -54,3 +54,18 @@ body {
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 30px rgba(0,0,0,0.4);
 }
+
+/* Minimal highlight.js theme (light/dark aware) */
+.hljs { display: block; overflow-x: auto; padding: 1rem; background: transparent; }
+.hljs, .hljs-subst { color: #111827; }
+.dark .hljs, .dark .hljs-subst { color: #e5e7eb; }
+.hljs-comment { color: #6b7280; }
+.dark .hljs-comment { color: #9ca3af; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: #2563eb; }
+.dark .hljs-keyword, .dark .hljs-selector-tag, .dark .hljs-literal { color: #93c5fd; }
+.hljs-string, .hljs-title, .hljs-name, .hljs-type { color: #059669; }
+.dark .hljs-string, .dark .hljs-title, .dark .hljs-name, .dark .hljs-type { color: #6ee7b7; }
+.hljs-number, .hljs-attribute { color: #7c3aed; }
+.dark .hljs-number, .dark .hljs-attribute { color: #c4b5fd; }
+.hljs-addition { color: #16a34a; }
+.hljs-deletion { color: #dc2626; }

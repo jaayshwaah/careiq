@@ -6,9 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Copy, Check, Menu, Plus, Send, Pencil, Trash2, RotateCw, Bookmark, Paperclip, Download, Search as SearchIcon, Settings as SettingsIcon, Share2, Star, FolderPlus } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 import Suggestions from "@/components/Suggestions";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
+import MessageList from "@/components/chat/MessageList";
 
 type Msg = {
   id: string;
@@ -86,34 +84,7 @@ function MessageBubble({ message, isStreaming = false, onEdit }: { message: Msg;
           </div>
           
           <div className="prose prose-sm max-w-none dark:prose-invert">
-            {message.content ? (
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight as any]}
-                components={{
-                  code({ inline, className, children, ...props }) {
-                    const lang = (className || "").replace("language-", "");
-                    if (inline) return <code className={className} {...props}>{children}</code>;
-                    const text = String(children || "");
-                    return (
-                      <div className="relative group/code">
-                        <button
-                          onClick={() => navigator.clipboard.writeText(text)}
-                          className="absolute right-2 top-2 text-xs px-2 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover/code:opacity-100"
-                          title="Copy code"
-                          type="button"
-                        >Copy</button>
-                        <pre className={className}><code>{text}</code></pre>
-                      </div>
-                    );
-                  },
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
-            ) : isStreaming ? (
-              <TypingIndicator />
-            ) : null}
+            {message.content ? <span className="block" /> : isStreaming ? <TypingIndicator /> : null}
           </div>
           
           {/* Actions */}
@@ -247,6 +218,7 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [chatSearch, setChatSearch] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [atBottom, setAtBottom] = useState(true);
   const [pinned, setPinned] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem('careiq-pins') || '[]')); } catch { return new Set(); }
   });
@@ -260,6 +232,7 @@ export default function Chat({ chatId }: { chatId: string }) {
   
   const controllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const virtuosoRef = useRef<any>(null);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -277,6 +250,18 @@ export default function Chat({ chatId }: { chatId: string }) {
         }
       } catch { /* ignore */ }
     })();
+  }, []);
+
+  // Global keyboard shortcut: Ctrl/Cmd+K focuses sidebar search
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        (document.getElementById('sidebar-search-input') as HTMLInputElement | null)?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   // Load messages
@@ -771,8 +756,8 @@ export default function Chat({ chatId }: { chatId: string }) {
 
       {/* Main chat area */}
       <div className="flex-1 flex flex-col">
-        {/* Header: search + export */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        {/* Header: search + export (sticky) */}
+        <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
           <button onClick={() => setShowSidebar(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
             <Menu size={20} />
           </button>
@@ -838,57 +823,42 @@ export default function Chat({ chatId }: { chatId: string }) {
           </button>
         </div>
 
-        {/* Messages area */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Messages area (virtualized) */}
+        <div className="flex-1 overflow-y-auto relative">
           {msgs.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-md mx-auto p-6">
                 <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-white font-bold text-lg">C</span>
                 </div>
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-                  How can I help you today?
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Ask me anything about nursing home compliance and operations
-                </p>
-                <div className="mt-6">
-                  <Suggestions onPick={setComposerValue} targetId="composer-input" />
-                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">How can I help you today?</h2>
+                <p className="text-gray-600 dark:text-gray-400">Ask me anything about nursing home compliance and operations</p>
+                <div className="mt-6"><Suggestions onPick={setComposerValue} targetId="composer-input" /></div>
               </div>
             </div>
           ) : (
-            <>
-              {msgs
-                .filter(m => !searchQuery || m.content.toLowerCase().includes(searchQuery.toLowerCase()))
-                .map((message, idx) => (
-                <div key={message.id}>
-                  <MessageBubble message={message} onEdit={(id, content) => { setEditingMessageId(id); setComposerValue(content); }} />
-                  {message.role === 'assistant' && message.content && (
-                    <div className="max-w-3xl mx-auto px-4 -mt-2 mb-4 flex gap-2">
-                      <button onClick={() => handleRegenerate(idx)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1"><RotateCw size={12}/> Regenerate</button>
-                      <button onClick={() => handleBookmark(message)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1"><Bookmark size={12}/> Bookmark</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-              
-              {/* Streaming indicator */}
-              {streaming && (
-                <MessageBubble 
-                  message={{
-                    id: 'streaming',
-                    chat_id: chatId,
-                    role: 'assistant',
-                    content: '',
-                    created_at: new Date().toISOString()
-                  }}
-                  isStreaming={true}
-                />
-              )}
-              
-              <div ref={messagesEndRef} />
-            </>
+            <MessageList
+              ref={virtuosoRef}
+              messages={msgs}
+              streaming={streaming}
+              onRegenerate={handleRegenerate}
+              onBookmark={handleBookmark}
+              onEdit={(id, content) => { setEditingMessageId(id); setComposerValue(content); }}
+              filter={searchQuery}
+              onAtBottomChange={setAtBottom}
+            />
+          )}
+          {!atBottom && (
+            <div className="absolute bottom-4 right-4">
+              <button
+                onClick={() => {
+                  try { virtuosoRef.current?.scrollToIndex?.({ index: Math.max(0, msgs.length - 1), align: 'end', behavior: 'smooth' }); } catch {}
+                }}
+                className="px-3 py-2 text-xs rounded-full bg-blue-600 text-white shadow hover:bg-blue-700"
+              >
+                Jump to bottom
+              </button>
+            </div>
           )}
         </div>
 
