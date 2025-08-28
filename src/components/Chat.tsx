@@ -3,10 +3,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, Check, Menu, Plus, Send, Pencil, Trash2, RotateCw, Bookmark, Paperclip, Download, Settings as SettingsIcon, Share2, Star, FolderPlus } from "lucide-react";
+import { Copy, Check, Menu, Plus, Send, Pencil, Trash2, RotateCw, Bookmark, Paperclip, Download, Settings as SettingsIcon, Share2, Star, FolderPlus, FileText, Users } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 import Suggestions from "@/components/Suggestions";
 import MessageList from "@/components/chat/MessageList";
+import ChatTemplates from "@/components/ChatTemplates";
 
 type Msg = {
   id: string;
@@ -225,6 +226,8 @@ export default function Chat({ chatId }: { chatId: string }) {
     try { return JSON.parse(localStorage.getItem('careiq-folders') || '{}'); } catch { return {}; }
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [temperature, setTemperature] = useState<number>(() => {
     try { return Number(JSON.parse(localStorage.getItem(`careiq-chat-settings-${chatId}`) || '{}').temperature ?? 0.3); } catch { return 0.3; }
   });
@@ -815,6 +818,20 @@ export default function Chat({ chatId }: { chatId: string }) {
             <Share2 size={18} />
           </button>
           <button
+            onClick={() => setShowTemplates(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+            title="Chat templates"
+          >
+            <FileText size={18} />
+          </button>
+          <button
+            onClick={() => setShowShare(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+            title="Share chat"
+          >
+            <Users size={18} />
+          </button>
+          <button
             onClick={() => setShowSettings(true)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
             title="Chat settings"
@@ -832,7 +849,28 @@ export default function Chat({ chatId }: { chatId: string }) {
                   <span className="text-white font-bold text-lg">C</span>
                 </div>
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">How can I help you today?</h2>
-                <p className="text-gray-600 dark:text-gray-400">Ask me anything about nursing home compliance and operations</p>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">Ask me anything about nursing home compliance and operations</p>
+                
+                <div className="flex gap-3 justify-center mb-6">
+                  <button
+                    onClick={() => setShowTemplates(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <FileText size={16} />
+                    Use Template
+                  </button>
+                  <button
+                    onClick={() => {
+                      const composer = document.getElementById('composer-input');
+                      if (composer) composer.focus();
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Plus size={16} />
+                    Start Fresh
+                  </button>
+                </div>
+                
                 <div className="mt-6"><Suggestions onPick={setComposerValue} targetId="composer-input" /></div>
               </div>
             </div>
@@ -913,24 +951,126 @@ export default function Chat({ chatId }: { chatId: string }) {
         )}
       </div>
 
+      {/* Templates modal */}
+      {showTemplates && (
+        <ChatTemplates
+          onSelectTemplate={(prompt) => {
+            setComposerValue(prompt);
+            setShowTemplates(false);
+            // Focus the composer
+            setTimeout(() => {
+              const composer = document.getElementById('composer-input');
+              if (composer) composer.focus();
+            }, 100);
+          }}
+          onClose={() => setShowTemplates(false)}
+        />
+      )}
+
+      {/* Share modal */}
+      {showShare && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Share Chat</h3>
+              <button onClick={() => setShowShare(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <span className="sr-only">Close</span>
+                ×
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Share with team members
+                </label>
+                <input
+                  type="email"
+                  placeholder="Enter email addresses..."
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="allow-edit" className="rounded" />
+                <label htmlFor="allow-edit" className="text-sm text-gray-700 dark:text-gray-300">
+                  Allow editing
+                </label>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowShare(false)}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    // TODO: Implement sharing logic
+                    setShowShare(false);
+                  }}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                >
+                  Share
+                </button>
+              </div>
+            </div>
+            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">Or share via link:</div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}/chat/${chatId}?shared=true`}
+                  className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-400"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/chat/${chatId}?shared=true`);
+                    // TODO: Show toast notification
+                  }}
+                  className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Settings modal */}
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Chat Settings</h3>
-              <button onClick={() => setShowSettings(false)} className="text-sm px-2 py-1 border rounded">Close</button>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Chat Settings</h3>
+              <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                ×
+              </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium">Temperature: {temperature.toFixed(2)}</label>
-                <input type="range" min="0" max="1" step="0.01" value={temperature} onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setTemperature(val);
-                  localStorage.setItem(`careiq-chat-settings-${chatId}`, JSON.stringify({ temperature: val }));
-                }} className="w-full" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Temperature: {temperature.toFixed(2)}
+                </label>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.01" 
+                  value={temperature} 
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setTemperature(val);
+                    localStorage.setItem(`careiq-chat-settings-${chatId}`, JSON.stringify({ temperature: val }));
+                  }} 
+                  className="w-full" 
+                />
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <span>Focused</span>
+                  <span>Creative</span>
+                </div>
               </div>
-              <div className="text-xs text-gray-500">Settings are stored locally per chat.</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Settings are stored locally per chat.</div>
             </div>
           </div>
         </div>
