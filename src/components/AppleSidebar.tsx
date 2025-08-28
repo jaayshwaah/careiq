@@ -358,11 +358,10 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
             );
           })}
           
-          {/* Admin Button */}
+          {/* CareIQ Admin Button - Only for CareIQ team and specific authorized users */}
           {(userProfile?.email?.endsWith('@careiq.com') || 
             userProfile?.email === 'jking@pioneervalleyhealth.com' ||
-            userProfile?.role?.includes('administrator') ||
-            userProfile?.is_admin === true) && (
+            userProfile?.role === 'careiq_admin') && (
             <Link
               href="/admin"
               className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 border-t border-gray-200/30 dark:border-gray-700/30 mt-2 pt-4 ${

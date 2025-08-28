@@ -67,10 +67,10 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       if (!error && profile) {
         setUserProfile(profile);
         
-        // Check multiple admin indicators
+        // Check CareIQ admin indicators (not facility administrator)
         const isDatabaseAdmin = 
-          profile.role === 'admin' ||  // enum value
-          profile.is_admin === true;   // boolean column
+          profile.role === 'careiq_admin' ||  // CareIQ admin role
+          profile.email?.endsWith('@careiq.com');
         
         if (isDatabaseAdmin) {
           setIsAdmin(true);
