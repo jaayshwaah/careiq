@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Upload, Calculator, FileText, BarChart3, Calendar, Users, Clock, Download, Trash2 } from 'lucide-react';
+import { Upload, Calculator, FileText, BarChart3, Calendar, Users, Clock, Download, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
@@ -249,6 +249,35 @@ export default function PPDCalculatorPage() {
     ? filteredCalculations.reduce((sum, calc) => sum + calc.ppd, 0) / filteredCalculations.length 
     : 0;
 
+  // Compliance thresholds and guidance
+  const complianceThresholds = {
+    minimum_ppd: 3.2, // CMS minimum PPD requirement
+    rn_minimum: 0.75, // RN hours per patient day minimum
+    total_nursing_minimum: 3.2
+  };
+
+  const getComplianceStatus = (calculation: PPDCalculation) => {
+    const rnPPD = calculation.census > 0 ? calculation.rn_hours / calculation.census : 0;
+    const issues = [];
+    
+    if (calculation.ppd < complianceThresholds.minimum_ppd) {
+      issues.push(`Total PPD (${calculation.ppd}) below CMS minimum (${complianceThresholds.minimum_ppd})`);
+    }
+    if (rnPPD < complianceThresholds.rn_minimum) {
+      issues.push(`RN PPD (${rnPPD.toFixed(2)}) below CMS minimum (${complianceThresholds.rn_minimum})`);
+    }
+    
+    return {
+      isCompliant: issues.length === 0,
+      issues,
+      rnPPD: rnPPD.toFixed(2)
+    };
+  };
+
+  const getNonCompliantDays = () => {
+    return filteredCalculations.filter(calc => !getComplianceStatus(calc).isCompliant).length;
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
@@ -449,12 +478,34 @@ export default function PPDCalculatorPage() {
           </div>
         </div>
         
+        {/* Compliance Alert */}
+        {getNonCompliantDays() > 0 && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <h3 className="font-semibold text-red-800 dark:text-red-400">Compliance Alert</h3>
+            </div>
+            <p className="text-red-700 dark:text-red-300 text-sm mb-3">
+              {getNonCompliantDays()} day(s) in the selected period fall below CMS staffing requirements.
+            </p>
+            <div className="text-xs text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 p-3 rounded">
+              <strong>CMS Requirements:</strong><br />
+              • Minimum 3.2 total nursing hours per patient day<br />
+              • Minimum 0.75 RN hours per patient day<br />
+              • 24/7 RN coverage required
+            </div>
+          </div>
+        )}
+
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
             <div className="text-green-800 dark:text-green-400 text-sm font-medium">Average PPD</div>
             <div className="text-2xl font-bold text-green-900 dark:text-green-300">
               {avgPPD.toFixed(2)}
+            </div>
+            <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+              {avgPPD >= complianceThresholds.minimum_ppd ? '✓ Compliant' : '⚠ Below minimum'}
             </div>
           </div>
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -472,6 +523,15 @@ export default function PPDCalculatorPage() {
               }
             </div>
           </div>
+          <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+            <div className="text-orange-800 dark:text-orange-400 text-sm font-medium">Non-Compliant Days</div>
+            <div className="text-2xl font-bold text-orange-900 dark:text-orange-300">
+              {getNonCompliantDays()}
+            </div>
+            <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+              {getNonCompliantDays() === 0 ? '✓ All compliant' : 'Needs attention'}
+            </div>
+          </div>
         </div>
         
         {/* Recent Calculations Table */}
@@ -486,29 +546,71 @@ export default function PPDCalculatorPage() {
                 <th className="px-4 py-2 text-right">CNA Hours</th>
                 <th className="px-4 py-2 text-right">Total Hours</th>
                 <th className="px-4 py-2 text-right">PPD</th>
+                <th className="px-4 py-2 text-center">Compliance</th>
                 <th className="px-4 py-2 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredCalculations.slice(0, 20).map((calc) => (
-                <tr key={calc.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-4 py-2">{new Date(calc.date).toLocaleDateString()}</td>
-                  <td className="px-4 py-2 text-right">{calc.census}</td>
-                  <td className="px-4 py-2 text-right">{calc.rn_hours}</td>
-                  <td className="px-4 py-2 text-right">{calc.lpn_hours}</td>
-                  <td className="px-4 py-2 text-right">{calc.cna_hours}</td>
-                  <td className="px-4 py-2 text-right">{calc.total_nursing_hours}</td>
-                  <td className="px-4 py-2 text-right font-semibold">{calc.ppd}</td>
-                  <td className="px-4 py-2 text-center">
-                    <button
-                      onClick={() => deleteCalculation(calc.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {filteredCalculations.slice(0, 20).map((calc) => {
+                const compliance = getComplianceStatus(calc);
+                return (
+                  <tr key={calc.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                    !compliance.isCompliant ? 'bg-red-50 dark:bg-red-900/10' : ''
+                  }`}>
+                    <td className="px-4 py-2">{new Date(calc.date).toLocaleDateString()}</td>
+                    <td className="px-4 py-2 text-right">{calc.census}</td>
+                    <td className="px-4 py-2 text-right">
+                      {calc.rn_hours}
+                      <div className="text-xs text-gray-500">
+                        ({compliance.rnPPD} PPD)
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-right">{calc.lpn_hours}</td>
+                    <td className="px-4 py-2 text-right">{calc.cna_hours}</td>
+                    <td className="px-4 py-2 text-right">{calc.total_nursing_hours}</td>
+                    <td className={`px-4 py-2 text-right font-semibold ${
+                      calc.ppd < complianceThresholds.minimum_ppd ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {calc.ppd}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {compliance.isCompliant ? (
+                        <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                          <CheckCircle size={12} />
+                          Compliant
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 rounded text-xs">
+                          <AlertTriangle size={12} />
+                          Issues
+                        </div>
+                      )}
+                      {!compliance.isCompliant && (
+                        <div className="mt-1">
+                          <details className="text-xs">
+                            <summary className="cursor-pointer text-red-600 hover:text-red-800">
+                              View Issues
+                            </summary>
+                            <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700">
+                              {compliance.issues.map((issue, idx) => (
+                                <div key={idx}>• {issue}</div>
+                              ))}
+                            </div>
+                          </details>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <button
+                        onClick={() => deleteCalculation(calc.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           

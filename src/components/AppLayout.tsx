@@ -98,11 +98,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
         
         {/* Main content */}
         <main className={`
-          flex-1 overflow-hidden transition-all duration-300
+          flex-1 flex flex-col min-h-0 transition-all duration-300
           ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-80'}
         `}>
           {/* Mobile header */}
-          <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+          <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between flex-shrink-0">
             <button
               onClick={() => setSidebarOpen(true)}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -114,8 +114,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <div className="w-10" /> {/* Spacer for centering */}
           </div>
           
-          {/* Page content */}
-          <div className="h-full overflow-hidden">
+          {/* Page content - scrollable */}
+          <div className="flex-1 min-h-0 scrollable">
             {children}
           </div>
         </main>

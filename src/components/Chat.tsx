@@ -663,9 +663,9 @@ export default function Chat({ chatId }: { chatId: string }) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
       {/* Header: actions */}
-      <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
+      <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-white dark:bg-gray-900">
         <div className="font-semibold text-gray-900 dark:text-white text-lg">CareIQ Assistant</div>
         <div className="flex items-center gap-2">
           {/* Search */}
@@ -727,7 +727,7 @@ export default function Chat({ chatId }: { chatId: string }) {
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto relative bg-gray-50/30 dark:bg-gray-900 lg:h-auto h-[calc(100vh-8rem)]">
+      <div className="flex-1 min-h-0 relative bg-gray-50/30 dark:bg-gray-900 scrollable">
         {msgs.length === 0 ? (
           <div className="flex items-center justify-center h-full py-12">
             <div className="text-center max-w-2xl mx-auto px-6">

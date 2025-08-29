@@ -128,10 +128,10 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-full bg-gray-50">
       {/* Admin Sidebar */}
-      <div className="w-64 bg-white shadow-lg border-r">
-        <div className="p-4 border-b">
+      <div className="w-64 bg-white shadow-lg border-r flex flex-col">
+        <div className="flex-shrink-0 p-4 border-b">
           <div className="flex items-center gap-2">
             <Shield className="h-6 w-6 text-blue-600" />
             <h1 className="text-lg font-semibold">CareIQ Admin</h1>
@@ -139,7 +139,7 @@ export default function AdminLayout({
           <p className="text-xs text-gray-500 mt-1">{userEmail}</p>
         </div>
         
-        <nav className="p-4">
+        <nav className="flex-1 p-4 scrollable">
           <div className="mb-4">
             <Link
               href="/"
@@ -157,7 +157,7 @@ export default function AdminLayout({
           </div>
         </nav>
 
-        <div className="absolute bottom-4 left-4 right-4">
+        <div className="flex-shrink-0 p-4">
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
@@ -171,7 +171,7 @@ export default function AdminLayout({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-h-0 scrollable">
         <div className="p-6">
           {children}
         </div>
