@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/census-sync",
+      "schedule": "0 6 * * *"
+    }
+  ],
   "functions": {
     "src/app/api/ingest/route.ts": {
       "maxDuration": 60,
@@ -8,9 +14,28 @@
     "src/app/api/search/route.ts": {
       "maxDuration": 30,
       "memory": 512
+    },
+    "src/app/api/census/**/*.ts": {
+      "maxDuration": 45,
+      "memory": 512
+    },
+    "src/app/api/cron/**/*.ts": {
+      "maxDuration": 300,
+      "memory": 1024
     }
   },
   "env": {
     "TRANSFORMERS_CACHE": "/tmp/transformers"
-  }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ]
 }
