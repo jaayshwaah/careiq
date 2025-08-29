@@ -87,6 +87,11 @@ export default function HomePage() {
       e.preventDefault();
       handleSend();
     }
+    // Support Ctrl/Cmd + Enter to send
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -152,14 +157,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Tips */}
-            <div className="mt-8 text-sm text-neutral-600 dark:text-neutral-400">
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                <span>⌘/Ctrl+K to search</span>
-                <span>⌘/Ctrl+Enter to send</span>
-                <span>Shift+Enter for newline</span>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -195,7 +192,14 @@ export default function HomePage() {
                 )}
               </button>
             </div>
-            <div className="text-center mt-3">
+            <div className="text-center mt-3 space-y-2">
+              <div className="flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                <span>⌘/Ctrl+K to search</span>
+                <span>•</span>
+                <span>⌘/Ctrl+Enter to send</span>
+                <span>•</span>
+                <span>Shift+Enter for newline</span>
+              </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">CareIQ can make mistakes. Verify important compliance information.</p>
             </div>
           </div>
