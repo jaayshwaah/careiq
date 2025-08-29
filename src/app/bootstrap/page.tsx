@@ -21,7 +21,8 @@ export default function BootstrapPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await fetch('/api/bootstrap-admin', {
+      // Try the first method
+      let response = await fetch('/api/bootstrap-admin', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session?.access_token}`,
@@ -29,7 +30,22 @@ export default function BootstrapPage() {
         }
       });
 
-      const result = await response.json();
+      let result = await response.json();
+      
+      // If first method fails with RLS error, try alternative method
+      if (!result.ok && result.error?.includes('infinite recursion')) {
+        setMessage({ type: 'error', text: 'First method failed due to RLS policy. Trying alternative...' });
+        
+        response = await fetch('/api/bootstrap-admin-v2', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        result = await response.json();
+      }
       
       if (result.ok) {
         setMessage({ type: 'success', text: result.message });

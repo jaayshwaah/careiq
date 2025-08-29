@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServerWithAuth } from "@/lib/supabase/server";
+import { supabaseServerWithAuth, supabaseService } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,8 +29,11 @@ export async function POST(req: NextRequest) {
       }, { status: 403 });
     }
 
+    // Use service role client to bypass RLS policies
+    const supaAdmin = supabaseService();
+
     // Check if profile already exists
-    const { data: existingProfile } = await supa
+    const { data: existingProfile } = await supaAdmin
       .from('profiles')
       .select('*')
       .eq('user_id', user.id)
@@ -38,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     if (existingProfile) {
       // Update existing profile to admin
-      const { data: updatedProfile, error: updateError } = await supa
+      const { data: updatedProfile, error: updateError } = await supaAdmin
         .from('profiles')
         .update({
           role: 'administrator',
@@ -66,7 +69,7 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // Create new admin profile
-      const { data: newProfile, error: createError } = await supa
+      const { data: newProfile, error: createError } = await supaAdmin
         .from('profiles')
         .insert({
           user_id: user.id,
