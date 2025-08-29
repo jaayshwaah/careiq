@@ -15,7 +15,14 @@ import {
   Clock,
   BarChart3
 } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+// Import recharts dynamically to avoid build issues
+let LineChart: any, Line: any, XAxis: any, YAxis: any, CartesianGrid: any, Tooltip: any, ResponsiveContainer: any, BarChart: any, Bar: any;
+try {
+  const recharts = require('recharts');
+  ({ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } = recharts);
+} catch (e) {
+  // Recharts not available, will show placeholder
+}
 
 interface CensusSnapshot {
   id: string;
@@ -209,21 +216,27 @@ export default function CensusDashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
           <h3 className="text-lg font-semibold mb-4">Occupancy Trend (30 Days)</h3>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="occupancyRate" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2}
-                  name="Occupancy Rate (%)"
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {ResponsiveContainer ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip />
+                  <Line 
+                    type="monotone" 
+                    dataKey="occupancyRate" 
+                    stroke="#3b82f6" 
+                    strokeWidth={2}
+                    name="Occupancy Rate (%)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-700 rounded">
+                <p className="text-gray-500 dark:text-gray-400">Chart loading...</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -231,15 +244,21 @@ export default function CensusDashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
           <h3 className="text-lg font-semibold mb-4">Payer Mix</h3>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={payerMixData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
+            {ResponsiveContainer ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={payerMixData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-700 rounded">
+                <p className="text-gray-500 dark:text-gray-400">Chart loading...</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -248,28 +267,34 @@ export default function CensusDashboard() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold mb-4">Daily Admissions & Discharges</h3>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Line 
-                type="monotone" 
-                dataKey="admissions" 
-                stroke="#10b981" 
-                strokeWidth={2}
-                name="Admissions"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="discharges" 
-                stroke="#f59e0b" 
-                strokeWidth={2}
-                name="Discharges"
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {ResponsiveContainer ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Line 
+                  type="monotone" 
+                  dataKey="admissions" 
+                  stroke="#10b981" 
+                  strokeWidth={2}
+                  name="Admissions"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="discharges" 
+                  stroke="#f59e0b" 
+                  strokeWidth={2}
+                  name="Discharges"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-700 rounded">
+              <p className="text-gray-500 dark:text-gray-400">Chart loading...</p>
+            </div>
+          )}
         </div>
       </div>
 
