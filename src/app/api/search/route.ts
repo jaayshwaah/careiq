@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { embedQuery } from "@/lib/knowledge/embed";
+import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    // Apply rate limiting
+    const rateLimitResponse = await rateLimit(req, RATE_LIMITS.SEARCH);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const { query, topK = 8, category = null, facilityId = null } = await req.json();
     if (!query || typeof query !== "string") {
       return NextResponse.json({ ok: false, error: "query is required" }, { status: 400 });

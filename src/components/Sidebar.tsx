@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import {
   Plus,
@@ -13,6 +13,9 @@ import {
   PanelsTopLeft,
   CalendarDays,
   Shield,
+  Search,
+  X,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -36,7 +39,65 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const supabase = getBrowserSupabase();
+
+  // Filter chats based on search query
+  const filteredChats = useMemo(() => {
+    if (!searchQuery.trim()) return chats;
+    return chats.filter(chat => 
+      chat.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [chats, searchQuery]);
+
+  // Group chats by date for better organization
+  const groupedChats = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    const lastMonth = new Date(today);
+    lastMonth.setDate(lastMonth.getDate() - 30);
+
+    const groups: { label: string; chats: Chat[] }[] = [];
+    const todayChats: Chat[] = [];
+    const yesterdayChats: Chat[] = [];
+    const thisWeekChats: Chat[] = [];
+    const thisMonthChats: Chat[] = [];
+    const olderChats: Chat[] = [];
+
+    filteredChats.forEach(chat => {
+      const chatDate = new Date(chat.updated_at || chat.created_at);
+      
+      if (chatDate >= today) {
+        todayChats.push(chat);
+      } else if (chatDate >= yesterday) {
+        yesterdayChats.push(chat);
+      } else if (chatDate >= lastWeek) {
+        thisWeekChats.push(chat);
+      } else if (chatDate >= lastMonth) {
+        thisMonthChats.push(chat);
+      } else {
+        olderChats.push(chat);
+      }
+    });
+
+    if (searchQuery.trim()) {
+      // When searching, show all results without grouping
+      return [{ label: '', chats: filteredChats }];
+    }
+
+    if (todayChats.length > 0) groups.push({ label: 'Today', chats: todayChats });
+    if (yesterdayChats.length > 0) groups.push({ label: 'Yesterday', chats: yesterdayChats });
+    if (thisWeekChats.length > 0) groups.push({ label: 'This Week', chats: thisWeekChats });
+    if (thisMonthChats.length > 0) groups.push({ label: 'This Month', chats: thisMonthChats });
+    if (olderChats.length > 0) groups.push({ label: 'Older', chats: olderChats });
+
+    return groups;
+  }, [filteredChats, searchQuery]);
 
   // Safe admin check that handles enum types
   const checkAdminStatus = useCallback(async () => {
@@ -103,7 +164,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         .from("chats")
         .select("id, title, created_at, updated_at")
         .order("updated_at", { ascending: false })
-        .limit(20);
+        .limit(50);
 
       if (chatsError) {
         // Try conversations table as fallback
@@ -111,7 +172,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           .from("conversations")
           .select("id, title, created_at, updated_at")
           .order("updated_at", { ascending: false })
-          .limit(20);
+          .limit(50);
 
         chatsData = conversationsData;
         
@@ -232,13 +293,54 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           </button>
         </div>
 
+        {/* Search Bar */}
+        {!collapsed && (
+          <div className="mb-4">
+            {showSearch ? (
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <Search size={16} className="text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search chats..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 bg-transparent text-sm outline-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    setShowSearch(false);
+                    setSearchQuery('');
+                  }}
+                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                >
+                  <X size={14} className="text-gray-400" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowSearch(true)}
+                className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <Search size={16} />
+                <span>Search chats...</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto">
           {!collapsed && (
-            <div className="mb-3">
-              <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide px-2">
-                Recent Chats
+            <div className="mb-3 flex items-center justify-between px-2">
+              <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                {searchQuery ? 'Search Results' : 'Recent Chats'}
               </h2>
+              {chats.length > 0 && (
+                <span className="text-xs text-gray-400">
+                  {filteredChats.length} of {chats.length}
+                </span>
+              )}
             </div>
           )}
 
@@ -254,30 +356,56 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 />
               ))}
             </div>
-          ) : chats.length > 0 ? (
+          ) : filteredChats.length > 0 ? (
             <div className="space-y-1">
-              {chats.map((chat) => (
-                <Link
-                  key={chat.id}
-                  href={`/chat/${chat.id}`}
-                  className={`
-                    flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-                    hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
-                    ${pathname === `/chat/${chat.id}` 
-                      ? "bg-gray-100 dark:bg-gray-700" 
-                      : ""
-                    }
-                    ${collapsed ? "justify-center" : "justify-start"}
-                  `}
-                  title={collapsed ? chat.title : undefined}
-                >
-                  <MessageCircle size={16} className="shrink-0" />
-                  {!collapsed && (
-                    <span className="truncate">{chat.title || "Untitled"}</span>
+              {groupedChats.map((group) => (
+                <div key={group.label}>
+                  {!collapsed && group.label && (
+                    <div className="text-xs text-gray-400 dark:text-gray-500 px-3 py-2 flex items-center gap-2">
+                      <Clock size={12} />
+                      {group.label}
+                    </div>
                   )}
-                </Link>
+                  {group.chats.map((chat) => (
+                    <Link
+                      key={chat.id}
+                      href={`/chat/${chat.id}`}
+                      className={`
+                        flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+                        hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
+                        ${pathname === `/chat/${chat.id}` 
+                          ? "bg-gray-100 dark:bg-gray-700" 
+                          : ""
+                        }
+                        ${collapsed ? "justify-center" : "justify-start"}
+                      `}
+                      title={collapsed ? chat.title : undefined}
+                    >
+                      <MessageCircle size={16} className="shrink-0" />
+                      {!collapsed && (
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate">{chat.title || "Untitled"}</div>
+                          {searchQuery && (
+                            <div className="text-xs text-gray-400 truncate">
+                              {new Date(chat.updated_at || chat.created_at).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Link>
+                  ))}
+                </div>
               ))}
             </div>
+          ) : searchQuery ? (
+            !collapsed && (
+              <div className="px-3 py-8 text-center">
+                <Search size={32} className="mx-auto mb-2 text-gray-400" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No chats found for "{searchQuery}"
+                </p>
+              </div>
+            )
           ) : (
             !collapsed && (
               <div className="px-3 py-8 text-center">

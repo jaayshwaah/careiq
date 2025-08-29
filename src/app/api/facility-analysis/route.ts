@@ -1,6 +1,7 @@
 // src/app/api/facility-analysis/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
+import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
 
 export const runtime = "nodejs";
 
@@ -122,6 +123,12 @@ Format as JSON with sections: priorityAreas, starRatingStrategies, complianceRec
 
 export async function POST(req: NextRequest) {
   try {
+    // Apply rate limiting
+    const rateLimitResponse = await rateLimit(req, RATE_LIMITS.FACILITY_ANALYSIS);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     // Get user authentication
     const authHeader = req.headers.get("authorization") || undefined;
     const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;

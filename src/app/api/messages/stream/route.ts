@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { buildRagContext } from "@/lib/ai/buildRagContext";
 import { encryptPHI } from "@/lib/crypto/phi";
+import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,12 @@ When you use retrieved knowledge, cite by bracketed number [1], [2], etc.`;
 
 export async function POST(req: NextRequest) {
   try {
+    // Apply rate limiting
+    const rateLimitResponse = await rateLimit(req, RATE_LIMITS.CHAT);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     // Parse request
     const { chatId, content, temperature = 0.3, maxTokens = 1500 } = await req.json();
     

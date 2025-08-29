@@ -3,7 +3,7 @@
 import React, { useMemo, forwardRef } from "react";
 import { Virtuoso } from "react-virtuoso";
 import ContentRenderer from "@/components/chat/ContentRenderer";
-import { Copy, Check, RotateCw, Bookmark, Pencil } from "lucide-react";
+import { RotateCw, Bookmark, Pencil } from "lucide-react";
 
 export type Msg = {
   id: string;
@@ -50,40 +50,94 @@ const MessageList = forwardRef<any, Props>(function MessageList(
       atBottomStateChange={onAtBottomChange}
       itemContent={(index, message) => {
         const isUser = message.role === "user";
+        const isStreaming = streaming && index === filtered.length - 1 && !isUser;
+        
         return (
-          <div className={`group w-full ${isUser ? '' : 'bg-gray-50 dark:bg-gray-800'}`}>
-            <div className="max-w-3xl mx-auto px-4 py-4 flex gap-4">
-              <div className="flex-shrink-0">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  isUser ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'
+          <div className="group w-full py-6 px-4">
+            <div className={`max-w-3xl mx-auto flex gap-6 ${isUser ? 'justify-end' : 'justify-start'}`}>
+              {/* Avatar - only show for assistant */}
+              {!isUser && (
+                <div className="flex-shrink-0 w-8 h-8">
+                  <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">C</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Content */}
+              <div className={`flex-1 max-w-2xl ${isUser ? 'text-right' : 'text-left'}`}>
+                {/* Message content */}
+                <div className={`inline-block max-w-full ${
+                  isUser 
+                    ? 'bg-blue-600 text-white rounded-2xl rounded-br-md px-4 py-3' 
+                    : 'text-gray-900 dark:text-gray-100'
                 }`}>
-                  <span className="text-sm font-medium">{isUser ? 'U' : 'C'}</span>
+                  <div className={`whitespace-pre-wrap leading-relaxed ${
+                    isUser ? 'text-white' : 'prose prose-base max-w-none dark:prose-invert'
+                  }`}>
+                    <ContentRenderer content={message.content || (isStreaming ? "" : "")} />
+                    {isStreaming && !message.content && (
+                      <div className="flex items-center gap-2 py-2">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                          <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                          <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
+                        </div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">CareIQ is thinking...</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{isUser ? 'You' : 'CareIQ'}</span>
+                
+                {/* Timestamp */}
+                <div className={`text-xs text-gray-500 dark:text-gray-400 mt-2 ${
+                  isUser ? 'text-right' : 'text-left'
+                }`}>
+                  {new Date(message.created_at).toLocaleTimeString()}
                 </div>
-                <ContentRenderer content={message.content || (streaming && !isUser ? "" : "")} />
-                {/* Toolbar */}
+                
+                {/* Actions */}
                 {message.role === 'assistant' && message.content && (
                   <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => onRegenerate(index)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1">
-                      <RotateCw size={12}/> Regenerate
+                    <button 
+                      onClick={() => onRegenerate(index)} 
+                      className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                      title="Regenerate response"
+                    >
+                      <RotateCw className="h-3.5 w-3.5"/>
                     </button>
-                    <button onClick={() => onBookmark(message)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1">
-                      <Bookmark size={12}/> Bookmark
+                    <button 
+                      onClick={() => onBookmark(message)} 
+                      className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                      title="Bookmark response"
+                    >
+                      <Bookmark className="h-3.5 w-3.5"/>
                     </button>
                   </div>
                 )}
                 {message.role === 'user' && (
-                  <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => onEdit(message.id, message.content)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1">
-                      <Pencil size={12}/> Edit & Resend
+                  <div className={`flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity ${
+                    isUser ? 'justify-end' : 'justify-start'
+                  }`}>
+                    <button 
+                      onClick={() => onEdit(message.id, message.content)} 
+                      className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                      title="Edit and regenerate"
+                    >
+                      <Pencil className="h-3.5 w-3.5"/>
                     </button>
                   </div>
                 )}
               </div>
+              
+              {/* User avatar space - invisible but maintains layout */}
+              {isUser && (
+                <div className="flex-shrink-0 w-8 h-8">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">U</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );

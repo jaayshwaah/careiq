@@ -313,7 +313,7 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
   }
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'} ${className}`}>
+    <div className={`h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'} ${className}`}>
       {/* Header */}
       <div className={`border-b border-gray-200/30 dark:border-gray-700/30 ${isCollapsed ? 'px-3 py-4' : 'px-6 py-5'}`}>
         <div className="flex items-center justify-between mb-4">

@@ -3,8 +3,15 @@ export const dynamic = "force-dynamic";
 
 import PDFDocument from "pdfkit";
 import { NextRequest } from "next/server";
+import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
 
 export async function POST(req: NextRequest) {
+  // Apply rate limiting
+  const rateLimitResponse = await rateLimit(req, RATE_LIMITS.PDF_EXPORT);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const { title = "CareIQ Chat Export", messages = [] } = await req.json();
 
   const stream = new ReadableStream({

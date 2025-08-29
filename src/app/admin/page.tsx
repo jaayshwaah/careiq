@@ -10,7 +10,20 @@ import {
   TrendingUp,
   Server,
   Shield,
-  FileText
+  FileText,
+  Settings,
+  Calendar,
+  BarChart3,
+  Bell,
+  CreditCard,
+  Search,
+  Calculator,
+  BookOpen,
+  Activity,
+  Zap,
+  Code,
+  Bug,
+  ExternalLink
 } from "lucide-react";
 
 type SystemStats = {
@@ -155,33 +168,117 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Quick Actions
+            Admin Quick Actions
           </h2>
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <QuickAction
               href="/admin/knowledge"
-              title="Add Knowledge"
-              description="Upload new regulations or policies"
+              title="Manage Knowledge"
+              description="Upload regulations and policies"
               icon={Database}
             />
             <QuickAction
               href="/admin/users"
-              title="Manage Users"
+              title="User Management"
               description="View and manage user accounts"
               icon={Users}
             />
             <QuickAction
-              href="/admin/logs"
-              title="View Logs"
-              description="Check system errors and events"
-              icon={AlertCircle}
-            />
-            <QuickAction
-              href="/admin/search"
-              title="Search Debug"
-              description="Test search functionality"
+              href="/admin/ingest"
+              title="Data Ingest"
+              description="Bulk upload and process documents"
               icon={FileText}
             />
+            <QuickAction
+              href="/api/health"
+              title="System Health"
+              description="Check API and system status"
+              icon={Activity}
+              external
+            />
+          </div>
+        </div>
+
+        {/* All Pages Navigation */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <ExternalLink className="h-5 w-5" />
+            All Application Pages
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Main App Pages */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">Main Pages</h3>
+              <div className="space-y-2">
+                <QuickAction href="/" title="Home" description="Landing page" icon={MessageSquare} />
+                <QuickAction href="/chat/new" title="New Chat" description="Start a new conversation" icon={MessageSquare} />
+                <QuickAction href="/dashboard" title="Dashboard" description="User dashboard" icon={BarChart3} />
+                <QuickAction href="/knowledge" title="Knowledge Base" description="Search knowledge" icon={BookOpen} />
+              </div>
+            </div>
+
+            {/* User Features */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">User Features</h3>
+              <div className="space-y-2">
+                <QuickAction href="/calendar" title="Calendar" description="Schedule and events" icon={Calendar} />
+                <QuickAction href="/analytics" title="Analytics" description="Usage analytics" icon={BarChart3} />
+                <QuickAction href="/survey-prep" title="Survey Prep" description="Survey preparation tools" icon={FileText} />
+                <QuickAction href="/ppd-calculator" title="PPD Calculator" description="Calculate per patient day" icon={Calculator} />
+              </div>
+            </div>
+
+            {/* Account & Settings */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">Account</h3>
+              <div className="space-y-2">
+                <QuickAction href="/settings" title="Settings" description="User preferences" icon={Settings} />
+                <QuickAction href="/billing" title="Billing" description="Subscription and billing" icon={CreditCard} />
+                <QuickAction href="/notifications" title="Notifications" description="Manage notifications" icon={Bell} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* API Endpoints for Testing */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Code className="h-5 w-5" />
+            API Endpoints (Testing)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Core APIs */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">Core APIs</h3>
+              <div className="space-y-2">
+                <QuickAction href="/api/health" title="Health Check" description="System health status" icon={Activity} external />
+                <QuickAction href="/api/profile" title="User Profile" description="Get user profile" icon={Users} external />
+                <QuickAction href="/api/chats" title="Chats API" description="Chat management" icon={MessageSquare} external />
+                <QuickAction href="/api/search" title="Search API" description="Search functionality" icon={Search} external />
+              </div>
+            </div>
+
+            {/* AI & Processing */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">AI & Processing</h3>
+              <div className="space-y-2">
+                <QuickAction href="/api/chat" title="Chat Completion" description="AI chat responses" icon={Zap} external />
+                <QuickAction href="/api/facility-analysis" title="Facility Analysis" description="AI facility analysis" icon={BarChart3} external />
+                <QuickAction href="/api/survey-prep" title="Survey Prep API" description="Survey preparation" icon={FileText} external />
+                <QuickAction href="/api/knowledge/smart-search" title="Smart Search" description="AI-powered search" icon={Search} external />
+              </div>
+            </div>
+
+            {/* Debug & Admin APIs */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">Debug & Admin</h3>
+              <div className="space-y-2">
+                <QuickAction href="/api/debug/openrouter" title="OpenRouter Debug" description="Test OpenRouter connection" icon={Bug} external />
+                <QuickAction href="/api/test-openrouter" title="OpenRouter Test" description="OpenRouter API test" icon={Bug} external />
+                <QuickAction href="/api/openrouter-health" title="OpenRouter Health" description="OpenRouter status" icon={Activity} external />
+                <QuickAction href="/api/init-db" title="Initialize DB" description="Database initialization" icon={Database} external />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -282,24 +379,33 @@ function QuickAction({
   href, 
   title, 
   description, 
-  icon: Icon 
+  icon: Icon,
+  external = false
 }: {
   href: string;
   title: string;
   description: string;
   icon: any;
+  external?: boolean;
 }) {
+  const linkProps = external 
+    ? { href, target: '_blank', rel: 'noopener noreferrer' }
+    : { href };
+
   return (
     <a
-      href={href}
-      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+      {...linkProps}
+      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors group"
     >
-      <div className="p-2 bg-blue-50 rounded-lg">
+      <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
         <Icon className="h-4 w-4 text-blue-600" />
       </div>
-      <div>
-        <p className="font-medium text-sm">{title}</p>
-        <p className="text-xs text-gray-500">{description}</p>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-medium text-sm truncate">{title}</p>
+          {external && <ExternalLink className="h-3 w-3 text-gray-400" />}
+        </div>
+        <p className="text-xs text-gray-500 truncate">{description}</p>
       </div>
     </a>
   );

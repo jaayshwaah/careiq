@@ -73,65 +73,79 @@ function MessageBubble({ message, isStreaming = false, onEdit, onBookmark }: {
   const isUser = message.role === "user";
   
   return (
-    <div className={`group w-full ${isUser ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/50'} border-b border-gray-100/50 dark:border-gray-800/50`}>
-      <div className="max-w-4xl mx-auto px-4 py-6 flex gap-4">
-        {/* Avatar */}
-        <div className="flex-shrink-0">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shadow-sm ${
-            isUser 
-              ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white' 
-              : 'bg-gradient-to-br from-green-600 to-green-700 text-white'
-          }`}>
-            <span className="text-sm font-bold">
-              {isUser ? 'You' : 'CIQ'}
-            </span>
+    <div className="group w-full py-4 lg:py-8 px-3 lg:px-4">
+      <div className={`max-w-3xl mx-auto flex gap-3 lg:gap-6 ${isUser ? 'justify-end' : 'justify-start'}`}>
+        {/* Avatar - only show for assistant */}
+        {!isUser && (
+          <div className="flex-shrink-0 w-6 h-6 lg:w-8 lg:h-8">
+            <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-full bg-green-600 flex items-center justify-center">
+              <span className="text-white text-xs lg:text-sm font-medium">C</span>
+            </div>
           </div>
-        </div>
+        )}
         
         {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">
-              {isUser ? 'You' : 'CareIQ Assistant'}
-            </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {new Date(message.created_at).toLocaleTimeString()}
-            </span>
-          </div>
-          
-          <div className="prose prose-base max-w-none dark:prose-invert text-gray-900 dark:text-gray-100 leading-relaxed">
+        <div className={`flex-1 max-w-2xl ${isUser ? 'text-right' : 'text-left'}`}>
+          {/* Message content */}
+          <div className={`inline-block max-w-full ${
+            isUser 
+              ? 'bg-blue-600 text-white rounded-2xl rounded-br-md px-3 py-2 lg:px-4 lg:py-3' 
+              : 'text-gray-900 dark:text-gray-100'
+          }`}>
             {message.content ? (
-              <div className="whitespace-pre-wrap">{message.content}</div>
+              <div className={`whitespace-pre-wrap leading-relaxed ${
+                isUser ? 'text-white' : 'prose prose-base max-w-none dark:prose-invert'
+              }`}>
+                {message.content}
+              </div>
             ) : isStreaming ? (
               <TypingIndicator />
             ) : null}
           </div>
           
+          {/* Timestamp */}
+          <div className={`text-xs text-gray-500 dark:text-gray-400 mt-2 ${
+            isUser ? 'text-right' : 'text-left'
+          }`}>
+            {new Date(message.created_at).toLocaleTimeString()}
+          </div>
+          
           {/* Actions */}
           {!isUser && message.content && (
-            <div className="flex items-center gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
               <CopyButton content={message.content} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" />
               <button
                 onClick={() => onBookmark?.(message)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                 title="Bookmark response"
               >
-                <Bookmark className="h-4 w-4" />
+                <Bookmark className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
           {isUser && (
-            <div className="flex items-center gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className={`flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity ${
+              isUser ? 'justify-end' : 'justify-start'
+            }`}>
               <button
                 onClick={() => onEdit?.(message.id, message.content)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                 title="Edit and regenerate"
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
         </div>
+        
+        {/* User avatar space - invisible but maintains layout */}
+        {isUser && (
+          <div className="flex-shrink-0 w-6 h-6 lg:w-8 lg:h-8">
+            <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-full bg-blue-600 flex items-center justify-center">
+              <span className="text-white text-xs lg:text-sm font-medium">U</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -188,19 +202,19 @@ function MessageInput({
 
   return (
     <div className="border-t border-gray-200/50 dark:border-gray-700/50 bg-white dark:bg-gray-900">
-      <div className="max-w-4xl mx-auto px-4 py-4">
+      <div className="max-w-4xl mx-auto px-3 lg:px-4 py-3 lg:py-4">
         <form onSubmit={handleSubmit} className="relative">
           <div className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg focus-within:shadow-xl transition-all focus-within:border-blue-500/50">
             <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.txt,.md" className="hidden" onChange={(e) => onAttach?.(e.target.files)} />
-            <div className="absolute left-3 bottom-3">
+            <div className="absolute left-2 lg:left-3 bottom-2 lg:bottom-3">
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 disabled={disabled}
-                className="w-9 h-9 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Attach files"
               >
-                <Paperclip size={18} />
+                <Paperclip size={16} className="lg:w-[18px] lg:h-[18px]" />
               </button>
             </div>
             <textarea
@@ -211,13 +225,13 @@ function MessageInput({
               onKeyDown={handleKeyDown}
               placeholder="Message CareIQ..."
               disabled={disabled}
-              className="w-full resize-none border-0 bg-transparent pl-14 pr-14 py-4 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none text-base leading-6"
-              style={{ minHeight: '64px', maxHeight: '200px' }}
+              className="w-full resize-none border-0 bg-transparent pl-12 pr-12 lg:pl-14 lg:pr-14 py-3 lg:py-4 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none text-sm lg:text-base leading-6"
+              style={{ minHeight: '56px', maxHeight: '200px' }}
               rows={1}
             />
-            <div className="absolute right-3 bottom-3 flex items-center gap-2">
+            <div className="absolute right-2 lg:right-3 bottom-2 lg:bottom-3 flex items-center gap-2">
               {disabled && (
-                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                <div className="hidden lg:flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
                   <span className="text-xs">Generating...</span>
                 </div>
@@ -225,19 +239,19 @@ function MessageInput({
               <button
                 type="submit"
                 disabled={!currentValue.trim() || disabled}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                className={`w-8 h-8 lg:w-9 lg:h-9 rounded-xl flex items-center justify-center transition-all duration-200 ${
                   currentValue.trim() && !disabled
                     ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg hover:scale-105'
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}
               >
-                <Send size={16} />
+                <Send size={14} className="lg:w-4 lg:h-4" />
               </button>
             </div>
           </div>
           
-          {/* Shortcut hints */}
-          <div className="flex items-center justify-center mt-3 text-xs text-gray-500 dark:text-gray-400 space-x-4">
+          {/* Shortcut hints - hidden on mobile */}
+          <div className="hidden lg:flex items-center justify-center mt-3 text-xs text-gray-500 dark:text-gray-400 space-x-4">
             <span>⌘/Ctrl+K to search</span>
             <span>•</span>
             <span>⌘/Ctrl+Enter to send</span>
@@ -652,7 +666,7 @@ export default function Chat({ chatId }: { chatId: string }) {
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto relative bg-gray-50/30 dark:bg-gray-900">
+      <div className="flex-1 overflow-y-auto relative bg-gray-50/30 dark:bg-gray-900 lg:h-auto h-[calc(100vh-8rem)]">
         {msgs.length === 0 ? (
           <div className="flex items-center justify-center h-full py-12">
             <div className="text-center max-w-2xl mx-auto px-6">

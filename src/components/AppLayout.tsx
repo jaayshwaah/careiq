@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { usePathname } from "next/navigation";
 import AppleSidebar from "@/components/AppleSidebar";
+import { Menu, X } from "lucide-react";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -11,8 +12,29 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [mounted, setMounted] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { isAuthenticated } = useAuth();
   const pathname = usePathname();
+
+  // Close sidebar on mobile when route changes
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  // Handle escape key to close sidebar
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSidebarOpen(false);
+      }
+    };
+
+    if (sidebarOpen) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [sidebarOpen]);
 
   useEffect(() => {
     setMounted(true);
@@ -55,9 +77,47 @@ export default function AppLayout({ children }: AppLayoutProps) {
   if (isAuthenticated) {
     return (
       <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
-        <AppleSidebar />
-        <main className="flex-1 ml-80 overflow-hidden">
-          {children}
+        {/* Mobile sidebar overlay */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
+        {/* Sidebar */}
+        <div className={`
+          lg:relative fixed z-50 h-full transition-transform duration-300
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}>
+          <AppleSidebar 
+            collapsed={sidebarCollapsed} 
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          />
+        </div>
+        
+        {/* Main content */}
+        <main className={`
+          flex-1 overflow-hidden transition-all duration-300
+          ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-80'}
+        `}>
+          {/* Mobile header */}
+          <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Open sidebar"
+            >
+              <Menu size={20} className="text-gray-600 dark:text-gray-400" />
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">CareIQ</h1>
+            <div className="w-10" /> {/* Spacer for centering */}
+          </div>
+          
+          {/* Page content */}
+          <div className="h-full overflow-hidden">
+            {children}
+          </div>
         </main>
       </div>
     );
