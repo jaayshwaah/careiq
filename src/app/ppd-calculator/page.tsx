@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Upload, Calculator, FileText, BarChart3, Calendar, Users, Clock, Download, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Upload, Calculator, FileText, BarChart3, Calendar, Users, Clock, Download, Trash2, CheckCircle, AlertTriangle, Shield } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';

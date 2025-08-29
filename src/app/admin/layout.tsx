@@ -82,9 +82,12 @@ export default function AdminLayout({
         
         isAdminByProfile = profile?.role === "admin" || 
                           profile?.role === "careiq_admin" || 
+                          profile?.role?.includes("administrator") ||
                           profile?.is_admin === true;
       } catch (error) {
         console.warn("Could not check profile for admin status:", error);
+        // If profile check fails but user is in admin email list, still allow access
+        isAdminByProfile = isAdminByEmail;
       }
 
       const hasAdminAccess = isAdmin || isAdminByEmail || isAdminByProfile;

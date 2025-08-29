@@ -146,12 +146,20 @@ export async function POST(req: NextRequest) {
     // Get user profile for facility context
     const { data: profile } = await supa
       .from("profiles")
-      .select("facility_name, facility_state, role, full_name")
+      .select("facility_name, facility_state, role, full_name, facility_id")
       .eq("user_id", user.id)
       .single();
 
     if (!profile) {
-      return NextResponse.json({ ok: false, error: "User profile not found" }, { status: 400 });
+      // Create a minimal profile if none exists
+      const defaultProfile = {
+        facility_name: 'Default Facility',
+        facility_state: 'Unknown',
+        role: 'user',
+        full_name: user.email?.split('@')[0] || 'User',
+        facility_id: null
+      };
+      profile = defaultProfile;
     }
 
     const body = await req.json();

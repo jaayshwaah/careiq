@@ -121,9 +121,14 @@ export default function AdminUsersPage() {
         .eq("user_id", user.id)
         .single();
 
+      // Check both profile and user email for access
       const hasAccess = profile?.is_admin || 
                        profile?.role?.includes('Administrator') || 
-                       profile?.email?.endsWith('@careiq.com');
+                       profile?.role?.includes('administrator') ||
+                       profile?.email?.endsWith('@careiq.com') ||
+                       user?.email?.endsWith('@careiq.com') ||
+                       user?.email === 'jking@pioneervalleyhealth.com' ||
+                       profile?.email === 'jking@pioneervalleyhealth.com';
 
       if (!hasAccess) {
         router.push('/dashboard');
