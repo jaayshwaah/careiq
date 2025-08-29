@@ -179,6 +179,11 @@ function MessageInput({
       e.preventDefault();
       handleSubmit(e);
     }
+    // Support Ctrl/Cmd + Enter to send
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
   };
 
   return (
@@ -233,9 +238,11 @@ function MessageInput({
           
           {/* Shortcut hints */}
           <div className="flex items-center justify-center mt-3 text-xs text-gray-500 dark:text-gray-400 space-x-4">
-            <span>Press Enter to send</span>
+            <span>⌘/Ctrl+K to search</span>
             <span>•</span>
-            <span>Shift + Enter for new line</span>
+            <span>⌘/Ctrl+Enter to send</span>
+            <span>•</span>
+            <span>Shift+Enter for newline</span>
           </div>
         </form>
       </div>

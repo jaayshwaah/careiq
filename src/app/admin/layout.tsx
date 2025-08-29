@@ -64,10 +64,12 @@ export default function AdminLayout({
       const adminEmails = [
         process.env.NEXT_PUBLIC_ADMIN_EMAIL,
         "admin@careiq.app", // Add your admin emails here
+        "jking@pioneervalleyhealth.com", // Authorized admin user
         // Add more admin emails as needed
       ].filter(Boolean);
 
-      const isAdminByEmail = adminEmails.includes(session.user.email);
+      const isAdminByEmail = adminEmails.includes(session.user.email) || 
+                            session.user.email?.endsWith('@careiq.com');
 
       // Method 3: Check profiles table for admin role
       let isAdminByProfile = false;
@@ -78,7 +80,9 @@ export default function AdminLayout({
           .eq("user_id", session.user.id)
           .single();
         
-        isAdminByProfile = profile?.role === "admin" || profile?.is_admin === true;
+        isAdminByProfile = profile?.role === "admin" || 
+                          profile?.role === "careiq_admin" || 
+                          profile?.is_admin === true;
       } catch (error) {
         console.warn("Could not check profile for admin status:", error);
       }
