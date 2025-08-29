@@ -278,6 +278,59 @@ export default function PPDCalculatorPage() {
     return filteredCalculations.filter(calc => !getComplianceStatus(calc).isCompliant).length;
   };
 
+  // Calculate recommended staffing based on census
+  const getStaffingRecommendations = (census: number) => {
+    if (census <= 0) return null;
+
+    // CMS minimum requirements
+    const minTotalPPD = 3.2;
+    const minRNPPD = 0.75;
+    
+    // Recommended staffing levels (higher than minimums for better care)
+    const recommendedTotalPPD = 4.1; // Industry best practice
+    const recommendedRNPPD = 1.0;
+    const recommendedLPNPPD = 1.0;
+    const recommendedCNAPPD = 2.1;
+
+    // Calculate minimum hours
+    const minTotalHours = Math.ceil(census * minTotalPPD);
+    const minRNHours = Math.ceil(census * minRNPPD);
+    
+    // Calculate recommended hours  
+    const recRNHours = Math.ceil(census * recommendedRNPPD);
+    const recLPNHours = Math.ceil(census * recommendedLPNPPD);
+    const recCNAHours = Math.ceil(census * recommendedCNAPPD);
+    const recTotalHours = recRNHours + recLPNHours + recCNAHours;
+
+    return {
+      census,
+      minimum: {
+        total_hours: minTotalHours,
+        total_ppd: minTotalPPD,
+        rn_hours: minRNHours,
+        rn_ppd: minRNPPD,
+        remaining_hours: minTotalHours - minRNHours
+      },
+      recommended: {
+        rn_hours: recRNHours,
+        rn_ppd: recommendedRNPPD,
+        lpn_hours: recLPNHours,
+        lpn_ppd: recommendedLPNPPD,
+        cna_hours: recCNAHours,
+        cna_ppd: recommendedCNAPPD,
+        total_hours: recTotalHours,
+        total_ppd: (recTotalHours / census).toFixed(2)
+      },
+      guidance: [
+        'Minimum 24/7 RN coverage required by CMS',
+        'Consider resident acuity when scheduling',
+        'Weekend staffing often requires adjustment',
+        'Holiday coverage may need additional planning',
+        'On-call staff should supplement, not replace, scheduled staff'
+      ]
+    };
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
@@ -384,12 +437,73 @@ export default function PPDCalculatorPage() {
           </form>
           
           {manualData.census > 0 && (
-            <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <h3 className="font-medium text-green-800 dark:text-green-400 mb-2">Preview Calculation:</h3>
-              <div className="text-sm text-green-700 dark:text-green-300">
-                Total Nursing Hours: {calculatePPD(manualData).total_nursing_hours} hours<br />
-                PPD: {calculatePPD(manualData).ppd} hours per patient day
-              </div>
+            <div className="mt-6 space-y-4">
+              {/* Current Calculation Preview */}
+              {(manualData.rn_hours > 0 || manualData.lpn_hours > 0 || manualData.cna_hours > 0) && (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <h3 className="font-medium text-green-800 dark:text-green-400 mb-2">Preview Calculation:</h3>
+                  <div className="text-sm text-green-700 dark:text-green-300">
+                    Total Nursing Hours: {calculatePPD(manualData).total_nursing_hours} hours<br />
+                    PPD: {calculatePPD(manualData).ppd} hours per patient day
+                  </div>
+                </div>
+              )}
+
+              {/* Staffing Recommendations */}
+              {(() => {
+                const recommendations = getStaffingRecommendations(manualData.census);
+                if (!recommendations) return null;
+
+                return (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <h3 className="font-medium text-blue-800 dark:text-blue-400 mb-3">
+                      Staffing Guidance for {manualData.census} Residents
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {/* Minimum Requirements */}
+                      <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded">
+                        <h4 className="font-medium text-red-800 dark:text-red-400 mb-2 flex items-center gap-2">
+                          <Shield className="h-4 w-4" />
+                          CMS Minimum Requirements
+                        </h4>
+                        <div className="space-y-1 text-sm text-red-700 dark:text-red-300">
+                          <div>Total: {recommendations.minimum.total_hours} hours ({recommendations.minimum.total_ppd} PPD)</div>
+                          <div>RN: {recommendations.minimum.rn_hours} hours ({recommendations.minimum.rn_ppd} PPD)</div>
+                          <div>LPN/CNA: {recommendations.minimum.remaining_hours} hours</div>
+                        </div>
+                      </div>
+
+                      {/* Best Practice Recommendations */}
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded">
+                        <h4 className="font-medium text-green-800 dark:text-green-400 mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Recommended Best Practice
+                        </h4>
+                        <div className="space-y-1 text-sm text-green-700 dark:text-green-300">
+                          <div>RN: {recommendations.recommended.rn_hours} hours ({recommendations.recommended.rn_ppd} PPD)</div>
+                          <div>LPN: {recommendations.recommended.lpn_hours} hours ({recommendations.recommended.lpn_ppd} PPD)</div>
+                          <div>CNA: {recommendations.recommended.cna_hours} hours ({recommendations.recommended.cna_ppd} PPD)</div>
+                          <div className="font-medium pt-1 border-t border-green-200">Total: {recommendations.recommended.total_hours} hours ({recommendations.recommended.total_ppd} PPD)</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Guidance Notes */}
+                    <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded">
+                      <h4 className="font-medium text-yellow-800 dark:text-yellow-400 mb-2">Staffing Guidance:</h4>
+                      <ul className="space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
+                        {recommendations.guidance.map((tip, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="text-yellow-600">•</span>
+                            <span>{tip}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

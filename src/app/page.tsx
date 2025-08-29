@@ -120,7 +120,7 @@ export default function HomePage() {
 
         {/* Body (scroll) */}
         <section className="flex-1 min-h-0 scrollable">
-          <div className="mx-auto max-w-4xl px-4 md:px-6 py-6 md:py-10">
+          <div className="mx-auto max-w-4xl px-6 py-6 md:py-10">
             {/* Hero */}
             <div className="mb-6 md:mb-8 text-center md:text-left">
               <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold">Start a new conversation</h1>
@@ -161,7 +161,7 @@ export default function HomePage() {
         </section>
 
         {/* Composer (sticky bottom) */}
-        <div className="flex-shrink-0 border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-gray-900 px-4 py-4">
+        <div className="flex-shrink-0 border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-gray-900 px-6 py-4">
           <div className="mx-auto max-w-4xl">
             <div className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg focus-within:shadow-xl transition-all focus-within:border-blue-500/50">
               <textarea

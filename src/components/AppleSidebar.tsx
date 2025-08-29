@@ -23,6 +23,9 @@ import {
   Calculator,
   ChevronLeft,
   ChevronRight,
+  CheckSquare,
+  Upload,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -40,14 +43,19 @@ interface AppleSidebarProps {
   onToggleCollapse?: () => void;
 }
 
-const navigationItems = [
+const mainNavigationItems = [
   { href: "/", label: "Chat", icon: MessageCircle },
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
   { href: "/notifications", label: "Notifications", icon: Bell },
+];
+
+const toolsNavigationItems = [
+  { href: "/ppd-calculator", label: "PPD Calculator", icon: Calculator },
+  { href: "/daily-rounds", label: "Daily Rounds", icon: CheckSquare },
+  { href: "/schedule-import", label: "Schedule Import", icon: Upload },
   { href: "/survey-prep", label: "Survey Prep", icon: Shield },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/ppd-calculator", label: "PPD Calculator", icon: Calculator },
-  { href: "/knowledge", label: "Knowledge", icon: BookOpen },
+  { href: "/knowledge", label: "Knowledge", icon: BookOpen, adminOnly: true },
 ];
 
 export default function AppleSidebar({ className = "", collapsed: externalCollapsed, onToggleCollapse }: AppleSidebarProps) {
@@ -384,15 +392,10 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
         </button>
       </div>
 
-      {/* Navigation */}
+      {/* Main Navigation */}
       <div className="px-3 py-4 border-b border-gray-200/30 dark:border-gray-700/30">
         <div className="space-y-1">
-          {navigationItems.map((item) => {
-            // Hide knowledge tab for non-admin users
-            if (item.href === '/knowledge' && !userProfile?.role?.includes('administrator')) {
-              return null;
-            }
-            
+          {mainNavigationItems.map((item) => {
             const Icon = item.icon;
             const isActive = isCurrentPath(item.href);
             
@@ -408,6 +411,42 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
                 title={isCollapsed ? item.label : undefined}
               >
                 <Icon size={18} className={isActive ? "text-blue-600 dark:text-blue-400" : ""} />
+                {!isCollapsed && item.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tools Section */}
+      <div className="px-3 py-4 border-b border-gray-200/30 dark:border-gray-700/30">
+        {!isCollapsed && (
+          <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-2">
+            Tools
+          </div>
+        )}
+        <div className="space-y-1">
+          {toolsNavigationItems.map((item) => {
+            // Hide admin-only items for non-admin users
+            if (item.adminOnly && !userProfile?.role?.includes('administrator')) {
+              return null;
+            }
+            
+            const Icon = item.icon;
+            const isActive = isCurrentPath(item.href);
+            
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 ${
+                  isActive
+                    ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                }`}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <Icon size={18} className={isActive ? "text-green-600 dark:text-green-400" : ""} />
                 {!isCollapsed && item.label}
               </Link>
             );
