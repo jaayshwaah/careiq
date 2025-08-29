@@ -99,6 +99,28 @@ export default function AdminKnowledgePage() {
           source_url: null,
           last_updated: new Date().toISOString(),
           created_at: new Date().toISOString()
+        },
+        {
+          id: "3",
+          title: "MDS 3.0 Section A - Identification and Background Information",
+          category: "MDS Manuals",
+          facility_id: null,
+          state: null,
+          content: "Section A collects identifying information about the resident. A0050 Type of Record: determines if this is a Medicare/Medicaid (5-day) assessment or an Entry or Admission Record...",
+          source_url: "https://www.cms.gov/medicare/quality-initiatives-patient-assessment-instruments/nursinghomequalityinits/mds30-training-materials",
+          last_updated: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        },
+        {
+          id: "4",
+          title: "MDS 3.0 Section K - Swallowing/Nutritional Status",
+          category: "MDS Manuals",
+          facility_id: null,
+          state: null,
+          content: "Section K addresses swallowing disorders and nutritional approaches. K0100 Swallowing disorder: identify residents who have been diagnosed with a swallowing disorder...",
+          source_url: "https://www.cms.gov/medicare/quality-initiatives-patient-assessment-instruments/nursinghomequalityinits/mds30-training-materials",
+          last_updated: new Date().toISOString(),
+          created_at: new Date().toISOString()
         }
       ]);
     } finally {
@@ -477,6 +499,7 @@ export default function AdminKnowledgePage() {
                       <option value="State">State Regulations</option>
                       <option value="Joint Commission">Joint Commission</option>
                       <option value="CDC">CDC Guidelines</option>
+                      <option value="MDS Manuals">MDS Manuals</option>
                       <option value="Policy">Facility Policies</option>
                     </select>
                   </div>

@@ -163,29 +163,32 @@ export default function SettingsPage() {
     
     setSendingFeedback(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { error } = await supabase
-        .from("feedback")
-        .insert({
-          user_id: user.id,
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+        },
+        body: JSON.stringify({
           type: feedbackType,
-          message: feedbackText.trim(),
-          user_email: user.email,
-          created_at: new Date().toISOString()
-        });
+          message: feedbackText.trim()
+        })
+      });
 
-      if (error) {
-        // If feedback table doesn't exist, just show success message
-        console.warn("Feedback table may not exist:", error);
+      const data = await response.json();
+      
+      if (response.ok && data.ok) {
+        setMessage({ type: 'success', text: data.message });
+        setFeedbackText('');
+      } else {
+        throw new Error(data.error || 'Failed to submit feedback');
       }
-
-      setMessage({ type: 'success', text: 'Thank you for your feedback! We will review it soon.' });
-      setFeedbackText('');
+      
       setTimeout(() => setMessage(null), 5000);
     } catch (error: any) {
-      setMessage({ type: 'error', text: 'Failed to send feedback. Please try again.' });
+      setMessage({ type: 'error', text: error.message || 'Failed to send feedback. Please try again.' });
       setTimeout(() => setMessage(null), 5000);
     } finally {
       setSendingFeedback(false);

@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'update_permissions') {
-      // Use update_user_permissions function if available
+      // Legacy action - update only permissions
       const { data, error } = await supa.rpc('update_user_permissions', {
         target_user_id: userData.user_id,
         new_role: userData.role,
@@ -99,6 +99,32 @@ export async function POST(req: NextRequest) {
       }
 
       return NextResponse.json({ ok: true, message: "Permissions updated successfully" });
+    }
+
+    if (action === 'update_user') {
+      // New comprehensive user update
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+
+      // Add fields that are provided
+      if (userData.role !== undefined) updateData.role = userData.role;
+      if (userData.is_admin !== undefined) updateData.is_admin = userData.is_admin;
+      if (userData.full_name !== undefined) updateData.full_name = userData.full_name;
+      if (userData.facility_name !== undefined) updateData.facility_name = userData.facility_name;
+      if (userData.facility_state !== undefined) updateData.facility_state = userData.facility_state;
+      if (userData.facility_id !== undefined) updateData.facility_id = userData.facility_id;
+
+      const { error: updateError } = await supa
+        .from('profiles')
+        .update(updateData)
+        .eq('user_id', userData.user_id);
+      
+      if (updateError) {
+        return NextResponse.json({ ok: false, error: updateError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ ok: true, message: "User updated successfully" });
     }
 
     return NextResponse.json({ ok: false, error: "Invalid action" }, { status: 400 });

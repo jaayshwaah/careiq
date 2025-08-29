@@ -224,10 +224,14 @@ export default function AdminUsersPage() {
           'Authorization': `Bearer ${session.data.session?.access_token}`
         },
         body: JSON.stringify({
-          action: 'update_permissions',
+          action: 'update_user',
           user_id: selectedUser.user_id,
           role: formData.role,
-          is_admin: formData.is_admin
+          is_admin: formData.is_admin,
+          facility_name: formData.facility_name,
+          facility_state: formData.facility_state,
+          facility_id: formData.facility_id,
+          full_name: formData.full_name
         })
       });
 
@@ -594,8 +598,8 @@ export default function AdminUsersPage() {
                 <input
                   type="text"
                   value={formData.full_name}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
 
@@ -608,6 +612,31 @@ export default function AdminUsersPage() {
                 >
                   {USER_ROLES.map(role => (
                     <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Facility Name</label>
+                <input
+                  type="text"
+                  value={formData.facility_name}
+                  onChange={(e) => setFormData({...formData, facility_name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Sunset Manor Nursing Home"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">State</label>
+                <select
+                  value={formData.facility_state}
+                  onChange={(e) => setFormData({...formData, facility_state: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Select State</option>
+                  {US_STATES.map(state => (
+                    <option key={state} value={state}>{state}</option>
                   ))}
                 </select>
               </div>
