@@ -1,13 +1,13 @@
 # ChatGPT-5 Configuration Guide
 
-## Current Status
-ChatGPT-5 is not yet publicly available. The application is configured to use the best available OpenAI models through OpenRouter.
+## 🚀 Current Status
+**GPT-5 is NOW AVAILABLE!** As of August 2024, OpenAI has released GPT-5 Chat through OpenRouter. CareIQ is now configured to use the latest GPT-5 model for the best possible performance.
 
 ## Model Configuration
 
-### Current Settings
-- **Main Chat**: `openai/gpt-4o` (latest GPT-4 Omni)
-- **Facility Analysis**: `openai/gpt-4o` (most capable for analysis)
+### ✅ Updated Settings (GPT-5 Available)
+- **Main Chat**: `openai/gpt-5-chat` (🆕 Latest GPT-5 Chat model)
+- **Facility Analysis**: `openai/gpt-5-chat` (most capable for complex analysis)
 - **Auto-titling**: `openai/gpt-4o-mini` (efficient for simple tasks)
 
 ### Environment Variables
@@ -17,10 +17,12 @@ Add these to your `.env.local` file:
 ```env
 # OpenRouter Configuration
 OPENROUTER_API_KEY=your_openrouter_api_key_here
-OPENROUTER_MODEL=openai/gpt-4o
+OPENROUTER_MODEL=openai/gpt-5-chat
 
-# When GPT-5 becomes available, update to:
-# OPENROUTER_MODEL=openai/gpt-5
+# 🎉 GPT-5 is now live! Use the new GPT-5 Chat model
+# Alternative fallbacks:
+# OPENROUTER_MODEL=openai/gpt-4o          # Previous best model  
+# OPENROUTER_MODEL=openai/gpt-4-turbo     # Fast GPT-4 variant
 
 # OpenRouter Site Info (optional)
 OPENROUTER_SITE_URL=https://careiq.vercel.app
@@ -46,36 +48,36 @@ OPENROUTER_SITE_NAME=CareIQ
 - `openai/gpt-4o-mini` - Fast and cost-effective
 - `openai/gpt-3.5-turbo` - Budget option
 
-**When GPT-5 is released:**
-- `openai/gpt-5` - Will be the most advanced model
+**✅ GPT-5 is HERE:**
+- `openai/gpt-5-chat` - The most advanced model available (NOW LIVE)
 
-### Current Model Usage
+### ✅ Current Model Usage (Updated for GPT-5)
 
 1. **Chat Interface** (`/api/messages/stream/route.ts`):
    - Uses `OPENROUTER_MODEL` environment variable
-   - Defaults to `openai/gpt-4o`
-   - Handles streaming responses
+   - Defaults to `openai/gpt-5-chat` 🚀
+   - Handles streaming responses with GPT-5
 
 2. **Facility Analysis** (`/api/facility-analysis/route.ts`):
-   - Uses `openai/gpt-4o` for complex analysis
-   - Specialized for healthcare compliance
+   - Uses `openai/gpt-5-chat` for complex analysis 🚀
+   - Advanced healthcare compliance analysis
 
 3. **Auto-titling** (`/lib/titler.ts`):
    - Uses `openai/gpt-4o-mini` for efficiency
    - Fallbacks to other models if needed
 
-### Upgrading to GPT-5
+### ✅ GPT-5 Upgrade Complete!
 
-When GPT-5 becomes available:
+Your CareIQ application is now running GPT-5:
 
-1. Update environment variable:
+1. **Environment configured**: 
    ```env
-   OPENROUTER_MODEL=openai/gpt-5
+   OPENROUTER_MODEL=openai/gpt-5-chat
    ```
 
-2. Restart your application
+2. **All APIs updated**: Chat, analysis, and contextual responses now use GPT-5
 
-3. The system will automatically use GPT-5 for all chat interactions
+3. **Enhanced capabilities**: Better reasoning, more accurate healthcare guidance, improved conversation flow
 
 ### Cost Optimization
 

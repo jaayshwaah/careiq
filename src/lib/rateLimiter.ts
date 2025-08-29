@@ -89,6 +89,7 @@ export const RATE_LIMITS = {
   // Generous limits for light usage
   CHAT: { maxRequests: 50, windowMs: 60 * 60 * 1000 }, // 50 per hour
   SEARCH: { maxRequests: 100, windowMs: 60 * 60 * 1000 }, // 100 per hour
+  API: { maxRequests: 200, windowMs: 60 * 60 * 1000 }, // 200 per hour for general API calls
   UPLOAD: { maxRequests: 10, windowMs: 60 * 60 * 1000 }, // 10 per hour
   ANALYSIS: { maxRequests: 20, windowMs: 60 * 60 * 1000 }, // 20 per hour
   

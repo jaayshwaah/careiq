@@ -3,11 +3,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, Check, Send, Pencil, Bookmark, Paperclip, Download, Settings as SettingsIcon, FileText, Users } from "lucide-react";
+import { Copy, Check, Send, Pencil, Bookmark, Paperclip, Download, Settings as SettingsIcon, FileText, Users, Search, Share2, Sparkles } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 import Suggestions from "@/components/Suggestions";
 import MessageList from "@/components/chat/MessageList";
 import ChatTemplates from "@/components/ChatTemplates";
+import ChatSearch from "@/components/chat/ChatSearch";
+import BookmarksPanel from "@/components/chat/BookmarksPanel";
+import SharePanel from "@/components/chat/SharePanel";
+import ExportPanel from "@/components/chat/ExportPanel";
 
 type Msg = {
   id: string;
@@ -138,14 +142,6 @@ function MessageBubble({ message, isStreaming = false, onEdit, onBookmark }: {
           )}
         </div>
         
-        {/* User avatar space - invisible but maintains layout */}
-        {isUser && (
-          <div className="flex-shrink-0 w-6 h-6 lg:w-8 lg:h-8">
-            <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-full bg-blue-600 flex items-center justify-center">
-              <span className="text-white text-xs lg:text-sm font-medium">U</span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -283,6 +279,10 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [chatTitle, setChatTitle] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(() => {
     try { return Number(JSON.parse(localStorage.getItem(`careiq-chat-settings-${chatId}`) || '{}').temperature ?? 0.3); } catch { return 0.3; }
   });
@@ -295,6 +295,29 @@ export default function Chat({ chatId }: { chatId: string }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs.length]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + K for search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+      // Escape to close modals
+      if (e.key === 'Escape') {
+        setShowSearch(false);
+        setShowBookmarks(false);
+        setShowShare(false);
+        setShowExport(false);
+        setShowSettings(false);
+        setShowTemplates(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Load messages
   useEffect(() => {
@@ -325,6 +348,17 @@ export default function Chat({ chatId }: { chatId: string }) {
           const json = await res.json();
           const messages: Msg[] = json?.messages || [];
           setMsgs(messages);
+          
+          // Load chat title
+          const chatRes = await fetch(`/api/chats/${encodeURIComponent(chatId)}`, {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+          });
+          if (chatRes.ok) {
+            const chatData = await chatRes.json();
+            setChatTitle(chatData.chat?.title || '');
+          }
         } else if (res.status === 401) {
           router.push('/login');
           return;
@@ -569,10 +603,29 @@ export default function Chat({ chatId }: { chatId: string }) {
           'Content-Type': 'application/json',
           ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ message: message.content, chat_id: chatId }),
+        body: JSON.stringify({ 
+          chat_id: chatId, 
+          message_id: message.id,
+          title: message.content.substring(0, 100) + (message.content.length > 100 ? '...' : '')
+        }),
       });
+      // Show a brief success feedback
+      // TODO: Add toast notification
     } catch (e) {
       console.warn('Bookmark failed', e);
+    }
+  };
+
+  // Handle chat navigation from search/bookmarks
+  const handleChatNavigation = (targetChatId: string, messageId?: string) => {
+    if (targetChatId === chatId) {
+      // Same chat, scroll to message if specified
+      if (messageId) {
+        // TODO: Implement scroll to specific message
+      }
+    } else {
+      // Navigate to different chat
+      router.push(`/chat/${targetChatId}${messageId ? `#${messageId}` : ''}`);
     }
   };
 
@@ -615,46 +668,54 @@ export default function Chat({ chatId }: { chatId: string }) {
       <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
         <div className="font-semibold text-gray-900 dark:text-white text-lg">CareIQ Assistant</div>
         <div className="flex items-center gap-2">
+          {/* Search */}
+          <button
+            onClick={() => setShowSearch(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="Search chat history"
+          >
+            <Search size={18} />
+          </button>
+          
+          {/* Templates */}
           <button
             onClick={() => setShowTemplates(true)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             title="Chat templates"
           >
-            <FileText size={18} />
+            <Sparkles size={18} />
           </button>
+          
+          {/* Bookmarks */}
+          <button
+            onClick={() => setShowBookmarks(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="View bookmarks"
+          >
+            <Bookmark size={18} />
+          </button>
+          
+          <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
+          
+          {/* Share */}
           <button
             onClick={() => setShowShare(true)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             title="Share chat"
           >
-            <Users size={18} />
+            <Share2 size={18} />
           </button>
-          <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
+          
+          {/* Export */}
           <button
-            onClick={async () => {
-              try {
-                const res = await fetch('/api/export/pdf', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    title: 'CareIQ Chat Export',
-                    messages: msgs.map(m => ({ role: m.role, content: m.content, createdAt: m.created_at }))
-                  })
-                });
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `careiq-chat-${new Date().toISOString().slice(0,10)}.pdf`;
-                a.click();
-                URL.revokeObjectURL(url);
-              } catch (e) { console.error('Export failed', e); }
-            }}
+            onClick={() => setShowExport(true)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            title="Export PDF"
+            title="Export chat"
           >
             <Download size={18} />
           </button>
+          
+          {/* Settings */}
           <button
             onClick={() => setShowSettings(true)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -817,73 +878,35 @@ export default function Chat({ chatId }: { chatId: string }) {
         />
       )}
 
-      {/* Share modal */}
-      {showShare && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Share Chat</h3>
-              <button onClick={() => setShowShare(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <span className="sr-only">Close</span>
-                ×
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Share with team members
-                </label>
-                <input
-                  type="email"
-                  placeholder="Enter email addresses..."
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="allow-edit" className="rounded" />
-                <label htmlFor="allow-edit" className="text-sm text-gray-700 dark:text-gray-300">
-                  Allow editing
-                </label>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setShowShare(false)}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    setShowShare(false);
-                  }}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                >
-                  Share
-                </button>
-              </div>
-            </div>
-            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">Or share via link:</div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={`${window.location.origin}/chat/${chatId}?shared=true`}
-                  className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-400"
-                />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/chat/${chatId}?shared=true`);
-                  }}
-                  className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Search Modal */}
+      <ChatSearch
+        isOpen={showSearch}
+        onClose={() => setShowSearch(false)}
+        onSelectChat={handleChatNavigation}
+      />
+
+      {/* Bookmarks Panel */}
+      <BookmarksPanel
+        isOpen={showBookmarks}
+        onClose={() => setShowBookmarks(false)}
+        onSelectChat={handleChatNavigation}
+        currentChatId={chatId}
+      />
+
+      {/* Share Panel */}
+      <SharePanel
+        isOpen={showShare}
+        onClose={() => setShowShare(false)}
+        chatId={chatId}
+      />
+
+      {/* Export Panel */}
+      <ExportPanel
+        isOpen={showExport}
+        onClose={() => setShowExport(false)}
+        chatId={chatId}
+        chatTitle={chatTitle}
+      />
 
       {/* Settings modal */}
       {showSettings && (

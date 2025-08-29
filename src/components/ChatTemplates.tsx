@@ -1,9 +1,26 @@
 "use client";
 
-import { useState } from 'react';
-import { FileText, ChevronRight, Star, Clock, Users, Shield, Calendar, BookOpen } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileText, ChevronRight, Star, Clock, Users, Shield, Calendar, BookOpen, Plus, Edit3 } from 'lucide-react';
+import { getBrowserSupabase } from '@/lib/supabaseClient';
 
 interface Template {
+  id: string;
+  title: string;
+  description?: string;
+  content: string;
+  category: string;
+  tags: string[];
+  is_public: boolean;
+  usage_count: number;
+  created_at: string;
+  user_id: string;
+  profiles?: {
+    full_name: string;
+  };
+}
+
+interface StaticTemplate {
   id: string;
   title: string;
   description: string;
@@ -19,7 +36,7 @@ interface ChatTemplatesProps {
   onClose: () => void;
 }
 
-const templates: Template[] = [
+const staticTemplates: StaticTemplate[] = [
   {
     id: 'survey-prep',
     title: 'State Survey Preparation',
@@ -99,21 +116,79 @@ const templates: Template[] = [
 
 export default function ChatTemplates({ onSelectTemplate, onClose }: ChatTemplatesProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [dynamicTemplates, setDynamicTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(false);
+  const supabase = getBrowserSupabase();
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/templates', {
+        headers: {
+          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDynamicTemplates(data.templates || []);
+      }
+    } catch (error) {
+      console.error('Failed to load templates:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const useTemplate = async (templateId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch(`/api/templates?id=${templateId}&action=use`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+        },
+      });
+    } catch (error) {
+      console.error('Failed to update template usage:', error);
+    }
+  };
+
+  // Combine static and dynamic templates
+  const allTemplates = [
+    ...staticTemplates.map(t => ({ ...t, isStatic: true, usage_count: t.popular ? 100 : 10 })),
+    ...dynamicTemplates.map(t => ({ ...t, isStatic: false, prompt: t.content, description: t.description || 'Custom template' }))
+  ];
 
   const categories = [
-    { id: 'all', label: 'All Templates', count: templates.length },
-    { id: 'survey', label: 'Survey Prep', count: templates.filter(t => t.category === 'survey').length },
-    { id: 'training', label: 'Training', count: templates.filter(t => t.category === 'training').length },
-    { id: 'policy', label: 'Policy', count: templates.filter(t => t.category === 'policy').length },
-    { id: 'incident', label: 'Incident', count: templates.filter(t => t.category === 'incident').length },
-    { id: 'general', label: 'General', count: templates.filter(t => t.category === 'general').length }
+    { id: 'all', label: 'All Templates', count: allTemplates.length },
+    { id: 'survey', label: 'Survey Prep', count: allTemplates.filter(t => t.category === 'survey').length },
+    { id: 'training', label: 'Training', count: allTemplates.filter(t => t.category === 'training').length },
+    { id: 'policy', label: 'Policy', count: allTemplates.filter(t => t.category === 'policy').length },
+    { id: 'incident', label: 'Incident', count: allTemplates.filter(t => t.category === 'incident').length },
+    { id: 'general', label: 'General', count: allTemplates.filter(t => t.category === 'general').length }
   ];
 
   const filteredTemplates = selectedCategory === 'all' 
-    ? templates 
-    : templates.filter(t => t.category === selectedCategory);
+    ? allTemplates 
+    : allTemplates.filter(t => t.category === selectedCategory);
 
-  const popularTemplates = templates.filter(t => t.popular);
+  // Sort by usage count for popularity
+  const popularTemplates = allTemplates
+    .sort((a, b) => b.usage_count - a.usage_count)
+    .slice(0, 5);
+
+  const handleSelectTemplate = async (template: any) => {
+    if (!template.isStatic) {
+      await useTemplate(template.id);
+    }
+    onSelectTemplate(template.prompt);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -177,7 +252,7 @@ export default function ChatTemplates({ onSelectTemplate, onClose }: ChatTemplat
                     return (
                       <button
                         key={template.id}
-                        onClick={() => onSelectTemplate(template.prompt)}
+                        onClick={() => handleSelectTemplate(template)}
                         className="w-full text-left p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       >
                         <div className="flex items-center gap-2">
@@ -199,12 +274,13 @@ export default function ChatTemplates({ onSelectTemplate, onClose }: ChatTemplat
           <div className="flex-1 p-6 overflow-y-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {filteredTemplates.map(template => {
-                const Icon = template.icon;
+                const Icon = template.icon || FileText;
+                const isPopular = template.usage_count > 50;
                 return (
                   <button
                     key={template.id}
-                    onClick={() => onSelectTemplate(template.prompt)}
-                    className={`p-4 rounded-lg border-2 text-left transition-all hover:shadow-md group ${template.color}`}
+                    onClick={() => handleSelectTemplate(template)}
+                    className={`p-4 rounded-lg border-2 text-left transition-all hover:shadow-md group ${template.color || 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300'}`}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
@@ -213,12 +289,20 @@ export default function ChatTemplates({ onSelectTemplate, onClose }: ChatTemplat
                         </div>
                         <div className="flex-1">
                           <h3 className="font-semibold text-sm">{template.title}</h3>
-                          {template.popular && (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium mt-1">
-                              <Star size={10} fill="currentColor" />
-                              Popular
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            {isPopular && (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400">
+                                <Star size={10} fill="currentColor" />
+                                Popular
+                              </span>
+                            )}
+                            {!template.isStatic && (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+                                <Edit3 size={10} />
+                                Custom
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -226,9 +310,14 @@ export default function ChatTemplates({ onSelectTemplate, onClose }: ChatTemplat
                     <p className="text-sm opacity-80 line-clamp-2">
                       {template.description}
                     </p>
-                    <div className="mt-3 flex items-center gap-2 text-xs opacity-60">
-                      <Clock size={12} />
-                      <span>Ready to use</span>
+                    <div className="mt-3 flex items-center justify-between text-xs opacity-60">
+                      <div className="flex items-center gap-2">
+                        <Clock size={12} />
+                        <span>Ready to use</span>
+                      </div>
+                      {template.usage_count > 0 && (
+                        <span>{template.usage_count} uses</span>
+                      )}
                     </div>
                   </button>
                 );

@@ -130,14 +130,6 @@ const MessageList = forwardRef<any, Props>(function MessageList(
                 )}
               </div>
               
-              {/* User avatar space - invisible but maintains layout */}
-              {isUser && (
-                <div className="flex-shrink-0 w-8 h-8">
-                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">U</span>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         );

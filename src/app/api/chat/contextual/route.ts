@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
         "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "https://careiq.vercel.app",
         "X-Title": "CareIQ Enhanced Chat",
       },
-      body: JSON.stringify({ model: process.env.OPENROUTER_MODEL || "openai/gpt-4o", messages: aiMessages, temperature: 0.3, max_tokens: 2000 }),
+      body: JSON.stringify({ model: process.env.OPENROUTER_MODEL || "openai/gpt-5-chat", messages: aiMessages, temperature: 0.3, max_tokens: 2000 }), // 🚀 GPT-5 is now available!
     });
 
     if (!response.ok) {

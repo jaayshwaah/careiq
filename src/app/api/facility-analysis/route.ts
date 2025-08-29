@@ -42,7 +42,7 @@ async function searchFacility(facilityName: string, state: string) {
 
 async function analyzeFacility(facilityData: any) {
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-  const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o";
+  const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-5-chat"; // 🚀 GPT-5 is now available!
 
   if (!OPENROUTER_API_KEY) {
     throw new Error("AI service not configured");
