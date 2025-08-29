@@ -189,6 +189,11 @@ export default function Composer({
         </div>
       </div>
 
+      {/* Keyboard shortcuts help */}
+      <div className="mt-2 text-xs text-gray-500 px-2 text-center">
+        ⌘/Ctrl+K to search • ⌘/Ctrl+Enter to send • Shift+Enter for newline
+      </div>
+
       {/* Footer info */}
       {files.length > 0 && (
         <div className="mt-2 text-xs text-gray-500 px-2">

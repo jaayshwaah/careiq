@@ -416,6 +416,8 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
           {/* CareIQ Admin Button - Only for CareIQ team and specific authorized users */}
           {(userProfile?.email?.endsWith('@careiq.com') || 
             userProfile?.email === 'jking@pioneervalleyhealth.com' ||
+            user?.email === 'jking@pioneervalleyhealth.com' ||
+            user?.email?.endsWith('@careiq.com') ||
             userProfile?.role === 'careiq_admin') && (
             <Link
               href="/admin"
