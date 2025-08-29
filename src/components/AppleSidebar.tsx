@@ -146,68 +146,20 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
     }
   }, [isAuthenticated, supabase]);
 
-  // Auto-title chats function
+  // Auto-title chats function - using server-side API
   const autoTitleChats = async (chatsToTitle: Chat[]) => {
     for (const chat of chatsToTitle) {
       try {
-        // Get the first few messages from this chat
-        const { data: messages } = await supabase
-          .from('messages')
-          .select('role, content_enc, content_iv, content_tag')
-          .eq('chat_id', chat.id)
-          .order('created_at', { ascending: true })
-          .limit(4);
+        // Call the existing title API which handles message decryption server-side
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) continue;
 
-        if (!messages || messages.length < 2) continue;
-
-        // Check if we have both user and assistant messages
-        const hasUser = messages.some(m => m.role === 'user');
-        const hasAssistant = messages.some(m => m.role === 'assistant');
-        
-        if (!hasUser || !hasAssistant) continue;
-
-        // Try to decrypt and get the first user message and first assistant message
-        let userText = '';
-        let assistantText = '';
-        
-        try {
-          const { decryptPHI } = await import("@/lib/crypto/phi");
-          
-          for (const msg of messages) {
-            if (msg.role === 'user' && !userText) {
-              userText = decryptPHI({
-                ciphertext: Buffer.from(msg.content_enc, "base64"),
-                iv: Buffer.from(msg.content_iv, "base64"),
-                tag: Buffer.from(msg.content_tag, "base64"),
-              }).slice(0, 500); // Limit length
-            } else if (msg.role === 'assistant' && !assistantText) {
-              assistantText = decryptPHI({
-                ciphertext: Buffer.from(msg.content_enc, "base64"),
-                iv: Buffer.from(msg.content_iv, "base64"),
-                tag: Buffer.from(msg.content_tag, "base64"),
-              }).slice(0, 500); // Limit length
-            }
-            
-            if (userText && assistantText) break;
-          }
-        } catch (decryptError) {
-          console.warn('Failed to decrypt messages for titling:', decryptError);
-          continue;
-        }
-
-        if (!userText || !assistantText) continue;
-
-        // Call the existing title API
-        const response = await fetch('/api/title', {
+        const response = await fetch(`/api/chats/${chat.id}/title`, {
           method: 'POST',
           headers: {
+            'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            chatId: chat.id,
-            userText,
-            assistantText,
-          }),
         });
 
         if (response.ok) {
