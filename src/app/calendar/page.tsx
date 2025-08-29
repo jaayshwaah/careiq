@@ -3,6 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { Calendar, AlertTriangle, CheckCircle, Clock, Calculator } from "lucide-react";
+import { useAuth } from '@/components/AuthProvider';
+import { getBrowserSupabase } from '@/lib/supabaseClient';
 
 type Event = {
   id: string;
@@ -67,6 +69,8 @@ const stateWindows: { [key: string]: { window: number; description: string } } =
 };
 
 export default function ComplianceCalendarPage() {
+  const { user } = useAuth();
+  const supabase = getBrowserSupabase();
   const [events, setEvents] = useState<Event[]>([]);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
@@ -104,8 +108,8 @@ export default function ComplianceCalendarPage() {
     }
   };
 
-  const calculateSurveyWindow = () => {
-    if (!lastSurveyDate || !facilityState) return;
+  const calculateSurveyWindow = async () => {
+    if (!lastSurveyDate || !facilityState || !user) return;
     
     const stateConfig = stateWindows[facilityState];
     if (!stateConfig) return;
@@ -124,7 +128,7 @@ export default function ComplianceCalendarPage() {
     const isInWindow = today >= windowStart && today <= windowEnd;
     const isOverdue = today > windowEnd;
     
-    setSurveyWindow({
+    const surveyData = {
       state: facilityState,
       lastSurveyDate: lastSurvey,
       windowStart,
@@ -134,7 +138,32 @@ export default function ComplianceCalendarPage() {
       isInWindow,
       isOverdue,
       description: stateConfig.description
-    });
+    };
+    
+    setSurveyWindow(surveyData);
+    
+    // Save to database for dashboard countdown
+    try {
+      await supabase
+        .from('survey_windows')
+        .upsert({
+          user_id: user.id,
+          facility_state: facilityState,
+          last_survey_date: lastSurveyDate,
+          window_start: windowStart.toISOString(),
+          window_end: windowEnd.toISOString(),
+          days_until_window: daysUntilWindow,
+          days_until_expiry: daysUntilExpiry,
+          is_in_window: isInWindow,
+          is_overdue: isOverdue,
+          state_description: stateConfig.description,
+          calculated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+    } catch (error) {
+      console.warn('Failed to save survey window to database:', error);
+    }
   };
 
   const addSurveyToCalendar = () => {

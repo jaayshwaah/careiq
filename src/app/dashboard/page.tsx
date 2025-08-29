@@ -135,18 +135,61 @@ export default function FacilityDashboard() {
     }
   };
 
-  // Calculate survey countdown
-  const calculateSurveyCountdown = () => {
-    const surveyDate = new Date('2024-02-15'); // This should come from user settings or be dynamic
-    const now = new Date();
-    const timeDiff = surveyDate.getTime() - now.getTime();
+  // Load and calculate survey countdown from database
+  const loadSurveyCountdown = async () => {
+    if (!user?.id) return;
     
-    if (timeDiff > 0) {
-      const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-      setSurveyCountdown({ days, hours, minutes });
-    } else {
+    try {
+      const { data: surveyWindow, error } = await supabase
+        .from('survey_windows')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error || !surveyWindow) {
+        setSurveyCountdown(null);
+        return;
+      }
+      
+      // Calculate countdown to window start if not yet in window
+      // Or countdown to window end if in window
+      const now = new Date();
+      const windowStart = new Date(surveyWindow.window_start);
+      const windowEnd = new Date(surveyWindow.window_end);
+      
+      let targetDate;
+      let countdownType;
+      
+      if (surveyWindow.is_overdue) {
+        setSurveyCountdown(null);
+        return;
+      } else if (surveyWindow.is_in_window) {
+        targetDate = windowEnd;
+        countdownType = 'Window Closes';
+      } else {
+        targetDate = windowStart;
+        countdownType = 'Window Opens';
+      }
+      
+      const timeDiff = targetDate.getTime() - now.getTime();
+      
+      if (timeDiff > 0) {
+        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        setSurveyCountdown({ 
+          days, 
+          hours, 
+          minutes, 
+          type: countdownType,
+          isInWindow: surveyWindow.is_in_window,
+          state: surveyWindow.facility_state
+        });
+      } else {
+        setSurveyCountdown(null);
+      }
+    } catch (error) {
+      console.error('Failed to load survey countdown:', error);
       setSurveyCountdown(null);
     }
   };
@@ -186,10 +229,10 @@ export default function FacilityDashboard() {
   useEffect(() => {
     if (isAuthenticated && user) {
       loadCurrentPPD();
-      calculateSurveyCountdown();
+      loadSurveyCountdown();
       
       // Update countdown every minute
-      const interval = setInterval(calculateSurveyCountdown, 60000);
+      const interval = setInterval(loadSurveyCountdown, 60000);
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, user]);
@@ -263,34 +306,102 @@ export default function FacilityDashboard() {
         {/* Survey Countdown & PPD Widget Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Survey Countdown Widget */}
-          {surveyCountdown && (
-            <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg border border-orange-200 dark:border-orange-700 p-6">
+          {surveyCountdown ? (
+            <div className={`bg-gradient-to-br rounded-lg border p-6 ${
+              surveyCountdown.isInWindow 
+                ? 'from-red-50 to-red-100 border-red-200 dark:from-red-900/20 dark:to-red-900/30 dark:border-red-700'
+                : 'from-orange-50 to-yellow-50 border-orange-200 dark:from-orange-900/20 dark:to-yellow-900/20 dark:border-orange-700'
+            }`}>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-300 flex items-center gap-2">
+                <h3 className={`text-lg font-semibold flex items-center gap-2 ${
+                  surveyCountdown.isInWindow 
+                    ? 'text-red-900 dark:text-red-300'
+                    : 'text-orange-900 dark:text-orange-300'
+                }`}>
                   <Timer className="h-5 w-5" />
-                  Survey Window Countdown
+                  Survey {surveyCountdown.type}
                 </h3>
+                <div className={`text-xs px-2 py-1 rounded-full font-medium ${
+                  surveyCountdown.isInWindow
+                    ? 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200'
+                    : 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-200'
+                }`}>
+                  {surveyCountdown.state}
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{surveyCountdown.days}</div>
-                  <div className="text-sm text-orange-700 dark:text-orange-300">Days</div>
+                  <div className={`text-3xl font-bold ${
+                    surveyCountdown.isInWindow 
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-orange-600 dark:text-orange-400'
+                  }`}>{surveyCountdown.days}</div>
+                  <div className={`text-sm ${
+                    surveyCountdown.isInWindow 
+                      ? 'text-red-700 dark:text-red-300'
+                      : 'text-orange-700 dark:text-orange-300'
+                  }`}>Days</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{surveyCountdown.hours}</div>
-                  <div className="text-sm text-orange-700 dark:text-orange-300">Hours</div>
+                  <div className={`text-3xl font-bold ${
+                    surveyCountdown.isInWindow 
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-orange-600 dark:text-orange-400'
+                  }`}>{surveyCountdown.hours}</div>
+                  <div className={`text-sm ${
+                    surveyCountdown.isInWindow 
+                      ? 'text-red-700 dark:text-red-300'
+                      : 'text-orange-700 dark:text-orange-300'
+                  }`}>Hours</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{surveyCountdown.minutes}</div>
-                  <div className="text-sm text-orange-700 dark:text-orange-300">Minutes</div>
+                  <div className={`text-3xl font-bold ${
+                    surveyCountdown.isInWindow 
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-orange-600 dark:text-orange-400'
+                  }`}>{surveyCountdown.minutes}</div>
+                  <div className={`text-sm ${
+                    surveyCountdown.isInWindow 
+                      ? 'text-red-700 dark:text-red-300'
+                      : 'text-orange-700 dark:text-orange-300'
+                  }`}>Minutes</div>
                 </div>
               </div>
-              <div className="mt-4 text-center">
+              <div className="mt-4 text-center space-y-2">
+                <div className={`text-sm font-medium ${
+                  surveyCountdown.isInWindow 
+                    ? 'text-red-800 dark:text-red-200'
+                    : 'text-orange-800 dark:text-orange-200'
+                }`}>
+                  {surveyCountdown.isInWindow ? '🚨 Survey window is OPEN!' : '⏰ Until survey window opens'}
+                </div>
                 <Link 
                   href="/survey-prep" 
-                  className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200 text-sm font-medium underline"
+                  className={`inline-block hover:underline text-sm font-medium ${
+                    surveyCountdown.isInWindow 
+                      ? 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200'
+                      : 'text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200'
+                  }`}
                 >
-                  Start Survey Preparation →
+                  {surveyCountdown.isInWindow ? 'Prepare Now →' : 'Start Preparation →'}
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <div className="flex items-center justify-center flex-col">
+                <Timer className="h-12 w-12 text-gray-400 mb-3" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Survey Window Calculator
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
+                  Calculate your facility's survey window to see the countdown here.
+                </p>
+                <Link 
+                  href="/calendar" 
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  Calculate Survey Window
                 </Link>
               </div>
             </div>

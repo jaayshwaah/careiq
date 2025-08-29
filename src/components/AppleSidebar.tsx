@@ -120,7 +120,24 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
         .limit(20);
 
       if (error) throw error;
-      setChats(chatsData || []);
+      
+      const chats = chatsData || [];
+      setChats(chats);
+      
+      // Auto-title chats that need titles (like ChatGPT)
+      const chatsNeedingTitles = chats.filter(chat => 
+        !chat.title || 
+        chat.title === 'New Chat' || 
+        chat.title === 'Untitled chat' ||
+        chat.title.trim() === ''
+      );
+      
+      // Auto-title up to 3 recent chats at a time to avoid API overload
+      const chatsToTitle = chatsNeedingTitles.slice(0, 3);
+      
+      if (chatsToTitle.length > 0) {
+        autoTitleChats(chatsToTitle);
+      }
     } catch (error) {
       console.warn("Failed to load chats:", error);
       setChats([]);
@@ -128,6 +145,92 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
       setLoading(false);
     }
   }, [isAuthenticated, supabase]);
+
+  // Auto-title chats function
+  const autoTitleChats = async (chatsToTitle: Chat[]) => {
+    for (const chat of chatsToTitle) {
+      try {
+        // Get the first few messages from this chat
+        const { data: messages } = await supabase
+          .from('messages')
+          .select('role, content_enc, content_iv, content_tag')
+          .eq('chat_id', chat.id)
+          .order('created_at', { ascending: true })
+          .limit(4);
+
+        if (!messages || messages.length < 2) continue;
+
+        // Check if we have both user and assistant messages
+        const hasUser = messages.some(m => m.role === 'user');
+        const hasAssistant = messages.some(m => m.role === 'assistant');
+        
+        if (!hasUser || !hasAssistant) continue;
+
+        // Try to decrypt and get the first user message and first assistant message
+        let userText = '';
+        let assistantText = '';
+        
+        try {
+          const { decryptPHI } = await import("@/lib/crypto/phi");
+          
+          for (const msg of messages) {
+            if (msg.role === 'user' && !userText) {
+              userText = decryptPHI({
+                ciphertext: Buffer.from(msg.content_enc, "base64"),
+                iv: Buffer.from(msg.content_iv, "base64"),
+                tag: Buffer.from(msg.content_tag, "base64"),
+              }).slice(0, 500); // Limit length
+            } else if (msg.role === 'assistant' && !assistantText) {
+              assistantText = decryptPHI({
+                ciphertext: Buffer.from(msg.content_enc, "base64"),
+                iv: Buffer.from(msg.content_iv, "base64"),
+                tag: Buffer.from(msg.content_tag, "base64"),
+              }).slice(0, 500); // Limit length
+            }
+            
+            if (userText && assistantText) break;
+          }
+        } catch (decryptError) {
+          console.warn('Failed to decrypt messages for titling:', decryptError);
+          continue;
+        }
+
+        if (!userText || !assistantText) continue;
+
+        // Call the existing title API
+        const response = await fetch('/api/title', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chatId: chat.id,
+            userText,
+            assistantText,
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.ok && result.title) {
+            // Update the chat in our local state
+            setChats(prevChats => 
+              prevChats.map(c => 
+                c.id === chat.id 
+                  ? { ...c, title: result.title }
+                  : c
+              )
+            );
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to auto-title chat:', chat.id, error);
+      }
+      
+      // Add a small delay between requests to be nice to the API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  };
 
   useEffect(() => {
     loadProfile();
