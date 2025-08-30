@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
-import { providerFromEnv } from "@/lib/providers";
+import { providerFromEnv } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
 
