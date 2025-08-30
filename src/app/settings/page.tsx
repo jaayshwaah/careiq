@@ -112,15 +112,20 @@ export default function SettingsPage() {
 
       setEmail(user.email || "");
 
-      const { data: profileData, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
+      // Use the profile API to get profile data with proper RLS handling
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
 
-      if (!error && profileData) {
-        setProfile(profileData);
-        setFullName(profileData.full_name || "");
+      const response = await fetch('/api/profile', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      const result = await response.json();
+      if (result.ok && result.profile) {
+        setProfile(result.profile);
+        setFullName(result.profile.full_name || "");
       }
     } catch (error) {
       console.error("Failed to load profile:", error);

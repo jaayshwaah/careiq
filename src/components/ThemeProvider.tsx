@@ -23,7 +23,7 @@ export function ThemeProvider({
 }: { 
   children: React.ReactNode 
 }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("system");
   const [systemPreference, setSystemPreference] = useState<ResolvedTheme>("light");
   const [mounted, setMounted] = useState(false);
 
@@ -42,9 +42,14 @@ export function ThemeProvider({
       const saved = localStorage.getItem("careiq-theme") as Theme;
       if (saved && ["light", "dark", "system"].includes(saved)) {
         setThemeState(saved);
+      } else {
+        // Set system as default if no preference saved
+        setThemeState("system");
+        localStorage.setItem("careiq-theme", "system");
       }
     } catch (e) {
       console.warn("Could not load theme from localStorage");
+      setThemeState("system");
     }
 
     setMounted(true);

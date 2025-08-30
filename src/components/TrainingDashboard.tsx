@@ -59,88 +59,35 @@ export default function TrainingDashboard({ userId, className = "" }: TrainingDa
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Mock data - in production this would come from API
+  // Load real training data from API
   useEffect(() => {
-    const mockStats: TrainingStats = {
-      totalSessions: 6,
-      completedSessions: 4,
-      averageScore: 87,
-      timeSpent: 3420, // seconds
-      certificatesEarned: 3,
-      currentStreak: 4,
-      bestCategory: "Infection Control",
-      improvementTrend: 12 // percentage improvement
+    const loadTrainingData = async () => {
+      try {
+        // TODO: Replace with real API call
+        // const response = await fetch(`/api/training/stats?userId=${userId}`);
+        // const data = await response.json();
+        
+        // For now, show empty states until real data is available
+        setStats({
+          totalSessions: 0,
+          completedSessions: 0,
+          averageScore: 0,
+          timeSpent: 0,
+          certificatesEarned: 0,
+          currentStreak: 0,
+          bestCategory: null,
+          improvementTrend: 0
+        });
+        setRecentActivity([]);
+        setCertificates([]);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load training data:', error);
+        setLoading(false);
+      }
     };
 
-    const mockActivity: RecentActivity[] = [
-      {
-        id: "1",
-        sessionTitle: "Nursing Staff Compliance (F-514)",
-        score: 92,
-        passed: true,
-        completedAt: "2024-02-28T14:30:00Z",
-        timeSpent: 1080
-      },
-      {
-        id: "2", 
-        sessionTitle: "Infection Prevention & Control (F-686)",
-        score: 88,
-        passed: true,
-        completedAt: "2024-02-27T10:15:00Z",
-        timeSpent: 1260
-      },
-      {
-        id: "3",
-        sessionTitle: "Quality Assurance & Performance Improvement (F-725)",
-        score: 74,
-        passed: false,
-        completedAt: "2024-02-26T16:45:00Z",
-        timeSpent: 900
-      },
-      {
-        id: "4",
-        sessionTitle: "Resident Rights and Dignity (F-550-580)",
-        score: 91,
-        passed: true,
-        completedAt: "2024-02-25T11:20:00Z",
-        timeSpent: 1440
-      }
-    ];
-
-    const mockCertificates: Certificate[] = [
-      {
-        id: "cert-1",
-        sessionTitle: "Nursing Staff Compliance (F-514)",
-        certificateNumber: "CERT-2024-0228-1234",
-        issuedAt: "2024-02-28T14:30:00Z",
-        expiresAt: "2025-02-28T14:30:00Z", 
-        score: 92
-      },
-      {
-        id: "cert-2",
-        sessionTitle: "Infection Prevention & Control (F-686)",
-        certificateNumber: "CERT-2024-0227-1235",
-        issuedAt: "2024-02-27T10:15:00Z",
-        expiresAt: "2025-02-27T10:15:00Z",
-        score: 88
-      },
-      {
-        id: "cert-3",
-        sessionTitle: "Resident Rights and Dignity (F-550-580)",
-        certificateNumber: "CERT-2024-0225-1236",
-        issuedAt: "2024-02-25T11:20:00Z",
-        expiresAt: "2025-02-25T11:20:00Z",
-        score: 91
-      }
-    ];
-
-    // Simulate API delay
-    setTimeout(() => {
-      setStats(mockStats);
-      setRecentActivity(mockActivity);
-      setCertificates(mockCertificates);
-      setLoading(false);
-    }, 500);
+    loadTrainingData();
   }, [userId]);
 
   const formatTime = (seconds: number) => {

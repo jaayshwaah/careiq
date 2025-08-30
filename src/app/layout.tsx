@@ -46,12 +46,13 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                const theme = localStorage.getItem('careiq-theme') || 'light';
+                const theme = localStorage.getItem('careiq-theme') || 'system';
                 const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 const resolved = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme;
                 document.documentElement.classList.add(resolved);
               } catch (e) {
-                document.documentElement.classList.add('light');
+                const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.classList.add(systemDark ? 'dark' : 'light');
               }
               
               // Register service worker for PWA

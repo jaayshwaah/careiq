@@ -326,11 +326,8 @@ const SurveyPreparation = () => {
     }
   };
 
-  const mockSurveyHistory = [
-    { date: '2023-03-15', type: 'Standard', deficiencies: 3, level: 'G', score: 'Above Average' },
-    { date: '2022-08-20', type: 'Complaint', deficiencies: 1, level: 'E', score: 'Much Above Average' },
-    { date: '2021-11-10', type: 'Standard', deficiencies: 7, level: 'F', score: 'Average' }
-  ];
+  // Survey history will be loaded from the database in future implementation
+  const [surveyHistory, setSurveyHistory] = useState([]);
 
   useEffect(() => {
     // Load from API, fall back to localStorage
@@ -624,27 +621,35 @@ const SurveyPreparation = () => {
       {/* Survey History */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
         <h2 className="text-lg font-semibold mb-4">Previous Survey History</h2>
-        <div className="space-y-3">
-          {mockSurveyHistory.map((survey, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${
-                  survey.level === 'G' ? 'bg-red-500' :
-                  survey.level === 'F' ? 'bg-orange-500' :
-                  survey.level === 'E' ? 'bg-yellow-500' : 'bg-green-500'
-                }`} />
-                <div>
-                  <span className="font-medium">{survey.type} Survey</span>
-                  <span className="text-gray-500 ml-2">{new Date(survey.date).toLocaleDateString()}</span>
+        {surveyHistory.length > 0 ? (
+          <div className="space-y-3">
+            {surveyHistory.map((survey, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${
+                    survey.level === 'G' ? 'bg-red-500' :
+                    survey.level === 'F' ? 'bg-orange-500' :
+                    survey.level === 'E' ? 'bg-yellow-500' : 'bg-green-500'
+                  }`} />
+                  <div>
+                    <span className="font-medium">{survey.type} Survey</span>
+                    <span className="text-gray-500 ml-2">{new Date(survey.date).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium">{survey.deficiencies} Deficiencies</div>
+                  <div className="text-xs text-gray-500">{survey.score}</div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm font-medium">{survey.deficiencies} Deficiencies</div>
-                <div className="text-xs text-gray-500">{survey.score}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <div className="mb-2">📋</div>
+            <p className="text-sm">No survey history available</p>
+            <p className="text-xs mt-1">Survey history will be displayed here when available from your facility records</p>
+          </div>
+        )}
       </div>
     </div>
   );

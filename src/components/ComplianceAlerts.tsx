@@ -38,63 +38,25 @@ export default function ComplianceAlerts({
   const [alerts, setAlerts] = useState<ComplianceAlert[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Mock alerts data - in production this would come from API
+  // Load real compliance alerts from API
   useEffect(() => {
-    const mockAlerts: ComplianceAlert[] = [
-      {
-        id: "alert-1",
-        type: "critical",
-        title: "F-514 Staffing Deficiency Risk",
-        message: "Current RN coverage is below minimum requirements for 3 consecutive days. Immediate action required.",
-        regulation: "F-514",
-        dueDate: "2024-03-01",
-        actionUrl: "/ppd-calculator",
-        created: "2024-02-28T10:00:00Z"
-      },
-      {
-        id: "alert-2", 
-        type: "warning",
-        title: "Infection Control Policy Update Due",
-        message: "Annual review of infection prevention policies is overdue. Review required by end of month.",
-        regulation: "F-686",
-        dueDate: "2024-03-15",
-        actionUrl: "/cms-guidance",
-        created: "2024-02-25T14:30:00Z"
-      },
-      {
-        id: "alert-3",
-        type: "info",
-        title: "New CMS Guidance Available",
-        message: "Updated guidance on dietary services and nutritional care planning has been published.",
-        regulation: "F-812",
-        actionUrl: "/cms-guidance",
-        created: "2024-02-24T09:15:00Z"
-      },
-      {
-        id: "alert-4",
-        type: "warning",
-        title: "QAPI Meeting Overdue",
-        message: "Monthly QAPI committee meeting has not been scheduled. Required quarterly reporting deadline approaching.",
-        regulation: "F-725",
-        dueDate: "2024-03-10",
-        actionUrl: "/survey-prep",
-        created: "2024-02-22T16:45:00Z"
-      },
-      {
-        id: "alert-5",
-        type: "success",
-        title: "Staff Training Completion",
-        message: "All nursing staff have completed mandatory infection control training ahead of schedule.",
-        regulation: "F-686",
-        created: "2024-02-20T11:20:00Z"
+    const loadComplianceAlerts = async () => {
+      try {
+        // TODO: Replace with real API call
+        // const response = await fetch(`/api/compliance/alerts?limit=${limit}`);
+        // const data = await response.json();
+        
+        // For now, show empty state until real compliance monitoring is implemented
+        setAlerts([]);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load compliance alerts:', error);
+        setAlerts([]);
+        setLoading(false);
       }
-    ];
+    };
 
-    // Simulate API delay
-    setTimeout(() => {
-      setAlerts(mockAlerts.slice(0, limit));
-      setLoading(false);
-    }, 500);
+    loadComplianceAlerts();
   }, [limit]);
 
   const getAlertIcon = (type: string) => {
