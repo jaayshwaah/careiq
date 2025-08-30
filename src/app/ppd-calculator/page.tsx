@@ -278,6 +278,31 @@ export default function PPDCalculatorPage() {
     return filteredCalculations.filter(calc => !getComplianceStatus(calc).isCompliant).length;
   };
 
+  // Calculate potential fines for non-compliance
+  const calculateFineEstimate = (calc: PPDCalculation) => {
+    const compliance = getComplianceStatus(calc);
+    if (compliance.isCompliant) return null;
+
+    // CMS fine structure (estimates based on typical ranges)
+    const baseFinePerDay = 5000; // Base fine per day of non-compliance
+    const severityMultiplier = calc.ppd < 2.5 ? 2.0 : calc.ppd < 3.0 ? 1.5 : 1.0;
+    const estimatedDailyFine = baseFinePerDay * severityMultiplier;
+    
+    // Additional considerations
+    const rnShortage = Math.max(0, (0.75 * calc.census) - calc.rn_hours);
+    const rnFineMultiplier = rnShortage > 0 ? 1.5 : 1.0;
+    
+    const totalDailyFine = estimatedDailyFine * rnFineMultiplier;
+    
+    return {
+      dailyFine: totalDailyFine,
+      deficiencyLevel: calc.ppd < 2.5 ? 'Immediate Jeopardy' : calc.ppd < 3.0 ? 'Actual Harm' : 'Standard Level',
+      rnShortage: rnShortage,
+      severity: severityMultiplier,
+      note: 'Estimates based on typical CMS enforcement patterns. Actual fines vary by state and circumstances.'
+    };
+  };
+
   // Calculate recommended staffing based on census
   const getStaffingRecommendations = (census: number) => {
     if (census <= 0) return null;
@@ -288,8 +313,7 @@ export default function PPDCalculatorPage() {
     
     // Recommended staffing levels (higher than minimums for better care)
     const recommendedTotalPPD = 4.1; // Industry best practice
-    const recommendedRNPPD = 1.0;
-    const recommendedLPNPPD = 1.0;
+    const recommendedRNLPNPPD = 2.0; // Combined RN + LPN hours
     const recommendedCNAPPD = 2.1;
 
     // Calculate minimum hours
@@ -297,10 +321,9 @@ export default function PPDCalculatorPage() {
     const minRNHours = Math.ceil(census * minRNPPD);
     
     // Calculate recommended hours  
-    const recRNHours = Math.ceil(census * recommendedRNPPD);
-    const recLPNHours = Math.ceil(census * recommendedLPNPPD);
+    const recRNLPNHours = Math.ceil(census * recommendedRNLPNPPD);
     const recCNAHours = Math.ceil(census * recommendedCNAPPD);
-    const recTotalHours = recRNHours + recLPNHours + recCNAHours;
+    const recTotalHours = recRNLPNHours + recCNAHours;
 
     return {
       census,
@@ -312,10 +335,8 @@ export default function PPDCalculatorPage() {
         remaining_hours: minTotalHours - minRNHours
       },
       recommended: {
-        rn_hours: recRNHours,
-        rn_ppd: recommendedRNPPD,
-        lpn_hours: recLPNHours,
-        lpn_ppd: recommendedLPNPPD,
+        rn_lpn_hours: recRNLPNHours,
+        rn_lpn_ppd: recommendedRNLPNPPD,
         cna_hours: recCNAHours,
         cna_ppd: recommendedCNAPPD,
         total_hours: recTotalHours,
@@ -332,7 +353,7 @@ export default function PPDCalculatorPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-4 space-y-6 lg:px-8">
       {/* Header */}
       <div className="bg-gradient-to-r from-green-600/90 to-green-700/90 text-white rounded-lg p-6">
         <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
@@ -481,8 +502,7 @@ export default function PPDCalculatorPage() {
                           Recommended Best Practice
                         </h4>
                         <div className="space-y-1 text-sm text-green-700 dark:text-green-300">
-                          <div>RN: {recommendations.recommended.rn_hours} hours ({recommendations.recommended.rn_ppd} PPD)</div>
-                          <div>LPN: {recommendations.recommended.lpn_hours} hours ({recommendations.recommended.lpn_ppd} PPD)</div>
+                          <div>RN + LPN: {recommendations.recommended.rn_lpn_hours} hours ({recommendations.recommended.rn_lpn_ppd} PPD)</div>
                           <div>CNA: {recommendations.recommended.cna_hours} hours ({recommendations.recommended.cna_ppd} PPD)</div>
                           <div className="font-medium pt-1 border-t border-green-200">Total: {recommendations.recommended.total_hours} hours ({recommendations.recommended.total_ppd} PPD)</div>
                         </div>
@@ -709,6 +729,21 @@ export default function PPDCalculatorPage() {
                               {compliance.issues.map((issue, idx) => (
                                 <div key={idx}>• {issue}</div>
                               ))}
+                              {(() => {
+                                const fineEstimate = calculateFineEstimate(calc);
+                                if (!fineEstimate) return null;
+                                return (
+                                  <div className="mt-2 pt-2 border-t border-red-300">
+                                    <div className="font-medium text-red-800">Potential Fine Risk:</div>
+                                    <div>Est. Daily Fine: <span className="font-mono">${fineEstimate.dailyFine.toLocaleString()}</span></div>
+                                    <div>Deficiency Level: <span className="font-medium">{fineEstimate.deficiencyLevel}</span></div>
+                                    {fineEstimate.rnShortage > 0 && (
+                                      <div>RN Shortage: {fineEstimate.rnShortage.toFixed(1)} hours</div>
+                                    )}
+                                    <div className="text-xs mt-1 text-red-600">{fineEstimate.note}</div>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </details>
                         </div>

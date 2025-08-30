@@ -316,9 +316,24 @@ _________________________________________________
         
         {aiCustomize && (
           <div>
-            <p className="text-sm text-gray-600 mb-3">
-              Select areas that need special attention to get customized round items:
-            </p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-gray-600">
+                Select areas that need special attention to get customized round items:
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (specialFocusAreas.length === focusAreaOptions.length) {
+                    setSpecialFocusAreas([]);
+                  } else {
+                    setSpecialFocusAreas([...focusAreaOptions]);
+                  }
+                }}
+                className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+              >
+                {specialFocusAreas.length === focusAreaOptions.length ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {focusAreaOptions.map(area => (
                 <label key={area} className="flex items-center gap-2">
