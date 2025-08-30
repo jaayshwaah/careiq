@@ -232,7 +232,7 @@ _________________________________________________
   const renderCreateTab = () => (
     <div className="space-y-6">
       {/* Template Selection */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <h3 className="text-lg font-semibold mb-4">Select Round Template</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -254,7 +254,7 @@ _________________________________________________
       </div>
 
       {/* Basic Configuration */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <h3 className="text-lg font-semibold mb-4">Round Configuration</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -298,7 +298,7 @@ _________________________________________________
       </div>
 
       {/* AI Customization */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="h-5 w-5 text-purple-600" />
           <h3 className="text-lg font-semibold">AI Customization</h3>
@@ -352,7 +352,7 @@ _________________________________________________
       </div>
 
       {/* Custom Items */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Custom Round Items</h3>
           <button
@@ -471,7 +471,7 @@ _________________________________________________
 
   const renderHistoryTab = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Recent Daily Rounds</h3>
@@ -560,7 +560,7 @@ _________________________________________________
     return (
       <div className="space-y-6">
         {/* Round Header */}
-        <div className="bg-white rounded-lg p-6 border border-gray-200">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">{currentRound.title}</h2>
             <div className="flex items-center gap-3">
@@ -603,7 +603,7 @@ _________________________________________________
 
         {/* Round Items by Category */}
         {Object.entries(categorizedItems).map(([category, items]) => (
-          <div key={category} className="bg-white rounded-lg border border-gray-200">
+          <div key={category} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="p-4 border-b border-gray-200 bg-gray-50">
               <h3 className="font-semibold text-gray-900">{category}</h3>
               <p className="text-sm text-gray-600">
@@ -664,7 +664,7 @@ _________________________________________________
         ))}
 
         {/* Signature Section */}
-        <div className="bg-white rounded-lg p-6 border border-gray-200">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
           <h3 className="font-semibold mb-4">Round Completion</h3>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

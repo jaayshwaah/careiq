@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServerWithAuth } from "@/lib/supabase/server";
+import { supabaseServerWithAuth, supabaseService } from "@/lib/supabase/server";
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization") || "";
@@ -13,7 +13,9 @@ export async function GET(req: NextRequest) {
   const { data: user } = await supa.auth.getUser();
   if (!user?.user) return NextResponse.json({ ok: true, profile: null });
 
-  const { data, error } = await supa
+  // Use service role to bypass RLS
+  const supaService = supabaseService();
+  const { data, error } = await supaService
     .from("profiles")
     .select("role, facility_id, facility_name, facility_state, full_name, is_admin, email, approved_at")
     .eq("user_id", user.user.id)
@@ -33,8 +35,9 @@ export async function POST(req: NextRequest) {
   const { data: user } = await supa.auth.getUser();
   if (!user?.user) return NextResponse.json({ ok: false, error: "not authenticated" }, { status: 401 });
 
-  // Users can only update their full_name - all other fields are admin-managed
-  const { error } = await supa
+  // Use service role to bypass RLS
+  const supaService = supabaseService();
+  const { error } = await supaService
     .from("profiles")
     .update({
       full_name,

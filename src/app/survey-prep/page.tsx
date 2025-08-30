@@ -471,7 +471,7 @@ const SurveyPreparation = () => {
   const renderOverviewTab = () => (
     <div className="space-y-6">
       {/* Survey Configuration */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
         <h2 className="text-lg font-semibold mb-4">Survey Configuration</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -524,7 +524,7 @@ const SurveyPreparation = () => {
       </div>
 
       {/* Progress Overview */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Preparation Progress</h2>
           <div className="flex gap-2">
@@ -622,7 +622,7 @@ const SurveyPreparation = () => {
       </div>
 
       {/* Survey History */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
         <h2 className="text-lg font-semibold mb-4">Previous Survey History</h2>
         <div className="space-y-3">
           {mockSurveyHistory.map((survey, index) => (
@@ -658,7 +658,7 @@ const SurveyPreparation = () => {
         const SectionIcon = section.icon;
         
         return (
-          <div key={sectionKey} className="bg-white rounded-lg shadow-sm border">
+          <div key={sectionKey} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700">
             <div
               className="p-4 cursor-pointer hover:bg-gray-50"
               onClick={() => toggleSection(sectionKey)}
@@ -763,7 +763,7 @@ const SurveyPreparation = () => {
 
   const renderTeamTab = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
         <h2 className="text-lg font-semibold mb-4">Team Assignments</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {teamRoles.map(role => {

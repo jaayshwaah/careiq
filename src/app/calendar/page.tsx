@@ -182,22 +182,22 @@ export default function ComplianceCalendarPage() {
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Compliance Calendar</h1>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <input
-            className="rounded-md border border-zinc-300 px-3 py-2"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 dark:bg-gray-700 dark:text-white px-3 py-2"
             placeholder="Title (e.g., Annual Survey Window)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
           <input
-            className="rounded-md border border-zinc-300 px-3 py-2"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 dark:bg-gray-700 dark:text-white px-3 py-2"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
           <input
-            className="rounded-md border border-zinc-300 px-3 py-2"
+            className="rounded-md border border-zinc-300 dark:border-zinc-600 dark:bg-gray-700 dark:text-white px-3 py-2"
             placeholder="Category (training, drills, survey…) "
             value={category}
             onChange={(e) => setCategory(e.target.value)}

@@ -235,7 +235,7 @@ export default function AdminUsersPage() {
           is_admin: formData.is_admin,
           facility_name: formData.facility_name,
           facility_state: formData.facility_state,
-          facility_id: formData.facility_id,
+          facility_id: formData.facility_id || null,
           full_name: formData.full_name
         })
       });

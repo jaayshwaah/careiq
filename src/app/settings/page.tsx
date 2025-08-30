@@ -134,19 +134,22 @@ export default function SettingsPage() {
     setMessage(null);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
 
-      // Only allow updating non-secure fields
-      const { error } = await supabase
-        .from("profiles")
-        .update({ 
-          full_name: fullName || null,
-          updated_at: new Date().toISOString(),
+      const response = await fetch('/api/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          full_name: fullName || null
         })
-        .eq("user_id", user.id);
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!result.ok) throw new Error(result.error);
 
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
       setTimeout(() => setMessage(null), 3000);

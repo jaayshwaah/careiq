@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
-import { openai } from "@/lib/ai/providers";
+import { providerFromEnv } from "@/lib/ai/providers";
 
 interface RoundItem {
   id: string;
@@ -401,17 +401,14 @@ Facility: ${profile.facility_name} (${profile.facility_state})
 
 Please provide specific, actionable items that complement standard daily rounds.`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
-    ],
+  const provider = providerFromEnv();
+  const aiResponse = await provider.complete([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt }
+  ], {
     temperature: 0.3,
     max_tokens: 1500
   });
-
-  const aiResponse = response.choices[0]?.message?.content;
   if (!aiResponse) return [];
 
   try {
