@@ -239,11 +239,12 @@ export async function POST(req: NextRequest) {
 
               // Only auto-title if this is the first complete exchange (2 messages: user + assistant)
               if (totalMessages && totalMessages.length === 2) {
-                // Call title generation API in background
+                // Call title generation API in background (cost-optimized)
                 fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/title`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
+                    'X-Auto-Title': 'true', // Help identify auto-titling requests
                   },
                   body: JSON.stringify({
                     chatId,

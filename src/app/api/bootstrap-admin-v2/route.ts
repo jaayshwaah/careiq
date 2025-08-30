@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
         p_user_id: user.id,
         p_email: user.email,
         p_full_name: user.email?.split('@')[0] || 'Admin User',
-        p_role: 'administrator',
+        p_role: 'Administrator',
         p_is_admin: true
       });
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         .upsert({
           user_id: user.id,
           email: user.email,
-          role: 'administrator',
+          role: 'careiq_admin',
           is_admin: true
         }, {
           onConflict: 'user_id'

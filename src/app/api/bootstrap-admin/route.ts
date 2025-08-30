@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       const { data: updatedProfile, error: updateError } = await supaAdmin
         .from('profiles')
         .update({
-          role: 'administrator',
+          role: 'Administrator',
           is_admin: true,
           full_name: user.email?.split('@')[0] || 'Admin User',
           facility_name: 'CareIQ Admin',
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
         .insert({
           user_id: user.id,
           email: user.email,
-          role: 'administrator',
+          role: 'Administrator',
           is_admin: true,
           full_name: user.email?.split('@')[0] || 'Admin User',
           facility_name: 'CareIQ Admin',

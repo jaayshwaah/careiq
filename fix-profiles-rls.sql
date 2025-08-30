@@ -47,7 +47,7 @@ CREATE OR REPLACE FUNCTION create_user_profile(
     p_user_id UUID,
     p_email TEXT,
     p_full_name TEXT DEFAULT NULL,
-    p_role TEXT DEFAULT 'user',
+    p_role TEXT DEFAULT 'DON_Unit_Manager',
     p_is_admin BOOLEAN DEFAULT FALSE
 )
 RETURNS profiles
