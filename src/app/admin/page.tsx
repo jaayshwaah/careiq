@@ -190,6 +190,12 @@ export default function AdminDashboard() {
               icon={FileText}
             />
             <QuickAction
+              href="/admin/routing"
+              title="AI Cost Monitoring"
+              description="Monitor model usage and optimize costs"
+              icon={TrendingUp}
+            />
+            <QuickAction
               href="/api/health"
               title="System Health"
               description="Check API and system status"

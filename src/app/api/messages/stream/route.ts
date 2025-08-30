@@ -4,6 +4,7 @@ import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { buildRagContext } from "@/lib/ai/buildRagContext";
 import { encryptPHI } from "@/lib/crypto/phi";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
+import { selectOptimalModel, analyzeComplexity, estimateCost, logRoutingDecision } from "@/lib/smartRouter";
 
 export const runtime = "nodejs";
 
@@ -131,11 +132,28 @@ export async function POST(req: NextRequest) {
 
     // Get OpenRouter config
     const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-    const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-5-chat"; // 🚀 GPT-5 is now available!
 
     if (!OPENROUTER_API_KEY) {
       return NextResponse.json({ error: "AI service not configured" }, { status: 503 });
     }
+
+    // Smart model selection based on content and context
+    const complexity = analyzeComplexity(content);
+    const isFirstMessage = messages.length <= 1; // Check if this is among the first messages
+    
+    const routingContext = {
+      messageLength: content.length,
+      isFirstMessage,
+      taskType: 'chat' as const,
+      complexity,
+      priority: complexity === 'complex' ? 'high' as const : 'medium' as const
+    };
+    
+    const OPENROUTER_MODEL = selectOptimalModel(routingContext);
+    
+    // Log routing decision for cost tracking
+    const estimatedCostValue = estimateCost(content, OPENROUTER_MODEL);
+    logRoutingDecision(chatId, OPENROUTER_MODEL, routingContext, estimatedCostValue).catch(console.warn);
 
     // Prepare messages for AI
     const aiMessages = [

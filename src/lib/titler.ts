@@ -4,9 +4,9 @@ import { scrubPHI } from "@/lib/privacy/scrub";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY!;
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const TITLE_MODELS = [
-  "google/gemini-flash-1.5",        // Cheapest option first
-  "openai/gpt-4o-mini",             // Fallback 1
-  "anthropic/claude-3-haiku",       // Fallback 2
+  "meta-llama/llama-3.1-8b-instruct", // Cheapest and most effective first
+  "google/gemini-flash-1.5",          // Fallback 1
+  "openai/gpt-4o-mini",               // Fallback 2
 ] as const;
 
 export type TitlerInput = {
