@@ -86,6 +86,7 @@ export default function DailyRoundsPage() {
     { value: 'unit_manager', label: 'Unit Manager', description: 'Comprehensive facility oversight and compliance' },
     { value: 'charge_nurse', label: 'Charge Nurse', description: 'Nursing supervision and patient care coordination' },
     { value: 'director_of_nursing', label: 'Director of Nursing', description: 'Strategic nursing leadership and quality oversight' },
+    { value: 'general_management', label: 'General Management', description: 'Administrative oversight and facility operations' },
   ];
 
   const focusAreaOptions = [

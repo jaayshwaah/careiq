@@ -110,6 +110,35 @@ const defaultRoundTemplates = {
       ]
     }
   ],
+  'general_management': [
+    {
+      category: 'Operations Overview',
+      items: [
+        { task: 'Review daily census and occupancy', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 10 },
+        { task: 'Check overall facility safety status', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
+        { task: 'Review staffing adequacy across departments', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
+        { task: 'Monitor facility-wide compliance issues', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 }
+      ]
+    },
+    {
+      category: 'Quality & Safety',
+      items: [
+        { task: 'Check incident report summary', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 10 },
+        { task: 'Review infection control status', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
+        { task: 'Monitor resident satisfaction concerns', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 15 },
+        { task: 'Assess overall care quality indicators', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 }
+      ]
+    },
+    {
+      category: 'Administrative Tasks',
+      items: [
+        { task: 'Review department communications', frequency: 'daily', priority: 'medium', compliance_related: false, estimated_minutes: 15 },
+        { task: 'Address urgent facility issues', frequency: 'daily', priority: 'high', compliance_related: false, estimated_minutes: 30 },
+        { task: 'Check regulatory updates and notices', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 10 },
+        { task: 'Plan and prioritize upcoming tasks', frequency: 'daily', priority: 'medium', compliance_related: false, estimated_minutes: 20 }
+      ]
+    }
+  ],
   'director_of_nursing': [
     {
       category: 'Quality & Compliance',
@@ -297,11 +326,11 @@ export async function POST(req: NextRequest) {
       .insert({
         title: recordToInsert.title,
         content: JSON.stringify(recordToInsert),
-        content_type: 'daily_round_template',
         created_by: recordToInsert.created_by,
         facility_id: profile?.facility_id || null,
         metadata: {
           ...recordToInsert.metadata,
+          content_type: 'daily_round_template',
           unit: recordToInsert.unit,
           shift: recordToInsert.shift,
           daily_round_data: recordToInsert
@@ -364,10 +393,9 @@ export async function GET(req: NextRequest) {
         .from("knowledge_base")
         .select("*")
         .eq("id", roundId)
-        .eq("content_type", "daily_round_template")
         .single();
 
-      if (error || !round) {
+      if (error || !round || round.metadata?.content_type !== 'daily_round_template') {
         return NextResponse.json({ 
           ok: false, 
           error: "Daily round not found" 
@@ -388,20 +416,22 @@ export async function GET(req: NextRequest) {
       });
     } else {
       // Get user's recent rounds from knowledge_base
-      const { data: rounds, error } = await supa
+      const { data: allRounds, error } = await supa
         .from("knowledge_base")
         .select("id, title, created_at, metadata")
         .eq("created_by", user.id)
-        .eq("content_type", "daily_round_template")
         .order("created_at", { ascending: false })
-        .limit(20);
-
+        .limit(50); // Get more to filter by content type
+      
       if (error) {
         return NextResponse.json({ 
           ok: false, 
           error: error.message 
         }, { status: 500 });
       }
+
+      // Filter for daily round templates
+      const rounds = allRounds?.filter(round => round.metadata?.content_type === 'daily_round_template').slice(0, 20) || [];
 
       // Transform the rounds data to match expected format
       const formattedRounds = rounds?.map(round => ({

@@ -69,15 +69,31 @@ export default function PPDCalculatorPage() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('ppd_calculations')
+      // Get PPD calculations from knowledge_base table
+      const { data: allData, error } = await supabase
+        .from('knowledge_base')
         .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(50);
-        
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
       if (error) throw error;
-      setCalculations(data || []);
+      
+      // Filter for PPD calculation records and parse them
+      const ppdData = allData?.filter(record => record.metadata?.content_type === 'ppd_calculation').map(record => {
+        try {
+          const content = JSON.parse(record.content);
+          return {
+            ...content,
+            id: record.id,
+            created_at: record.created_at
+          };
+        } catch (e) {
+          return null;
+        }
+      }).filter(Boolean).slice(0, 50) || [];
+      
+      setCalculations(ppdData);
     } catch (error) {
       console.error('Failed to load PPD calculations:', error);
     } finally {
@@ -100,17 +116,31 @@ export default function PPDCalculatorPage() {
     const { total_nursing_hours, ppd } = calculatePPD(staffingData);
     
     try {
+      // Save to knowledge_base table
+      const calculationRecord = {
+        user_id: user.id,
+        date: staffingData.date,
+        census: staffingData.census,
+        rn_hours: staffingData.rn_hours,
+        lpn_hours: staffingData.lpn_hours,
+        cna_hours: staffingData.cna_hours,
+        total_nursing_hours,
+        ppd
+      };
+
       const { error } = await supabase
-        .from('ppd_calculations')
+        .from('knowledge_base')
         .insert({
-          user_id: user.id,
-          date: staffingData.date,
-          census: staffingData.census,
-          rn_hours: staffingData.rn_hours,
-          lpn_hours: staffingData.lpn_hours,
-          cna_hours: staffingData.cna_hours,
-          total_nursing_hours,
-          ppd
+          title: `PPD Calculation - ${staffingData.date}`,
+          content: JSON.stringify(calculationRecord),
+          created_by: user.id,
+          facility_id: null,
+          metadata: {
+            content_type: 'ppd_calculation',
+            calculation_date: staffingData.date,
+            ppd_value: ppd,
+            census: staffingData.census
+          }
         });
         
       if (error) throw error;
@@ -196,10 +226,10 @@ export default function PPDCalculatorPage() {
     
     try {
       const { error } = await supabase
-        .from('ppd_calculations')
+        .from('knowledge_base')
         .delete()
         .eq('id', id)
-        .eq('user_id', user?.id);
+        .eq('created_by', user?.id);
         
       if (error) throw error;
       await loadCalculations();
