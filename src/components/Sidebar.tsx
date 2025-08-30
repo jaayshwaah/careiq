@@ -25,6 +25,7 @@ import {
   Wrench,
   ChevronDown,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -527,6 +528,15 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                       <HeadphonesIcon size={12} />
                       <span>Census</span>
                     </Link>
+                    <Link
+                      href="/incident-reports"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/incident-reports' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <AlertTriangle size={12} />
+                      <span>Incident Reports</span>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -611,6 +621,13 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 title="Daily Rounds"
               >
                 <FileText size={16} />
+              </Link>
+              <Link
+                href="/incident-reports"
+                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                title="Incident Reports"
+              >
+                <AlertTriangle size={16} />
               </Link>
               
               <Link

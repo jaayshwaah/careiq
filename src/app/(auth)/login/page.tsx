@@ -17,11 +17,24 @@ export default function LoginPage() {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(true); // Default to true for convenience
 
-  // already signed in? go home
+  // Load saved email and check if already signed in
   useEffect(() => {
     let isMounted = true;
     
+    // Load saved email from localStorage
+    try {
+      const savedEmail = localStorage.getItem('careiq-saved-email');
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    } catch (error) {
+      console.warn('Could not load saved email');
+    }
+    
+    // Check if already signed in
     supabase.auth.getSession().then(({ data }) => {
       if (isMounted && data.session) {
         window.location.href = "/";
@@ -43,6 +56,17 @@ export default function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      
+      // Save or remove email based on remember me setting
+      try {
+        if (rememberMe) {
+          localStorage.setItem('careiq-saved-email', email);
+        } else {
+          localStorage.removeItem('careiq-saved-email');
+        }
+      } catch (error) {
+        console.warn('Could not save email preference');
+      }
       
       // Small delay to ensure auth state propagates
       setTimeout(() => {
@@ -151,6 +175,24 @@ export default function LoginPage() {
             setValue={setPassword}
             autoComplete="current-password"
           />
+          <div className="flex items-center justify-between text-sm">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="rounded border-neutral-300 dark:border-neutral-700"
+              />
+              <span className="text-neutral-600 dark:text-neutral-400">Remember me</span>
+            </label>
+            <button
+              type="button"
+              className="text-neutral-600 underline dark:text-neutral-400"
+              onClick={() => setMode("forgot")}
+            >
+              Forgot password?
+            </button>
+          </div>
           <button
             type="submit"
             disabled={busy}
@@ -158,15 +200,6 @@ export default function LoginPage() {
           >
             {busy ? "Signing in…" : "Sign in"}
           </button>
-          <div className="text-right text-sm">
-            <button
-              type="button"
-              className="text-neutral-600 underline"
-              onClick={() => setMode("forgot")}
-            >
-              Forgot password?
-            </button>
-          </div>
         </form>
       )}
 

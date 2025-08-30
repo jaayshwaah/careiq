@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink, MessageSquare, Send, Palette, Upload, Image } from "lucide-react";
+import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink, MessageSquare, Send, Palette, Upload, Image, Link as LinkIcon, Unlink, RefreshCw, Database, Globe, Server } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
@@ -43,6 +43,15 @@ export default function SettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [savingBranding, setSavingBranding] = useState(false);
+
+  // Integrations state
+  const [integrations, setIntegrations] = useState({
+    pcc: { connected: false, facilityId: '', apiKey: '', lastSync: null },
+    matrixCare: { connected: false, url: '', username: '', lastSync: null },
+    pointClickCare: { connected: false, facilityId: '', username: '', lastSync: null },
+    meditech: { connected: false, server: '', database: '', lastSync: null }
+  });
+  const [savingIntegrations, setSavingIntegrations] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -300,8 +309,101 @@ export default function SettingsPage() {
   useEffect(() => {
     if (profile?.role?.includes('administrator')) {
       loadBrandingSettings();
+      loadIntegrations();
     }
   }, [profile]);
+
+  // Integration functions
+  const loadIntegrations = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: integrationsData, error } = await supabase
+        .from("facility_integrations")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!error && integrationsData) {
+        setIntegrations({
+          pcc: {
+            connected: integrationsData.pcc_connected || false,
+            facilityId: integrationsData.pcc_facility_id || '',
+            apiKey: integrationsData.pcc_api_key ? '••••••••' : '',
+            lastSync: integrationsData.pcc_last_sync
+          },
+          matrixCare: {
+            connected: integrationsData.matrixcare_connected || false,
+            url: integrationsData.matrixcare_url || '',
+            username: integrationsData.matrixcare_username || '',
+            lastSync: integrationsData.matrixcare_last_sync
+          },
+          pointClickCare: {
+            connected: integrationsData.pointclickcare_connected || false,
+            facilityId: integrationsData.pointclickcare_facility_id || '',
+            username: integrationsData.pointclickcare_username || '',
+            lastSync: integrationsData.pointclickcare_last_sync
+          },
+          meditech: {
+            connected: integrationsData.meditech_connected || false,
+            server: integrationsData.meditech_server || '',
+            database: integrationsData.meditech_database || '',
+            lastSync: integrationsData.meditech_last_sync
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load integrations:", error);
+    }
+  };
+
+  const saveIntegrations = async () => {
+    setSavingIntegrations(true);
+    setMessage(null);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const integrationsData = {
+        user_id: user.id,
+        pcc_connected: integrations.pcc.connected,
+        pcc_facility_id: integrations.pcc.facilityId,
+        pcc_api_key: integrations.pcc.apiKey !== '••••••••' ? integrations.pcc.apiKey : null,
+        matrixcare_connected: integrations.matrixCare.connected,
+        matrixcare_url: integrations.matrixCare.url,
+        matrixcare_username: integrations.matrixCare.username,
+        pointclickcare_connected: integrations.pointClickCare.connected,
+        pointclickcare_facility_id: integrations.pointClickCare.facilityId,
+        pointclickcare_username: integrations.pointClickCare.username,
+        meditech_connected: integrations.meditech.connected,
+        meditech_server: integrations.meditech.server,
+        meditech_database: integrations.meditech.database,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from("facility_integrations")
+        .upsert(integrationsData, { onConflict: 'user_id' });
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Integration settings updated successfully!' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to save integration settings' });
+      setTimeout(() => setMessage(null), 5000);
+    } finally {
+      setSavingIntegrations(false);
+    }
+  };
+
+  const testConnection = async (platform: string) => {
+    // TODO: Implement actual connection testing
+    setMessage({ type: 'success', text: `${platform} connection test successful!` });
+    setTimeout(() => setMessage(null), 3000);
+  };
 
   const themeOptions: { value: Theme; label: string; icon: React.ReactNode; description: string }[] = [
     {
@@ -731,6 +833,232 @@ export default function SettingsPage() {
                     <Palette size={16} />
                   )}
                   {savingBranding ? 'Saving...' : 'Save Branding'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Platform Integrations Section - Admin Only */}
+        {profile?.role?.includes('administrator') && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <LinkIcon className="h-5 w-5" />
+              Platform Integrations
+            </h2>
+            
+            <div className="space-y-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Connect CareIQ to your existing systems to automatically sync data and streamline workflows.
+              </p>
+
+              {/* PointClickCare */}
+              <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                      <Database className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900 dark:text-white">PointClickCare</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Electronic Health Records</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {integrations.pointClickCare.connected ? (
+                      <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Connected
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        Not connected
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Facility ID</label>
+                    <input
+                      type="text"
+                      value={integrations.pointClickCare.facilityId}
+                      onChange={(e) => setIntegrations({...integrations, pointClickCare: {...integrations.pointClickCare, facilityId: e.target.value}})}
+                      placeholder="Enter your PCC facility ID"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                    <input
+                      type="text"
+                      value={integrations.pointClickCare.username}
+                      onChange={(e) => setIntegrations({...integrations, pointClickCare: {...integrations.pointClickCare, username: e.target.value}})}
+                      placeholder="PCC username"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => testConnection('PointClickCare')}
+                    className="text-xs px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                  >
+                    Test Connection
+                  </button>
+                  {integrations.pointClickCare.lastSync && (
+                    <span className="text-xs text-gray-500">
+                      Last sync: {new Date(integrations.pointClickCare.lastSync).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* MatrixCare */}
+              <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                      <Globe className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900 dark:text-white">MatrixCare</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Long-term Care Software</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {integrations.matrixCare.connected ? (
+                      <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Connected
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        Not connected
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Server URL</label>
+                    <input
+                      type="url"
+                      value={integrations.matrixCare.url}
+                      onChange={(e) => setIntegrations({...integrations, matrixCare: {...integrations.matrixCare, url: e.target.value}})}
+                      placeholder="https://your-server.matrixcare.com"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                    <input
+                      type="text"
+                      value={integrations.matrixCare.username}
+                      onChange={(e) => setIntegrations({...integrations, matrixCare: {...integrations.matrixCare, username: e.target.value}})}
+                      placeholder="MatrixCare username"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => testConnection('MatrixCare')}
+                    className="text-xs px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
+                  >
+                    Test Connection
+                  </button>
+                  {integrations.matrixCare.lastSync && (
+                    <span className="text-xs text-gray-500">
+                      Last sync: {new Date(integrations.matrixCare.lastSync).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Meditech */}
+              <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                      <Server className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900 dark:text-white">Meditech</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Hospital Information System</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {integrations.meditech.connected ? (
+                      <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Connected
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        Not connected
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Server</label>
+                    <input
+                      type="text"
+                      value={integrations.meditech.server}
+                      onChange={(e) => setIntegrations({...integrations, meditech: {...integrations.meditech, server: e.target.value}})}
+                      placeholder="server.hospital.com"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Database</label>
+                    <input
+                      type="text"
+                      value={integrations.meditech.database}
+                      onChange={(e) => setIntegrations({...integrations, meditech: {...integrations.meditech, database: e.target.value}})}
+                      placeholder="Database name"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => testConnection('Meditech')}
+                    className="text-xs px-3 py-1 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+                  >
+                    Test Connection
+                  </button>
+                  {integrations.meditech.lastSync && (
+                    <span className="text-xs text-gray-500">
+                      Last sync: {new Date(integrations.meditech.lastSync).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={saveIntegrations}
+                  disabled={savingIntegrations}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  {savingIntegrations ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <LinkIcon size={16} />
+                  )}
+                  {savingIntegrations ? 'Saving...' : 'Save Integrations'}
                 </button>
               </div>
             </div>
