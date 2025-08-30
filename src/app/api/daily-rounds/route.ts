@@ -144,22 +144,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Get user profile for facility context
-    const { data: profile } = await supa
+    const { data: profileData } = await supa
       .from("profiles")
       .select("facility_name, facility_state, role, full_name, facility_id")
       .eq("user_id", user.id)
       .single();
 
+    let profile = profileData;
     if (!profile) {
       // Create a minimal profile if none exists
-      const defaultProfile = {
+      profile = {
         facility_name: 'Default Facility',
         facility_state: 'Unknown',
         role: 'user',
         full_name: user.email?.split('@')[0] || 'User',
         facility_id: null
       };
-      profile = defaultProfile;
     }
 
     const body = await req.json();
@@ -177,6 +177,8 @@ export async function POST(req: NextRequest) {
 
     // Get base template
     const baseTemplate = defaultRoundTemplates[template_type as keyof typeof defaultRoundTemplates];
+    console.log(`Using template type: ${template_type}, found template:`, !!baseTemplate);
+    
     if (baseTemplate) {
       baseTemplate.forEach((category, categoryIndex) => {
         category.items.forEach((item, itemIndex) => {
@@ -188,6 +190,8 @@ export async function POST(req: NextRequest) {
         });
       });
     }
+    
+    console.log(`Base template items added: ${roundItems.length}`);
 
     // Add custom items
     custom_items.forEach((item: any, index: number) => {
@@ -235,6 +239,35 @@ export async function POST(req: NextRequest) {
 
     // Calculate total estimated time
     const totalEstimatedMinutes = roundItems.reduce((sum, item) => sum + item.estimated_minutes, 0);
+    
+    console.log(`Final round items count: ${roundItems.length}, total minutes: ${totalEstimatedMinutes}`);
+
+    // Ensure we have at least some items - add fallback if empty
+    if (roundItems.length === 0) {
+      console.log("No items found, adding fallback items");
+      roundItems = [
+        {
+          id: 'fallback-1',
+          category: 'Basic Rounds',
+          task: 'Complete visual safety check of unit',
+          frequency: 'daily',
+          priority: 'high',
+          compliance_related: true,
+          estimated_minutes: 15,
+          notes: 'Fallback task - ensure basic safety compliance'
+        },
+        {
+          id: 'fallback-2',
+          category: 'Basic Rounds',
+          task: 'Review shift report and priorities',
+          frequency: 'daily',
+          priority: 'high',
+          compliance_related: false,
+          estimated_minutes: 10,
+          notes: 'Fallback task - basic shift preparation'
+        }
+      ];
+    }
 
     // Create daily round record
     const dailyRound: Omit<DailyRound, 'id' | 'created_at'> = {
@@ -251,20 +284,25 @@ export async function POST(req: NextRequest) {
     };
 
     // Save to database
+    const recordToInsert = {
+      ...dailyRound,
+      facility_id: profile.facility_id || profile.facility_name || 'default_facility'
+    };
+    
+    console.log("Attempting to save daily round:", JSON.stringify(recordToInsert, null, 2));
+    
     const { data: savedRound, error: saveError } = await supa
       .from("daily_rounds")
-      .insert({
-        ...dailyRound,
-        facility_id: profile.facility_id || profile.facility_name
-      })
+      .insert(recordToInsert)
       .select()
       .single();
 
     if (saveError) {
       console.error("Failed to save daily round:", saveError);
+      console.error("Record that failed:", JSON.stringify(recordToInsert, null, 2));
       return NextResponse.json({ 
         ok: false, 
-        error: "Failed to save daily round template" 
+        error: `Failed to save daily round template: ${saveError.message}` 
       }, { status: 500 });
     }
 
