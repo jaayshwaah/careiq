@@ -291,9 +291,22 @@ export async function POST(req: NextRequest) {
     
     console.log("Attempting to save daily round:", JSON.stringify(recordToInsert, null, 2));
     
+    // Save to knowledge_base table as a template document
     const { data: savedRound, error: saveError } = await supa
-      .from("daily_rounds")
-      .insert(recordToInsert)
+      .from("knowledge_base")
+      .insert({
+        title: recordToInsert.title,
+        content: JSON.stringify(recordToInsert),
+        content_type: 'daily_round_template',
+        created_by: recordToInsert.created_by,
+        facility_id: profile?.facility_id || null,
+        metadata: {
+          ...recordToInsert.metadata,
+          unit: recordToInsert.unit,
+          shift: recordToInsert.shift,
+          daily_round_data: recordToInsert
+        }
+      })
       .select()
       .single();
 
@@ -346,11 +359,12 @@ export async function GET(req: NextRequest) {
     const roundId = searchParams.get('id');
 
     if (roundId) {
-      // Get specific round
+      // Get specific round from knowledge_base
       const { data: round, error } = await supa
-        .from("daily_rounds")
+        .from("knowledge_base")
         .select("*")
         .eq("id", roundId)
+        .eq("content_type", "daily_round_template")
         .single();
 
       if (error || !round) {
@@ -360,16 +374,25 @@ export async function GET(req: NextRequest) {
         }, { status: 404 });
       }
 
+      // Parse the daily round data from the stored content
+      let roundData;
+      try {
+        roundData = JSON.parse(round.content);
+      } catch (e) {
+        roundData = round.metadata?.daily_round_data || round;
+      }
+
       return NextResponse.json({
         ok: true,
-        round
+        round: roundData
       });
     } else {
-      // Get user's recent rounds
+      // Get user's recent rounds from knowledge_base
       const { data: rounds, error } = await supa
-        .from("daily_rounds")
-        .select("id, title, unit, shift, created_at, metadata")
+        .from("knowledge_base")
+        .select("id, title, created_at, metadata")
         .eq("created_by", user.id)
+        .eq("content_type", "daily_round_template")
         .order("created_at", { ascending: false })
         .limit(20);
 
@@ -380,9 +403,19 @@ export async function GET(req: NextRequest) {
         }, { status: 500 });
       }
 
+      // Transform the rounds data to match expected format
+      const formattedRounds = rounds?.map(round => ({
+        id: round.id,
+        title: round.title,
+        unit: round.metadata?.unit || 'General',
+        shift: round.metadata?.shift || '7a-3p',
+        created_at: round.created_at,
+        metadata: round.metadata
+      })) || [];
+
       return NextResponse.json({
         ok: true,
-        rounds: rounds || []
+        rounds: formattedRounds
       });
     }
 

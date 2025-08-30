@@ -49,6 +49,9 @@ function createSupabaseClient() {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storageKey: 'careiq-auth-token',
+        flowType: 'pkce',
       },
       // Disable realtime to prevent WebSocket errors during testing
       realtime: {

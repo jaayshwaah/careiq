@@ -493,28 +493,28 @@ export default function FacilityDashboard() {
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">{facilityAnalysis.facility.overallRating}/5</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Overall</div>
+                        <div className="text-2xl font-bold text-blue-600">{facilityAnalysis.facility.overallRating ?? 'N/A'}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Overall (out of 5)</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">{facilityAnalysis.facility.healthInspections}/5</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Health Inspections</div>
+                        <div className="text-2xl font-bold text-green-600">{facilityAnalysis.facility.healthInspections ?? 'N/A'}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Health Inspections (out of 5)</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-purple-600">{facilityAnalysis.facility.qualityMeasures}/5</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Quality</div>
+                        <div className="text-2xl font-bold text-purple-600">{facilityAnalysis.facility.qualityMeasures ?? 'N/A'}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Quality (out of 5)</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-orange-600">{facilityAnalysis.facility.staffing}/5</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Staffing</div>
+                        <div className="text-2xl font-bold text-orange-600">{facilityAnalysis.facility.staffing ?? 'N/A'}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Staffing (out of 5)</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-indigo-600">{facilityAnalysis.facility.shortStay}/5</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Short Stay</div>
+                        <div className="text-2xl font-bold text-indigo-600">{facilityAnalysis.facility.shortStay ?? 'N/A'}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Short Stay (out of 5)</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-pink-600">{facilityAnalysis.facility.longStay}/5</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Long Stay</div>
+                        <div className="text-2xl font-bold text-pink-600">{facilityAnalysis.facility.longStay ?? 'N/A'}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Long Stay (out of 5)</div>
                       </div>
                     </div>
                   </div>
@@ -681,7 +681,7 @@ export default function FacilityDashboard() {
               </div>
               <div className="p-6">
                 <div className="space-y-3">
-                  <Link href="/chat/new?message=Help me prepare for the upcoming state survey" 
+                  <Link href="/mock-survey-training" 
                         className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 transition-colors">
                     <span className="text-blue-600 dark:text-blue-400">🎯</span>
                     <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Start Survey Prep</span>

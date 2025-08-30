@@ -310,6 +310,8 @@ export default function PPDCalculatorPage() {
     // CMS minimum requirements
     const minTotalPPD = 3.2;
     const minRNPPD = 0.75;
+    const minLPNPPD = 2.45; // 3.2 total - 0.75 RN = 2.45 for LPN/CNA combined, split as 1.2 LPN + 1.25 CNA
+    const minCNAPPD = 1.25; // Estimated CNA portion from total LPN/CNA requirement
     
     // Recommended staffing levels (higher than minimums for better care)
     const recommendedTotalPPD = 4.1; // Industry best practice
@@ -319,6 +321,9 @@ export default function PPDCalculatorPage() {
     // Calculate minimum hours
     const minTotalHours = Math.ceil(census * minTotalPPD);
     const minRNHours = Math.ceil(census * minRNPPD);
+    const minLPNHours = Math.ceil(census * (minLPNPPD - minCNAPPD)); // LPN portion only
+    const minRNLPNHours = minRNHours + minLPNHours;
+    const minCNAHours = Math.ceil(census * minCNAPPD);
     
     // Calculate recommended hours  
     const recRNLPNHours = Math.ceil(census * recommendedRNLPNPPD);
@@ -330,6 +335,11 @@ export default function PPDCalculatorPage() {
       minimum: {
         total_hours: minTotalHours,
         total_ppd: minTotalPPD,
+        rn_lpn_hours: minRNLPNHours,
+        rn_lpn_ppd: (minRNLPNHours / census).toFixed(2),
+        cna_hours: minCNAHours,
+        cna_ppd: minCNAPPD,
+        // Keep legacy fields for backward compatibility
         rn_hours: minRNHours,
         rn_ppd: minRNPPD,
         remaining_hours: minTotalHours - minRNHours
@@ -489,9 +499,9 @@ export default function PPDCalculatorPage() {
                           CMS Minimum Requirements
                         </h4>
                         <div className="space-y-1 text-sm text-red-700 dark:text-red-300">
-                          <div>Total: {recommendations.minimum.total_hours} hours ({recommendations.minimum.total_ppd} PPD)</div>
-                          <div>RN: {recommendations.minimum.rn_hours} hours ({recommendations.minimum.rn_ppd} PPD)</div>
-                          <div>LPN/CNA: {recommendations.minimum.remaining_hours} hours</div>
+                          <div>RN + LPN: {recommendations.minimum.rn_lpn_hours} hours ({recommendations.minimum.rn_lpn_ppd} PPD)</div>
+                          <div>CNA: {recommendations.minimum.cna_hours} hours ({recommendations.minimum.cna_ppd} PPD)</div>
+                          <div className="font-medium pt-1 border-t border-red-200">Total: {recommendations.minimum.total_hours} hours ({recommendations.minimum.total_ppd} PPD)</div>
                         </div>
                       </div>
 
