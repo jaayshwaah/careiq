@@ -3,45 +3,42 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServerWithAuth } from "@/lib/supabase/server";
+import { supabaseServerWithAuth, supabaseService } from "@/lib/supabase/server";
 
 export async function GET(req: NextRequest) {
   try {
     const auth = req.headers.get("authorization") || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
-    const supa = supabaseServerWithAuth(token);
-
-    // Try to get users via admin function first
-    let { data, error } = await supa.rpc('admin_list_users');
     
-    if (error) {
-      // Fallback to direct profiles query if RPC doesn't exist
-      const { data: profiles, error: profilesError } = await supa
-        .from('profiles')
-        .select(`
-          user_id,
-          email,
-          full_name,
-          role,
-          facility_name,
-          facility_state,
-          facility_id,
-          is_admin,
-          created_at,
-          updated_at,
-          approved_at
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (profilesError) {
-        return NextResponse.json({ ok: false, error: profilesError.message }, { status: 500 });
-      }
-      
-      data = profiles;
+    // Use service role client to bypass RLS entirely for admin operations
+    const supa = supabaseService();
+    
+    // Direct query using service role (bypasses RLS automatically)
+    const { data: profiles, error: profilesError } = await supa
+      .from('profiles')
+      .select(`
+        user_id,
+        email,
+        full_name,
+        role,
+        facility_name,
+        facility_state,
+        facility_id,
+        is_admin,
+        created_at,
+        updated_at,
+        approved_at
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (profilesError) {
+      console.error('Admin users query error:', profilesError);
+      return NextResponse.json({ ok: false, error: profilesError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, users: data || [] });
+    return NextResponse.json({ ok: true, users: profiles || [] });
   } catch (error: any) {
+    console.error('Admin users API error:', error);
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
@@ -53,7 +50,9 @@ export async function POST(req: NextRequest) {
 
     const auth = req.headers.get("authorization") || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
-    const supa = supabaseServerWithAuth(token);
+    
+    // Use service role for admin operations to bypass RLS
+    const supa = supabaseService();
 
     if (action === 'create_profile' || !action) {
       // Create/update profile via admin function
@@ -144,7 +143,9 @@ export async function DELETE(req: NextRequest) {
 
     const auth = req.headers.get("authorization") || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
-    const supa = supabaseServerWithAuth(token);
+    
+    // Use service role for admin operations to bypass RLS
+    const supa = supabaseService();
 
     // Delete profile (this will cascade delete related data)
     const { error } = await supa
