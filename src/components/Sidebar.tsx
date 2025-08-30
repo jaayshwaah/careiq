@@ -16,6 +16,15 @@ import {
   Search,
   X,
   Clock,
+  Calculator,
+  FileText,
+  Upload,
+  BookOpen,
+  BarChart3,
+  HeadphonesIcon,
+  Wrench,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -41,6 +50,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [showTools, setShowTools] = useState(false);
   const supabase = getBrowserSupabase();
 
   // Filter chats based on search query
@@ -439,6 +449,88 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 </Link>
               )}
               
+              {/* Tools Section */}
+              <div>
+                <button
+                  onClick={() => setShowTools(!showTools)}
+                  className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors font-medium text-gray-700 dark:text-gray-300"
+                >
+                  <div className="flex items-center gap-2">
+                    <Wrench size={14} />
+                    <span>Tools</span>
+                  </div>
+                  {showTools ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+                
+                {showTools && (
+                  <div className="ml-4 mt-1 space-y-1">
+                    <Link
+                      href="/cms-guidance"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/cms-guidance' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <BookOpen size={12} />
+                      <span>CMS Guidance</span>
+                    </Link>
+                    <Link
+                      href="/ppd-calculator"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/ppd-calculator' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <Calculator size={12} />
+                      <span>PPD Calculator</span>
+                    </Link>
+                    <Link
+                      href="/daily-rounds"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/daily-rounds' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <FileText size={12} />
+                      <span>Daily Rounds</span>
+                    </Link>
+                    <Link
+                      href="/schedule-import"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/schedule-import' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <Upload size={12} />
+                      <span>Schedule Import</span>
+                    </Link>
+                    <Link
+                      href="/survey-prep"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/survey-prep' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <BarChart3 size={12} />
+                      <span>Survey Prep</span>
+                    </Link>
+                    <Link
+                      href="/mock-survey-training"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/mock-survey-training' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <Users size={12} />
+                      <span>Survey Training</span>
+                    </Link>
+                    <Link
+                      href="/census"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/census' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <HeadphonesIcon size={12} />
+                      <span>Census</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+              
               {/* Quick Links */}
               <div className="grid grid-cols-2 gap-2">
                 <Link
@@ -497,6 +589,29 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                   <Shield size={16} />
                 </Link>
               )}
+              
+              {/* Tools for collapsed sidebar */}
+              <Link
+                href="/cms-guidance"
+                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                title="CMS Guidance"
+              >
+                <BookOpen size={16} />
+              </Link>
+              <Link
+                href="/ppd-calculator"
+                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                title="PPD Calculator"
+              >
+                <Calculator size={16} />
+              </Link>
+              <Link
+                href="/daily-rounds"
+                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                title="Daily Rounds"
+              >
+                <FileText size={16} />
+              </Link>
               
               <Link
                 href="/calendar"

@@ -55,46 +55,47 @@ export async function POST(req: NextRequest) {
     const supa = supabaseService();
 
     if (action === 'create_profile' || !action) {
-      // Create/update profile via admin function
-      const { data, error } = await supa.rpc('admin_create_profile', {
-        target_user_id: userData.target_user_id || userData.user_id,
-        user_role: userData.role,
-        user_facility_id: userData.facility_id || '',
-        user_facility_name: userData.facility_name || '',
-        user_facility_state: userData.facility_state || '',
-        user_full_name: userData.full_name,
-        user_email: userData.email,
-      });
+      // Create/update profile directly using service role (bypasses RLS)
+      const { data, error } = await supa
+        .from('profiles')
+        .upsert({
+          user_id: userData.target_user_id || userData.user_id,
+          email: userData.email,
+          full_name: userData.full_name,
+          role: userData.role,
+          facility_id: userData.facility_id || '',
+          facility_name: userData.facility_name || '',
+          facility_state: userData.facility_state || '',
+          is_admin: userData.is_admin || false,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+        .select()
+        .single();
 
       if (error) {
+        console.error('Create profile error:', error);
         return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
       }
 
-      return NextResponse.json({ ok: true, profile_id: data, message: "Profile created successfully" });
+      return NextResponse.json({ ok: true, profile: data, message: "Profile created successfully" });
     }
 
     if (action === 'update_permissions') {
-      // Legacy action - update only permissions
-      const { data, error } = await supa.rpc('update_user_permissions', {
-        target_user_id: userData.user_id,
-        new_role: userData.role,
-        set_admin: userData.is_admin
-      });
-
-      if (error) {
-        // Fallback to direct update
-        const { error: updateError } = await supa
-          .from('profiles')
-          .update({
-            role: userData.role,
-            is_admin: userData.is_admin,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userData.user_id);
-        
-        if (updateError) {
-          return NextResponse.json({ ok: false, error: updateError.message }, { status: 500 });
-        }
+      // Update permissions directly using service role (bypasses RLS)
+      const { error: updateError } = await supa
+        .from('profiles')
+        .update({
+          role: userData.role,
+          is_admin: userData.is_admin,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userData.user_id);
+      
+      if (updateError) {
+        console.error('Update permissions error:', updateError);
+        return NextResponse.json({ ok: false, error: updateError.message }, { status: 500 });
       }
 
       return NextResponse.json({ ok: true, message: "Permissions updated successfully" });
