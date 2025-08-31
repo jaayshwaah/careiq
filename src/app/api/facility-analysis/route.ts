@@ -173,7 +173,8 @@ async function searchFacility(facilityName: string, state: string) {
       try {
         const cmsApiUrl = `https://data.cms.gov/provider-data/api/1/datastore/query/4pq5-n9py/0?conditions[0][resource]=facility_name&conditions[0][operator]=LIKE&conditions[0][value]=%25${encodeURIComponent(searchName)}%25&conditions[1][resource]=provider_state&conditions[1][operator]=%3D&conditions[1][value]=${encodeURIComponent(state)}&limit=10`;
         
-        console.log(`Trying CMS API search: ${searchName} in ${state}`);
+        console.log(`Trying CMS API search: "${searchName}" in ${state}`);
+        console.log(`CMS API URL: ${cmsApiUrl}`);
         
         const apiResponse = await fetch(cmsApiUrl, {
           headers: {
@@ -184,23 +185,58 @@ async function searchFacility(facilityName: string, state: string) {
 
         if (apiResponse.ok) {
           const cmsData = await apiResponse.json();
-          console.log(`CMS API returned ${cmsData.results?.length || 0} results`);
+          console.log(`CMS API returned ${cmsData.results?.length || 0} results for "${searchName}"`);
           
+          // Log all results for debugging
           if (cmsData.results && cmsData.results.length > 0) {
+            console.log('All CMS results found:');
+            cmsData.results.forEach((result, idx) => {
+              console.log(`${idx + 1}. ${result.facility_name} - Overall: ${result.overall_rating} stars`);
+            });
+
             // Find the best match
             let bestMatch = cmsData.results[0];
+            let bestScore = 0;
             
-            // Try to find a better match by name similarity
+            // More sophisticated matching
             for (const result of cmsData.results) {
-              if (result.facility_name?.toLowerCase().includes(facilityName.toLowerCase().split(' ')[0])) {
+              let score = 0;
+              const resultName = result.facility_name?.toLowerCase() || '';
+              const searchLower = facilityName.toLowerCase();
+              
+              // Exact match gets highest score
+              if (resultName === searchLower) {
+                score = 100;
+              }
+              // Partial matches
+              else if (resultName.includes(searchLower)) {
+                score = 80;
+              }
+              // Word matches
+              else {
+                const searchWords = searchLower.split(' ');
+                const resultWords = resultName.split(' ');
+                const matchingWords = searchWords.filter(word => 
+                  resultWords.some(rWord => rWord.includes(word) || word.includes(rWord))
+                );
+                score = (matchingWords.length / searchWords.length) * 60;
+              }
+              
+              if (score > bestScore) {
+                bestScore = score;
                 bestMatch = result;
-                break;
               }
             }
             
-            console.log(`Using facility: ${bestMatch.facility_name}`);
+            console.log(`Selected best match: "${bestMatch.facility_name}" with score ${bestScore}`);
+            console.log(`Facility ratings - Overall: ${bestMatch.overall_rating}, Health: ${bestMatch.survey_rating}, Staffing: ${bestMatch.staffing_rating}, Quality: ${bestMatch.quality_rating}`);
+            
             return mapCMSDataToFacility(bestMatch, facilityName, state);
+          } else {
+            console.log(`No results found for search term: "${searchName}"`);
           }
+        } else {
+          console.log(`CMS API request failed with status: ${apiResponse.status}`);
         }
       } catch (apiError) {
         console.warn(`CMS API search failed for ${searchName}:`, apiError);
@@ -218,17 +254,18 @@ async function searchFacility(facilityName: string, state: string) {
       console.warn('WebFetch attempt failed:', webError);
     }
       
-    // If no results found, return demo data
-    console.log(`No facility data found for ${facilityName}, ${state} - returning demo data`);
+    // If no results found, return demo data with clear indication
+    console.error(`❌ NO FACILITY DATA FOUND for "${facilityName}" in ${state}`);
+    console.error(`❌ RETURNING DEMO DATA - NOT REAL MEDICARE RATINGS`);
     return {
-      name: facilityName,
+      name: `${facilityName} (DATA NOT FOUND)`,
       state: state,
-      providerId: "DEMO123456",
-      // 2025 Medicare ratings structure (realistic demo data)
-      overallRating: 3,
-      healthInspections: 3,
-      qualityMeasures: 3,
-      staffing: 4,
+      providerId: "NO_DATA_FOUND",
+      // Demo data - NOT real Medicare ratings
+      overallRating: null, // Show N/A to indicate no data
+      healthInspections: null,
+      qualityMeasures: null,
+      staffing: null,
       lastUpdated: new Date().toISOString(),
       address: "123 Healthcare Way",
       city: "Demo City", 
@@ -263,16 +300,16 @@ async function searchFacility(facilityName: string, state: string) {
         complaintDeficiencies: 1
       },
       deficiencies: [
-        "Staff training documentation needs improvement",
-        "Infection control protocols require updating",
-        "Fire safety deficiencies noted"
+        "❌ COULD NOT FIND FACILITY DATA",
+        "❌ Please verify facility name and state",
+        "❌ Check Medicare.gov directly for accurate ratings"
       ],
       strengths: [
-        "Above average overall 5-star rating",
-        "Good staffing levels (RN hours & total nursing hours)",
-        "Strong clinical quality measures"
+        "❌ NO REAL DATA AVAILABLE",
+        "❌ Showing placeholder values only"
       ],
-      isDemoData: true
+      isDemoData: true,
+      dataNotFound: true
     };
   } catch (error) {
     console.error("Error searching facility:", error);
