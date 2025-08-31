@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
         chat_id,
         message_id,
         title,
+        content,
         notes,
         tags,
         created_at,
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/bookmarks - Create a bookmark
- * Body: { chat_id, message_id?, title?, notes?, tags? }
+ * Body: { chat_id, message_id?, title?, content?, notes?, tags? }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse;
     }
 
-    const { chat_id, message_id = null, title = null, notes = null, tags = [] } = await req.json();
+    const { chat_id, message_id = null, title = null, content = null, notes = null, tags = [] } = await req.json();
     
     if (!chat_id) {
       return NextResponse.json({ ok: false, error: "chat_id is required" }, { status: 400 });
@@ -106,6 +107,7 @@ export async function POST(req: NextRequest) {
       chat_id,
       message_id,
       title,
+      content,
       notes,
       tags,
     }).select().single();

@@ -5,6 +5,84 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
 
+// Fallback static sessions in case database is not ready
+function getStaticSessions() {
+  return [
+    {
+      id: "staffing-compliance",
+      title: "Nursing Staff Compliance (F-514)",
+      description: "Interactive training on F-514 nursing staff requirements, RN supervision, and adequate staffing documentation.",
+      estimatedTime: "15-20 minutes",
+      passingScore: 80,
+      category: "Staffing",
+      difficulty: "intermediate",
+      tags: ["F-514", "staffing", "nursing", "supervision"],
+      questionsCount: 8,
+      totalPoints: 120
+    },
+    {
+      id: "infection-control-training",
+      title: "Infection Prevention & Control (F-686)",
+      description: "Master F-686 requirements including IPCP programs, surveillance systems, and outbreak response protocols.",
+      estimatedTime: "20-25 minutes",
+      passingScore: 85,
+      category: "Infection Control",
+      difficulty: "advanced",
+      tags: ["F-686", "infection-control", "IPCP", "surveillance"],
+      questionsCount: 12,
+      totalPoints: 200
+    },
+    {
+      id: "qapi-fundamentals",
+      title: "Quality Assurance & Performance Improvement (F-725)",
+      description: "Learn QAPI program requirements, data-driven improvement processes, and systematic quality management.",
+      estimatedTime: "18-22 minutes",
+      passingScore: 80,
+      category: "Quality Improvement",
+      difficulty: "intermediate",
+      tags: ["F-725", "QAPI", "quality-improvement", "data-analysis"],
+      questionsCount: 10,
+      totalPoints: 150
+    },
+    {
+      id: "resident-rights-dignity",
+      title: "Resident Rights and Dignity (F-550-580)",
+      description: "Comprehensive training on resident rights, dignity, choice, and person-centered care requirements.",
+      estimatedTime: "25-30 minutes",
+      passingScore: 85,
+      category: "Resident Rights",
+      difficulty: "intermediate",
+      tags: ["F-550", "F-580", "resident-rights", "dignity", "person-centered"],
+      questionsCount: 15,
+      totalPoints: 225
+    },
+    {
+      id: "medication-management",
+      title: "Pharmacy Services & Medication Management (F-755-760)",
+      description: "Training on medication administration, storage, disposal, and pharmacy service requirements.",
+      estimatedTime: "22-28 minutes",
+      passingScore: 80,
+      category: "Pharmacy",
+      difficulty: "advanced",
+      tags: ["F-755", "F-760", "medication", "pharmacy", "administration"],
+      questionsCount: 14,
+      totalPoints: 210
+    },
+    {
+      id: "dietary-nutrition",
+      title: "Dietary Services & Nutritional Care (F-800-812)",
+      description: "Learn about dietary services, meal planning, nutritional assessments, and feeding assistance.",
+      estimatedTime: "20-25 minutes",
+      passingScore: 80,
+      category: "Dietary",
+      difficulty: "intermediate",
+      tags: ["F-800", "F-812", "dietary", "nutrition", "meals"],
+      questionsCount: 11,
+      totalPoints: 165
+    }
+  ];
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -17,83 +95,52 @@ export async function GET(req: NextRequest) {
     const supa = supabaseServerWithAuth(token);
 
     if (action === 'sessions') {
-      // Return available training sessions
-      const mockSessions = [
-        {
-          id: "staffing-compliance",
-          title: "Nursing Staff Compliance (F-514)",
-          description: "Interactive training on F-514 nursing staff requirements, RN supervision, and adequate staffing documentation.",
-          estimatedTime: "15-20 minutes",
-          passingScore: 80,
-          category: "Staffing",
-          difficulty: "intermediate",
-          tags: ["F-514", "staffing", "nursing", "supervision"],
-          questionsCount: 8,
-          totalPoints: 120
-        },
-        {
-          id: "infection-control-training",
-          title: "Infection Prevention & Control (F-686)",
-          description: "Master F-686 requirements including IPCP programs, surveillance systems, and outbreak response protocols.",
-          estimatedTime: "20-25 minutes",
-          passingScore: 85,
-          category: "Infection Control",
-          difficulty: "advanced",
-          tags: ["F-686", "infection-control", "IPCP", "surveillance"],
-          questionsCount: 12,
-          totalPoints: 200
-        },
-        {
-          id: "qapi-fundamentals",
-          title: "Quality Assurance & Performance Improvement (F-725)",
-          description: "Learn QAPI program requirements, data-driven improvement processes, and systematic quality management.",
-          estimatedTime: "18-22 minutes",
-          passingScore: 80,
-          category: "Quality Improvement",
-          difficulty: "intermediate",
-          tags: ["F-725", "QAPI", "quality-improvement", "data-analysis"],
-          questionsCount: 10,
-          totalPoints: 150
-        },
-        {
-          id: "resident-rights-dignity",
-          title: "Resident Rights and Dignity (F-550-580)",
-          description: "Comprehensive training on resident rights, dignity, choice, and person-centered care requirements.",
-          estimatedTime: "25-30 minutes",
-          passingScore: 85,
-          category: "Resident Rights",
-          difficulty: "intermediate",
-          tags: ["F-550", "F-580", "resident-rights", "dignity", "person-centered"],
-          questionsCount: 15,
-          totalPoints: 225
-        },
-        {
-          id: "medication-management",
-          title: "Pharmacy Services & Medication Management (F-755-760)",
-          description: "Training on medication administration, storage, disposal, and pharmacy service requirements.",
-          estimatedTime: "22-28 minutes",
-          passingScore: 80,
-          category: "Pharmacy",
-          difficulty: "advanced",
-          tags: ["F-755", "F-760", "medication", "pharmacy", "administration"],
-          questionsCount: 14,
-          totalPoints: 210
-        },
-        {
-          id: "dietary-nutrition",
-          title: "Dietary Services & Nutritional Care (F-800-812)",
-          description: "Learn about dietary services, meal planning, nutritional assessments, and feeding assistance.",
-          estimatedTime: "20-25 minutes",
-          passingScore: 80,
-          category: "Dietary",
-          difficulty: "intermediate",
-          tags: ["F-800", "F-812", "dietary", "nutrition", "meals"],
-          questionsCount: 11,
-          totalPoints: 165
-        }
-      ];
+      // Get training sessions from database
+      const { data: sessions, error } = await supa
+        .from('training_sessions')
+        .select(`
+          id,
+          title,
+          description,
+          estimated_time,
+          passing_score,
+          category,
+          difficulty,
+          tags,
+          questions_count,
+          total_points,
+          content
+        `)
+        .eq('is_active', true)
+        .order('category', { ascending: true });
 
-      return NextResponse.json({ ok: true, sessions: mockSessions });
+      if (error) {
+        console.error('Failed to fetch training sessions:', error);
+        // Fallback to static data if database fails
+        return NextResponse.json({ 
+          ok: true, 
+          sessions: getStaticSessions(),
+          source: 'fallback'
+        });
+      }
+
+      // Transform to match expected format
+      const formattedSessions = sessions?.map(s => ({
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        estimatedTime: s.estimated_time,
+        passingScore: s.passing_score,
+        category: s.category,
+        difficulty: s.difficulty,
+        tags: s.tags || [],
+        questionsCount: s.questions_count,
+        totalPoints: s.total_points,
+        learningObjectives: s.content?.learning_objectives || [],
+        materials: s.content?.materials || []
+      })) || [];
+
+      return NextResponse.json({ ok: true, sessions: formattedSessions });
     }
 
     if (action === 'progress' && sessionId) {

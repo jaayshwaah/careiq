@@ -26,6 +26,8 @@ import {
   ChevronDown,
   ChevronRight,
   AlertTriangle,
+  Database,
+  Heart,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -536,6 +538,42 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                     >
                       <AlertTriangle size={12} />
                       <span>Incident Reports</span>
+                    </Link>
+                    <Link
+                      href="/ehr-integrations"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/ehr-integrations' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <Database size={12} />
+                      <span>EHR Integrations</span>
+                    </Link>
+                    <Link
+                      href="/care-plan-assistant"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/care-plan-assistant' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <Heart size={12} />
+                      <span>Care Plans</span>
+                    </Link>
+                    <Link
+                      href="/pbj-corrector"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/pbj-corrector' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <Calculator size={12} />
+                      <span>PBJ Corrector</span>
+                    </Link>
+                    <Link
+                      href="/task-management"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                        pathname === '/task-management' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <CheckCircle size={12} />
+                      <span>Task Management</span>
                     </Link>
                   </div>
                 )}

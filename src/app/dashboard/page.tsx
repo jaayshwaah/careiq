@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, Users, FileText, Calendar, Bell, Calculator, Timer } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, Users, FileText, Calendar, Bell, Calculator, Timer, Mail, Sparkles } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
+import LetterEmailSuggestions from '@/components/LetterEmailSuggestions';
 
 interface MetricCard {
   title: string;
@@ -33,6 +34,7 @@ export default function FacilityDashboard() {
   const [facilityAnalysis, setFacilityAnalysis] = useState<any>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [showLetterSuggestions, setShowLetterSuggestions] = useState(false);
   
   // Helper function to render star ratings
   const renderStars = (rating: number | null) => {
@@ -727,12 +729,28 @@ export default function FacilityDashboard() {
                     <span className="text-purple-600 dark:text-purple-400">📋</span>
                     <span className="text-sm font-medium text-purple-900 dark:text-purple-100">Review Policies</span>
                   </Link>
+                  <button 
+                    onClick={() => setShowLetterSuggestions(true)}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 transition-colors w-full text-left"
+                  >
+                    <div className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
+                      <Mail className="h-4 w-4" />
+                      <Sparkles className="h-3 w-3" />
+                    </div>
+                    <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">Draft Letters & Emails</span>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Letter & Email Suggestions Modal */}
+      <LetterEmailSuggestions
+        isOpen={showLetterSuggestions}
+        onClose={() => setShowLetterSuggestions(false)}
+      />
     </div>
   );
 }

@@ -3,8 +3,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, Check, Send, Pencil, Bookmark, Paperclip, Download, Settings as SettingsIcon, FileText, Users, Search, Share2, Sparkles } from "lucide-react";
+import { Copy, Check, Send, Pencil, Bookmark, Paperclip, Download, Settings as SettingsIcon, FileText, Users, Search, Share2, Sparkles, Brain } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/components/AuthProvider";
 import Suggestions from "@/components/Suggestions";
 import MessageList from "@/components/chat/MessageList";
 import ChatTemplates from "@/components/ChatTemplates";
@@ -12,6 +13,8 @@ import ChatSearch from "@/components/chat/ChatSearch";
 import BookmarksPanel from "@/components/chat/BookmarksPanel";
 import SharePanel from "@/components/chat/SharePanel";
 import ExportPanel from "@/components/chat/ExportPanel";
+import KnowledgeExtractor from "@/components/chat/KnowledgeExtractor";
+import ChatWorkspaces from "@/components/chat/ChatWorkspaces";
 
 type Msg = {
   id: string;
@@ -68,11 +71,12 @@ function CopyButton({ content, className = "" }: { content: string; className?: 
   );
 }
 
-function MessageBubble({ message, isStreaming = false, onEdit, onBookmark }: { 
+function MessageBubble({ message, isStreaming = false, onEdit, onBookmark, onExtractKnowledge }: { 
   message: Msg; 
   isStreaming?: boolean; 
   onEdit?: (id: string, content: string) => void;
   onBookmark?: (message: Msg) => void;
+  onExtractKnowledge?: (message: Msg) => void;
 }) {
   const isUser = message.role === "user";
   
@@ -124,6 +128,13 @@ function MessageBubble({ message, isStreaming = false, onEdit, onBookmark }: {
                 title="Bookmark response"
               >
                 <Bookmark className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => onExtractKnowledge?.(message)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="Extract knowledge"
+              >
+                <Brain className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
@@ -264,6 +275,19 @@ export default function Chat({ chatId }: { chatId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = getBrowserSupabase();
+  const { user } = useAuth();
+
+  // Helper to get current session
+  const getSession = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('getSession result:', session ? 'found' : 'null');
+      return session;
+    } catch (error) {
+      console.error('getSession error:', error);
+      return null;
+    }
+  };
 
   // State
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -285,6 +309,9 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [chatTitle, setChatTitle] = useState<string>('');
   const [suggestedTemplates, setSuggestedTemplates] = useState<any[]>([]);
   const [showTemplateSuggestions, setShowTemplateSuggestions] = useState(false);
+  const [showKnowledgeExtractor, setShowKnowledgeExtractor] = useState(false);
+  const [extractingMessage, setExtractingMessage] = useState<Msg | null>(null);
+  const [showWorkspaces, setShowWorkspaces] = useState(false);
   const [temperature, setTemperature] = useState<number>(() => {
     try { return Number(JSON.parse(localStorage.getItem(`careiq-chat-settings-${chatId}`) || '{}').temperature ?? 0.3); } catch { return 0.3; }
   });
@@ -304,6 +331,7 @@ export default function Chat({ chatId }: { chatId: string }) {
 
     const suggestTemplates = async () => {
       try {
+        const session = await getSession();
         const keywords = composerValue.toLowerCase();
         let category = 'general';
         
@@ -342,7 +370,7 @@ export default function Chat({ chatId }: { chatId: string }) {
     // Debounce template suggestions
     const timeoutId = setTimeout(suggestTemplates, 500);
     return () => clearTimeout(timeoutId);
-  }, [composerValue, session?.access_token]);
+  }, [composerValue]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -351,9 +379,10 @@ export default function Chat({ chatId }: { chatId: string }) {
 
   // Save message as template handler
   const handleSaveTemplate = async (message: Msg) => {
-    if (!session?.access_token) return;
-
     try {
+      const session = await getSession();
+      if (!session?.access_token) return;
+
       const title = `Template from ${new Date(message.created_at).toLocaleDateString()}`;
       const response = await fetch('/api/templates', {
         method: 'POST',
@@ -692,7 +721,8 @@ export default function Chat({ chatId }: { chatId: string }) {
         body: JSON.stringify({ 
           chat_id: chatId, 
           message_id: message.id,
-          title: message.content.substring(0, 100) + (message.content.length > 100 ? '...' : '')
+          title: message.content.substring(0, 100) + (message.content.length > 100 ? '...' : ''),
+          content: message.content
         }),
       });
       // Show a brief success feedback
@@ -700,6 +730,19 @@ export default function Chat({ chatId }: { chatId: string }) {
     } catch (e) {
       console.warn('Bookmark failed', e);
     }
+  };
+
+  // Extract knowledge from message
+  const handleExtractKnowledge = (message: Msg) => {
+    setExtractingMessage(message);
+    setShowKnowledgeExtractor(true);
+  };
+
+  // Handle knowledge extraction completion
+  const handleKnowledgeSaved = (knowledgeItem: any) => {
+    // Show success feedback
+    console.log('Knowledge extracted and saved:', knowledgeItem);
+    // TODO: Add toast notification
   };
 
   // Handle chat navigation from search/bookmarks
@@ -781,6 +824,15 @@ export default function Chat({ chatId }: { chatId: string }) {
             <Bookmark size={18} />
           </button>
           
+          {/* Workspaces */}
+          <button
+            onClick={() => setShowWorkspaces(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="Chat workspaces"
+          >
+            <Users size={18} />
+          </button>
+          
           <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
           
           {/* Share */}
@@ -859,6 +911,7 @@ export default function Chat({ chatId }: { chatId: string }) {
             onBookmark={handleBookmark}
             onEdit={(id, content) => { setEditingMessageId(id); setComposerValue(content); }}
             onSaveTemplate={handleSaveTemplate}
+            onExtractKnowledge={handleExtractKnowledge}
             onAtBottomChange={setAtBottom}
           />
         )}
@@ -1018,6 +1071,14 @@ export default function Chat({ chatId }: { chatId: string }) {
         currentChatId={chatId}
       />
 
+      {/* Chat Workspaces */}
+      <ChatWorkspaces
+        isOpen={showWorkspaces}
+        onClose={() => setShowWorkspaces(false)}
+        onSelectChat={handleChatNavigation}
+        currentUserId={user?.id}
+      />
+
       {/* Share Panel */}
       <SharePanel
         isOpen={showShare}
@@ -1032,6 +1093,20 @@ export default function Chat({ chatId }: { chatId: string }) {
         chatId={chatId}
         chatTitle={chatTitle}
       />
+
+      {/* Knowledge Extractor */}
+      {showKnowledgeExtractor && extractingMessage && (
+        <KnowledgeExtractor
+          messageId={extractingMessage.id}
+          messageContent={extractingMessage.content}
+          chatId={chatId}
+          onClose={() => {
+            setShowKnowledgeExtractor(false);
+            setExtractingMessage(null);
+          }}
+          onSaved={handleKnowledgeSaved}
+        />
+      )}
 
       {/* Settings modal */}
       {showSettings && (

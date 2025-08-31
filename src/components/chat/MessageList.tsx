@@ -3,7 +3,7 @@
 import React, { useMemo, forwardRef } from "react";
 import { Virtuoso } from "react-virtuoso";
 import ContentRenderer from "@/components/chat/ContentRenderer";
-import { RotateCw, Bookmark, Pencil, FileText } from "lucide-react";
+import { RotateCw, Bookmark, Pencil, FileText, Brain } from "lucide-react";
 
 export type Msg = {
   id: string;
@@ -20,6 +20,7 @@ type Props = {
   onBookmark: (m: Msg) => void;
   onEdit: (id: string, content: string) => void;
   onSaveTemplate?: (m: Msg) => void;
+  onExtractKnowledge?: (m: Msg) => void;
   filter?: string;
   onAtBottomChange?: (atBottom: boolean) => void;
 };
@@ -32,6 +33,7 @@ const MessageList = forwardRef<any, Props>(function MessageList(
   onBookmark,
   onEdit,
   onSaveTemplate,
+  onExtractKnowledge,
   filter,
   onAtBottomChange,
 },
@@ -122,6 +124,15 @@ const MessageList = forwardRef<any, Props>(function MessageList(
                         title="Save as template"
                       >
                         <FileText className="h-3.5 w-3.5"/>
+                      </button>
+                    )}
+                    {onExtractKnowledge && (
+                      <button 
+                        onClick={() => onExtractKnowledge(message)} 
+                        className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                        title="Extract knowledge"
+                      >
+                        <Brain className="h-3.5 w-3.5"/>
                       </button>
                     )}
                   </div>
