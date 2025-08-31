@@ -1,6 +1,6 @@
 // src/app/api/team-members/route.ts - API for team member management
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabaseServer";
+import { supabaseServerWithAuth } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -23,9 +23,7 @@ export async function GET(request: NextRequest) {
       .from('chat_shares')
       .select(`
         shared_by,
-        shared_with,
-        shared_by_user:auth.users!shared_by(id, email, raw_user_meta_data, last_sign_in_at),
-        shared_with_user:auth.users!shared_with(id, email, raw_user_meta_data, last_sign_in_at)
+        shared_with
       `)
       .or(`shared_by.eq.${user.id},shared_with.eq.${user.id}`)
       .eq('is_active', true);
@@ -35,43 +33,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch team members' }, { status: 500 });
     }
 
-    // Extract unique team members
-    const teamMemberSet = new Set<string>();
-    const teamMembersMap = new Map();
-
+    // Extract unique team member IDs
+    const teamMemberIds = new Set<string>();
+    
     shareConnections?.forEach(connection => {
-      // Add the other person as a team member
-      if (connection.shared_by === user.id && connection.shared_with_user) {
-        if (!teamMemberSet.has(connection.shared_with)) {
-          teamMemberSet.add(connection.shared_with);
-          teamMembersMap.set(connection.shared_with, {
-            id: connection.shared_with_user.id,
-            email: connection.shared_with_user.email,
-            name: connection.shared_with_user.raw_user_meta_data?.name || 
-                  connection.shared_with_user.raw_user_meta_data?.full_name,
-            avatar_url: connection.shared_with_user.raw_user_meta_data?.avatar_url,
-            last_seen: connection.shared_with_user.last_sign_in_at,
-            role: 'Collaborator'
-          });
-        }
-      } else if (connection.shared_with === user.id && connection.shared_by_user) {
-        if (!teamMemberSet.has(connection.shared_by)) {
-          teamMemberSet.add(connection.shared_by);
-          teamMembersMap.set(connection.shared_by, {
-            id: connection.shared_by_user.id,
-            email: connection.shared_by_user.email,
-            name: connection.shared_by_user.raw_user_meta_data?.name || 
-                  connection.shared_by_user.raw_user_meta_data?.full_name,
-            avatar_url: connection.shared_by_user.raw_user_meta_data?.avatar_url,
-            last_seen: connection.shared_by_user.last_sign_in_at,
-            role: 'Team Member'
-          });
-        }
+      if (connection.shared_by === user.id) {
+        teamMemberIds.add(connection.shared_with);
+      } else if (connection.shared_with === user.id) {
+        teamMemberIds.add(connection.shared_by);
       }
     });
 
-    const teamMembers = Array.from(teamMembersMap.values())
-      .sort((a, b) => (b.last_seen || '').localeCompare(a.last_seen || ''));
+    // Get team member details from profiles
+    const teamMembers: any[] = [];
+    if (teamMemberIds.size > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, email, name, avatar_url, last_seen')
+        .in('id', Array.from(teamMemberIds));
+
+      if (profiles) {
+        profiles.forEach(profile => {
+          teamMembers.push({
+            id: profile.id,
+            email: profile.email,
+            name: profile.name,
+            avatar_url: profile.avatar_url,
+            last_seen: profile.last_seen,
+            role: 'Collaborator'
+          });
+        });
+      }
+    }
+
+    teamMembers.sort((a, b) => (b.last_seen || '').localeCompare(a.last_seen || ''));
 
     return NextResponse.json({
       success: true,
@@ -105,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

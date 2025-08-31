@@ -1,8 +1,7 @@
 // src/app/api/generate-letter/route.ts - AI-powered letter and email generation
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabaseServer";
-import { streamText } from "ai";
-import { providerFromEnv } from "@/lib/ai-provider";
+import { supabaseServerWithAuth } from "@/lib/supabase/server";
+import { providerFromEnv } from "@/lib/ai/providers";
 
 const LETTER_GENERATION_SYSTEM_PROMPT = `You are a professional healthcare compliance communication specialist. Your job is to generate well-structured, professional letters and emails for nursing home facilities to communicate with various stakeholders.
 
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -82,19 +81,15 @@ Focus on:
     // Use AI to generate letter suggestions
     const provider = providerFromEnv();
     
-    const result = await streamText({
-      model: provider('claude-3-5-sonnet-20241022'),
-      system: LETTER_GENERATION_SYSTEM_PROMPT,
-      prompt,
-      temperature: 0.7,
-      maxTokens: 2000,
-    });
+    const messages = [
+      { role: "system" as const, content: LETTER_GENERATION_SYSTEM_PROMPT },
+      { role: "user" as const, content: prompt }
+    ];
 
-    // Collect the streaming result
-    let generatedText = '';
-    for await (const textPart of result.textStream) {
-      generatedText += textPart;
-    }
+    const generatedText = await provider.complete(messages, {
+      temperature: 0.7,
+      max_tokens: 2000,
+    });
 
     // Parse the JSON response
     let suggestions;

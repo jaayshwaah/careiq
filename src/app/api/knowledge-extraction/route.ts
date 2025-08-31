@@ -1,8 +1,7 @@
 // src/app/api/knowledge-extraction/route.ts - AI-powered knowledge extraction from chat messages
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabaseServer";
-import { streamText } from "ai";
-import { providerFromEnv } from "@/lib/ai-provider";
+import { supabaseServerWithAuth } from "@/lib/supabase/server";
+import { providerFromEnv } from "@/lib/ai/providers";
 
 const EXTRACTION_SYSTEM_PROMPT = `You are a healthcare compliance knowledge extraction expert. Your job is to analyze chat messages and extract valuable knowledge for nursing home compliance teams.
 
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -70,19 +69,15 @@ export async function POST(request: NextRequest) {
     // Use AI to extract knowledge
     const provider = providerFromEnv();
     
-    const result = await streamText({
-      model: provider('claude-3-5-sonnet-20241022'),
-      system: EXTRACTION_SYSTEM_PROMPT,
-      prompt: `Extract knowledge from this content:\n\n${content}`,
-      temperature: 0.3,
-      maxTokens: 1500,
-    });
+    const messages = [
+      { role: "system" as const, content: EXTRACTION_SYSTEM_PROMPT },
+      { role: "user" as const, content: `Extract knowledge from this content:\n\n${content}` }
+    ];
 
-    // Collect the streaming result
-    let extractedText = '';
-    for await (const textPart of result.textStream) {
-      extractedText += textPart;
-    }
+    const extractedText = await provider.complete(messages, {
+      temperature: 0.3,
+      max_tokens: 1500,
+    });
 
     // Parse the JSON response
     let knowledgeItem;

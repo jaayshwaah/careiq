@@ -1,6 +1,6 @@
 // src/app/api/letter-templates/route.ts - API for managing letter and email templates
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabaseServer";
+import { supabaseServerWithAuth } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -208,7 +208,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

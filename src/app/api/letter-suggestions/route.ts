@@ -1,6 +1,6 @@
 // src/app/api/letter-suggestions/route.ts - API for retrieving letter and email suggestions
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabaseServer";
+import { supabaseServerWithAuth } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

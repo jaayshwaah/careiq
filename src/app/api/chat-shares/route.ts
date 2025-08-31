@@ -1,6 +1,6 @@
 // src/app/api/chat-shares/route.ts - API for collaborative chat sharing
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabaseServer";
+import { supabaseServerWithAuth } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -37,9 +37,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Chat not found or access denied' }, { status: 404 });
     }
 
-    // Find user to share with by email
-    const { data: targetUser, error: userError } = await supabase.auth.admin.getUserByEmail(shared_with_email);
-    if (userError || !targetUser.user) {
+    // Find user to share with by email using profiles table
+    const { data: targetUserProfile, error: userError } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', shared_with_email)
+      .single();
+    
+    if (userError || !targetUserProfile) {
       return NextResponse.json({ error: 'User not found with provided email' }, { status: 404 });
     }
 
@@ -48,7 +53,7 @@ export async function POST(request: NextRequest) {
       .from('chat_shares')
       .select('id')
       .eq('chat_id', chat_id)
-      .eq('shared_with', targetUser.user.id)
+      .eq('shared_with', targetUserProfile.id)
       .single();
 
     if (existingShare) {
@@ -64,9 +69,7 @@ export async function POST(request: NextRequest) {
         .eq('id', existingShare.id)
         .select(`
           *,
-          chat:chats(id, title, created_at),
-          shared_by_user:auth.users!shared_by(id, email, raw_user_meta_data),
-          shared_with_user:auth.users!shared_with(id, email, raw_user_meta_data)
+          chat:chats(id, title, created_at)
         `)
         .single();
 
@@ -85,15 +88,13 @@ export async function POST(request: NextRequest) {
         .insert({
           chat_id,
           shared_by: user.id,
-          shared_with: targetUser.user.id,
+          shared_with: targetUserProfile.id,
           permission_level,
           expires_at
         })
         .select(`
           *,
-          chat:chats(id, title, created_at),
-          shared_by_user:auth.users!shared_by(id, email, raw_user_meta_data),
-          shared_with_user:auth.users!shared_with(id, email, raw_user_meta_data)
+          chat:chats(id, title, created_at)
         `)
         .single();
 
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -143,9 +144,7 @@ export async function GET(request: NextRequest) {
       .from('chat_shares')
       .select(`
         *,
-        chat:chats(id, title, created_at),
-        shared_by_user:auth.users!shared_by(id, email, raw_user_meta_data),
-        shared_with_user:auth.users!shared_with(id, email, raw_user_meta_data)
+        chat:chats(id, title, created_at)
       `)
       .eq('is_active', true)
       .order('shared_at', { ascending: false });
@@ -200,7 +199,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -255,7 +254,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const supabase = getServerSupabase(token);
+    const supabase = supabaseServerWithAuth(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
