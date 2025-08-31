@@ -217,6 +217,72 @@ Format as JSON with sections: priorityAreas, starRatingStrategies, complianceRec
   }
 }
 
+export async function GET(req: NextRequest) {
+  try {
+    // Get user authentication
+    const authHeader = req.headers.get("authorization") || undefined;
+    const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    const supa = supabaseServerWithAuth(accessToken);
+
+    const { data: { user }, error: userError } = await supa.auth.getUser();
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user profile for facility information
+    const supaService = supabaseService();
+    const { data: profile, error: profileError } = await supaService
+      .from("profiles")
+      .select("facility_name, facility_state")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profileError || !profile?.facility_name) {
+      return NextResponse.json({ 
+        error: "Facility information not found" 
+      }, { status: 400 });
+    }
+
+    // Get the most recent analysis for this facility and user
+    const { data: existingAnalysis, error: fetchError } = await supa
+      .from('knowledge_base')
+      .select('*')
+      .eq('metadata->>content_type', 'facility_analysis')
+      .eq('metadata->>user_id', user.id)
+      .eq('metadata->>facility_name', profile.facility_name)
+      .order('last_updated', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fetchError || !existingAnalysis) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "No existing analysis found" 
+      }, { status: 404 });
+    }
+
+    // Parse and return the stored analysis
+    try {
+      const analysisData = JSON.parse(existingAnalysis.content);
+      return NextResponse.json({ 
+        success: true, 
+        data: analysisData,
+        lastGenerated: existingAnalysis.last_updated
+      });
+    } catch (parseError) {
+      return NextResponse.json({ 
+        error: "Failed to parse stored analysis" 
+      }, { status: 500 });
+    }
+
+  } catch (error: any) {
+    console.error("Get facility analysis error:", error);
+    return NextResponse.json({ 
+      error: error.message || "Failed to retrieve facility analysis" 
+    }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Apply rate limiting
@@ -235,6 +301,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if this is a refresh request
+    const body = await req.json().catch(() => ({}));
+    const isRefresh = body.refresh === true;
+
     // Get user profile for facility information using service role to bypass RLS
     const supaService = supabaseService();
     const { data: profile, error: profileError } = await supaService
@@ -249,6 +319,40 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // If not a refresh, check for existing recent analysis (within last 24 hours)
+    if (!isRefresh) {
+      const { data: existingAnalysis } = await supa
+        .from('knowledge_base')
+        .select('*')
+        .eq('metadata->>content_type', 'facility_analysis')
+        .eq('metadata->>user_id', user.id)
+        .eq('metadata->>facility_name', profile.facility_name)
+        .order('last_updated', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (existingAnalysis) {
+        const lastUpdate = new Date(existingAnalysis.last_updated);
+        const hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
+        
+        // If analysis is less than 24 hours old, return existing analysis
+        if (hoursSinceUpdate < 24) {
+          try {
+            const analysisData = JSON.parse(existingAnalysis.content);
+            return NextResponse.json({ 
+              success: true, 
+              data: analysisData,
+              fromCache: true,
+              lastGenerated: existingAnalysis.last_updated
+            });
+          } catch (parseError) {
+            // If parse fails, continue with new generation
+            console.error('Failed to parse existing analysis, generating new one:', parseError);
+          }
+        }
+      }
+    }
+
     // Search for facility data
     const facilityData = await searchFacility(profile.facility_name, profile.facility_state);
     
@@ -261,12 +365,110 @@ export async function POST(req: NextRequest) {
       generatedAt: new Date().toISOString()
     };
 
+    // Save or update the analysis in the knowledge_base for persistence
+    try {
+      // Check if we already have an analysis for this facility
+      const { data: existingRecord } = await supa
+        .from('knowledge_base')
+        .select('id')
+        .eq('metadata->>content_type', 'facility_analysis')
+        .eq('metadata->>user_id', user.id)
+        .eq('metadata->>facility_name', profile.facility_name)
+        .order('last_updated', { ascending: false })
+        .limit(1)
+        .single();
+
+      const analysisData = {
+        facility_id: profile.facility_name,
+        category: 'Facility Policy',
+        title: `Facility Performance Analysis - ${profile.facility_name}`,
+        content: JSON.stringify(result),
+        metadata: {
+          content_type: 'facility_analysis',
+          facility_name: profile.facility_name,
+          facility_state: profile.facility_state,
+          user_id: user.id,
+          generated_at: result.generatedAt
+        },
+        source_url: null,
+        last_updated: new Date().toISOString()
+      };
+
+      if (existingRecord) {
+        // Update existing record
+        await supa
+          .from('knowledge_base')
+          .update(analysisData)
+          .eq('id', existingRecord.id);
+      } else {
+        // Create new record
+        await supa.from('knowledge_base').insert(analysisData);
+      }
+    } catch (saveError) {
+      console.error('Failed to save facility analysis:', saveError);
+      // Continue even if save fails
+    }
+
     return NextResponse.json({ success: true, data: result });
 
   } catch (error: any) {
     console.error("Facility analysis error:", error);
     return NextResponse.json({ 
       error: error.message || "Failed to analyze facility" 
+    }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    // Get user authentication
+    const authHeader = req.headers.get("authorization") || undefined;
+    const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    const supa = supabaseServerWithAuth(accessToken);
+
+    const { data: { user }, error: userError } = await supa.auth.getUser();
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user profile for facility information
+    const supaService = supabaseService();
+    const { data: profile, error: profileError } = await supaService
+      .from("profiles")
+      .select("facility_name, facility_state")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profileError || !profile?.facility_name) {
+      return NextResponse.json({ 
+        error: "Facility information not found" 
+      }, { status: 400 });
+    }
+
+    // Delete existing analysis
+    const { error: deleteError } = await supa
+      .from('knowledge_base')
+      .delete()
+      .eq('metadata->>content_type', 'facility_analysis')
+      .eq('metadata->>user_id', user.id)
+      .eq('metadata->>facility_name', profile.facility_name);
+
+    if (deleteError) {
+      console.error('Failed to delete facility analysis:', deleteError);
+      return NextResponse.json({ 
+        error: "Failed to clear analysis" 
+      }, { status: 500 });
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "Analysis cleared successfully" 
+    });
+
+  } catch (error: any) {
+    console.error("Delete facility analysis error:", error);
+    return NextResponse.json({ 
+      error: error.message || "Failed to clear facility analysis" 
     }, { status: 500 });
   }
 }

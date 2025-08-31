@@ -325,7 +325,7 @@ export async function POST(req: NextRequest) {
       .from("knowledge_base")
       .insert({
         facility_id: profile?.facility_id,
-        category: 'daily_round_template',
+        category: 'Facility Policy',
         title: recordToInsert.title,
         content: JSON.stringify(recordToInsert),
         metadata: {
@@ -398,7 +398,7 @@ export async function GET(req: NextRequest) {
         .eq("id", roundId)
         .single();
 
-      if (error || !round || (round.category !== 'daily_round_template' && round.metadata?.content_type !== 'daily_round_template')) {
+      if (error || !round || round.metadata?.content_type !== 'daily_round_template') {
         return NextResponse.json({ 
           ok: false, 
           error: "Daily round not found" 
@@ -422,7 +422,7 @@ export async function GET(req: NextRequest) {
       const { data: allRounds, error } = await supa
         .from("knowledge_base")
         .select("id, title, created_at, metadata, category")
-        .eq("category", "daily_round_template")
+        .eq("metadata->>content_type", "daily_round_template")
         .eq("metadata->>user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50); // Get more to filter by content type
@@ -434,8 +434,8 @@ export async function GET(req: NextRequest) {
         }, { status: 500 });
       }
 
-      // Filter for daily round templates (already filtered by category, but double-check metadata)
-      const rounds = allRounds?.filter(round => round.category === 'daily_round_template' || round.metadata?.content_type === 'daily_round_template').slice(0, 20) || [];
+      // Filter for daily round templates (already filtered by metadata)
+      const rounds = allRounds?.filter(round => round.metadata?.content_type === 'daily_round_template').slice(0, 20) || [];
 
       // Transform the rounds data to match expected format
       const formattedRounds = rounds?.map(round => ({
