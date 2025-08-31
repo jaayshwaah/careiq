@@ -34,6 +34,16 @@ export default function FacilityDashboard() {
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   
+  // Helper function to render star ratings
+  const renderStars = (rating: number | null) => {
+    if (!rating) return '☆☆☆☆☆';
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(i <= rating ? '★' : '☆');
+    }
+    return stars.join('');
+  };
+
   const [metrics, setMetrics] = useState<MetricCard[]>([
     {
       title: 'Compliance Score',
@@ -140,35 +150,47 @@ export default function FacilityDashboard() {
     if (!user?.id) return;
     
     try {
-      const { data: surveyWindow, error } = await supabase
-        .from('survey_windows')
-        .select('*')
+      const { data: surveyPrep, error } = await supabase
+        .from('survey_prep_progress')
+        .select('expected_survey_date, facility_type')
         .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
       
-      if (error || !surveyWindow) {
+      if (error || !surveyPrep?.expected_survey_date) {
         setSurveyCountdown(null);
         return;
       }
       
-      // Calculate countdown to window start if not yet in window
-      // Or countdown to window end if in window
       const now = new Date();
-      const windowStart = new Date(surveyWindow.window_start);
-      const windowEnd = new Date(surveyWindow.window_end);
+      const expectedDate = new Date(surveyPrep.expected_survey_date);
+      
+      // Calculate survey window (typically 15 months ± 3 months)
+      const windowStart = new Date(expectedDate);
+      windowStart.setMonth(expectedDate.getMonth() - 3); // 3 months before expected date
+      
+      const windowEnd = new Date(expectedDate);
+      windowEnd.setMonth(expectedDate.getMonth() + 3); // 3 months after expected date
       
       let targetDate;
       let countdownType;
+      let isInWindow = false;
       
-      if (surveyWindow.is_overdue) {
+      if (now > windowEnd) {
+        // Survey is overdue
         setSurveyCountdown(null);
         return;
-      } else if (surveyWindow.is_in_window) {
-        targetDate = windowEnd;
-        countdownType = 'Window Closes';
+      } else if (now >= windowStart && now <= windowEnd) {
+        // In survey window - count down to expected survey date
+        targetDate = expectedDate;
+        countdownType = 'Expected Survey';
+        isInWindow = true;
       } else {
+        // Before window - count down to window opening
         targetDate = windowStart;
         countdownType = 'Window Opens';
+        isInWindow = false;
       }
       
       const timeDiff = targetDate.getTime() - now.getTime();
@@ -177,13 +199,14 @@ export default function FacilityDashboard() {
         const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        
         setSurveyCountdown({ 
           days, 
           hours, 
           minutes, 
           type: countdownType,
-          isInWindow: surveyWindow.is_in_window,
-          state: surveyWindow.facility_state
+          isInWindow: isInWindow,
+          state: surveyPrep.facility_type || 'SNF'
         });
       } else {
         setSurveyCountdown(null);
@@ -213,9 +236,11 @@ export default function FacilityDashboard() {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('Facility analysis loaded:', result);
         setFacilityAnalysis(result.data);
       } else {
         const error = await response.json();
+        console.error('Facility analysis error:', error);
         setAnalysisError(error.error || 'Failed to load facility analysis');
       }
     } catch (error) {
@@ -494,27 +519,33 @@ export default function FacilityDashboard() {
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                       <div className="text-center">
                         <div className="text-2xl font-bold text-blue-600">{facilityAnalysis.facility.overallRating ?? 'N/A'}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Overall (out of 5)</div>
+                        <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.overallRating)}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Overall</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-green-600">{facilityAnalysis.facility.healthInspections ?? 'N/A'}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Health Inspections (out of 5)</div>
+                        <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.healthInspections)}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Health Inspections</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-purple-600">{facilityAnalysis.facility.qualityMeasures ?? 'N/A'}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Quality (out of 5)</div>
+                        <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.qualityMeasures)}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Quality</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-orange-600">{facilityAnalysis.facility.staffing ?? 'N/A'}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Staffing (out of 5)</div>
+                        <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.staffing)}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Staffing</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-indigo-600">{facilityAnalysis.facility.shortStay ?? 'N/A'}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Short Stay (out of 5)</div>
+                        <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.shortStay)}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Short Stay</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-pink-600">{facilityAnalysis.facility.longStay ?? 'N/A'}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Long Stay (out of 5)</div>
+                        <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.longStay)}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Long Stay</div>
                       </div>
                     </div>
                   </div>

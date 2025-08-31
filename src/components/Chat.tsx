@@ -283,6 +283,8 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [chatTitle, setChatTitle] = useState<string>('');
+  const [suggestedTemplates, setSuggestedTemplates] = useState<any[]>([]);
+  const [showTemplateSuggestions, setShowTemplateSuggestions] = useState(false);
   const [temperature, setTemperature] = useState<number>(() => {
     try { return Number(JSON.parse(localStorage.getItem(`careiq-chat-settings-${chatId}`) || '{}').temperature ?? 0.3); } catch { return 0.3; }
   });
@@ -290,11 +292,95 @@ export default function Chat({ chatId }: { chatId: string }) {
   const controllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const virtuosoRef = useRef<any>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+
+  // Smart template suggestions based on context
+  useEffect(() => {
+    if (composerValue.length < 10) {
+      setSuggestedTemplates([]);
+      setShowTemplateSuggestions(false);
+      return;
+    }
+
+    const suggestTemplates = async () => {
+      try {
+        const keywords = composerValue.toLowerCase();
+        let category = 'general';
+        
+        // Detect category from keywords
+        if (keywords.includes('survey') || keywords.includes('f-tag') || keywords.includes('deficiency')) {
+          category = 'survey';
+        } else if (keywords.includes('train') || keywords.includes('education') || keywords.includes('competency')) {
+          category = 'training';
+        } else if (keywords.includes('policy') || keywords.includes('procedure') || keywords.includes('protocol')) {
+          category = 'policy';
+        } else if (keywords.includes('incident') || keywords.includes('accident') || keywords.includes('fall')) {
+          category = 'incident';
+        }
+
+        const response = await fetch(`/api/templates?category=${category}&public_only=true`, {
+          headers: {
+            'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const relevant = data.templates?.filter((t: any) => {
+            const content = (t.content + ' ' + t.title + ' ' + t.description).toLowerCase();
+            return keywords.split(' ').some((word: string) => word.length > 3 && content.includes(word));
+          }).slice(0, 3) || [];
+          
+          setSuggestedTemplates(relevant);
+          setShowTemplateSuggestions(relevant.length > 0);
+        }
+      } catch (error) {
+        console.error('Failed to suggest templates:', error);
+      }
+    };
+
+    // Debounce template suggestions
+    const timeoutId = setTimeout(suggestTemplates, 500);
+    return () => clearTimeout(timeoutId);
+  }, [composerValue, session?.access_token]);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs.length]);
+
+  // Save message as template handler
+  const handleSaveTemplate = async (message: Msg) => {
+    if (!session?.access_token) return;
+
+    try {
+      const title = `Template from ${new Date(message.created_at).toLocaleDateString()}`;
+      const response = await fetch('/api/templates', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          content: message.content,
+          description: 'Generated from chat response',
+          category: 'general',
+          tags: ['chat', 'generated'],
+          is_public: false
+        })
+      });
+
+      if (response.ok) {
+        // Show success feedback - you could add a toast here
+        console.log('Template saved successfully!');
+      } else {
+        console.error('Failed to save template');
+      }
+    } catch (error) {
+      console.error('Error saving template:', error);
+    }
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -772,6 +858,7 @@ export default function Chat({ chatId }: { chatId: string }) {
             onRegenerate={handleRegenerate}
             onBookmark={handleBookmark}
             onEdit={(id, content) => { setEditingMessageId(id); setComposerValue(content); }}
+            onSaveTemplate={handleSaveTemplate}
             onAtBottomChange={setAtBottom}
           />
         )}
@@ -832,6 +919,44 @@ export default function Chat({ chatId }: { chatId: string }) {
           if (files.length) setAttachedFiles(prev => [...prev, ...files]);
         }}
       >
+        {/* Smart Template Suggestions */}
+        {showTemplateSuggestions && suggestedTemplates.length > 0 && (
+          <div className="border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  Suggested Templates
+                </span>
+                <button
+                  onClick={() => setShowTemplateSuggestions(false)}
+                  className="ml-auto text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {suggestedTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => {
+                      setComposerValue(template.content);
+                      setShowTemplateSuggestions(false);
+                      composerRef.current?.focus();
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors text-sm"
+                  >
+                    <FileText className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                    <span className="text-gray-900 dark:text-gray-100 truncate max-w-48">
+                      {template.title}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Input area */}
         <MessageInput
           onSend={handleSend}
