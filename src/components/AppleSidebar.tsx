@@ -299,6 +299,8 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
 
   return (
     <div className={`h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'} ${className}`}>
+      <div className="flex-1 overflow-y-auto">
+        {/* Scrollable content wrapper */}
       {/* Header */}
       <div className={`border-b border-gray-200/30 dark:border-gray-700/30 ${isCollapsed ? 'px-3 py-4' : 'px-6 py-5'}`}>
         <div className="flex items-center justify-between mb-4">
@@ -452,7 +454,7 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
       </div>
 
       {/* Chat History */}
-      <div className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex flex-col">
         {!isCollapsed && (
           <div className="px-3 py-3">
             <div className="relative">
@@ -468,7 +470,7 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-3">
+        <div className="px-3">
           {!isCollapsed && (
             <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-2">
               Recent Chats
@@ -601,6 +603,7 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
           </div>
         </div>
       </div>
+      </div> {/* End of scrollable content wrapper */}
     </div>
   );
 }

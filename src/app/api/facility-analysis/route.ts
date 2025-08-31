@@ -246,130 +246,60 @@ Format your response as a detailed facility profile with all available informati
       
     // If no results found, return demo data
     console.log(`No facility data found for ${facilityName}, ${state} - returning demo data`);
-        return {
-          name: facilityName,
-          state: state,
-          providerId: "DEMO123456",
-          // 2025 Medicare ratings structure
-          overallRating: 4,
-          healthInspections: 3,
-          qualityMeasures: 4,
-          staffing: 4,
-          lastUpdated: new Date().toISOString(),
-          address: "123 Healthcare Way",
-          city: "Demo City", 
-          zipCode: "12345",
-          phoneNumber: "(555) 123-4567",
-          ownershipType: "For profit - Corporation",
-          // 2025 Medicare staffing metrics
-          staffingMetrics: {
-            totalNursingHours: 4.2,
-            rnHours: 0.8,
-            lpnHours: 1.1,
-            cnaHours: 2.3,
-            staffTurnover: 0.65
-          },
-          // 2025 Medicare quality measures (9 key measures)
-          qualityMetrics: {
-            longStayAntipsychotics: 12.5,
-            shortStayRehospitalization: 18.2,
-            shortStayPressureUlcers: 1.8,
-            longStayFalls: 4.9,
-            longStayUTIs: 6.2,
-            longStayPressureUlcers: 2.1,
-            longStayPain: 3.4,
-            shortStayAntipsychotics: 2.1,
-            longStayPhysicalRestraints: 0.8
-          },
-          // 2025 Medicare inspection metrics
-          inspectionMetrics: {
-            totalDeficiencies: 12,
-            weightedHealthSurveyScore: 42,
-            fireSafetyDeficiencies: 2,
-            complaintDeficiencies: 1
-          },
-          deficiencies: [
-            "Staff training documentation needs improvement",
-            "Infection control protocols require updating",
-            "Fire safety deficiencies noted"
-          ],
-          strengths: [
-            "Above average overall 5-star rating",
-            "Good staffing levels (RN hours & total nursing hours)",
-            "Strong clinical quality measures"
-          ],
-          isDemoData: true
-        };
-      }
-    }
-    
-    const facility = cmsData.results[0];
-    
-    // Map CMS data to our format (2025 Medicare Care Compare standards)
-    const facilityData = {
-      name: facility.facility_name || facilityName,
-      state: facility.provider_state || state,
-      providerId: facility.federal_provider_number,
-      // Overall 5-star rating (primary rating)
-      overallRating: parseInt(facility.overall_rating) || null,
-      // Three component ratings that make up the overall rating
-      healthInspections: parseInt(facility.survey_rating) || null, // Based on 3 most recent inspections
-      qualityMeasures: parseInt(facility.quality_rating) || null,  // Clinical quality measures
-      staffing: parseInt(facility.staffing_rating) || null,       // RN hours + total nursing hours
-      // Additional facility information
-      lastUpdated: facility.date_updated || new Date().toISOString(),
-      address: facility.provider_address,
-      city: facility.provider_city,
-      zipCode: facility.provider_zip_code,
-      phoneNumber: facility.provider_phone_number,
-      ownershipType: facility.ownership_type,
-      certificationDate: facility.certification_date,
-      // Staffing details (key Medicare metrics)
+    return {
+      name: facilityName,
+      state: state,
+      providerId: "DEMO123456",
+      // 2025 Medicare ratings structure
+      overallRating: 4,
+      healthInspections: 3,
+      qualityMeasures: 4,
+      staffing: 4,
+      lastUpdated: new Date().toISOString(),
+      address: "123 Healthcare Way",
+      city: "Demo City", 
+      zipCode: "12345",
+      phoneNumber: "(555) 123-4567",
+      ownershipType: "For profit - Corporation",
+      // 2025 Medicare staffing metrics
       staffingMetrics: {
-        totalNursingHours: facility.total_nurse_staffing_hours || null,
-        rnHours: facility.rn_staffing_hours || null,
-        lpnHours: facility.lpn_staffing_hours || null,
-        cnaHours: facility.cna_staffing_hours || null,
-        staffTurnover: facility.staff_turnover_rate || null
+        totalNursingHours: 4.2,
+        rnHours: 0.8,
+        lpnHours: 1.1,
+        cnaHours: 2.3,
+        staffTurnover: 0.65
       },
-      // Quality measures (Medicare's 9 key measures)
+      // 2025 Medicare quality measures (9 key measures)
       qualityMetrics: {
-        // These are the actual Medicare quality measures for 2025
-        longStayAntipsychotics: facility.long_stay_antipsychotic_med || null,
-        shortStayRehospitalization: facility.short_stay_rehospitalization || null,
-        shortStayPressureUlcers: facility.short_stay_pressure_ulcer || null,
-        longStayFalls: facility.long_stay_falls_injury || null,
-        longStayUTIs: facility.long_stay_uti || null,
-        longStayPressureUlcers: facility.long_stay_pressure_ulcer || null,
-        longStayPain: facility.long_stay_pain || null,
-        shortStayAntipsychotics: facility.short_stay_antipsychotic_med || null,
-        longStayPhysicalRestraints: facility.long_stay_physical_restraint || null
+        longStayAntipsychotics: 12.5,
+        shortStayRehospitalization: 18.2,
+        shortStayPressureUlcers: 1.8,
+        longStayFalls: 4.9,
+        longStayUTIs: 6.2,
+        longStayPressureUlcers: 2.1,
+        longStayPain: 3.4,
+        shortStayAntipsychotics: 2.1,
+        longStayPhysicalRestraints: 0.8
       },
-      // Health inspection details
+      // 2025 Medicare inspection metrics
       inspectionMetrics: {
-        totalDeficiencies: facility.total_number_of_health_deficiencies || 0,
-        weightedHealthSurveyScore: facility.total_weighted_health_survey_score || 0,
-        fireSafetyDeficiencies: facility.total_number_of_fire_safety_deficiencies || 0,
-        complaintDeficiencies: facility.number_of_complaint_substantiated_deficiencies || 0
+        totalDeficiencies: 12,
+        weightedHealthSurveyScore: 42,
+        fireSafetyDeficiencies: 2,
+        complaintDeficiencies: 1
       },
-      // Generate deficiencies based on actual inspection scores
-      deficiencies: facility.total_weighted_health_survey_score > 50 ? [
-        "Health inspection deficiencies identified in recent surveys",
-        "Review compliance with CMS health and safety standards",
-        facility.total_number_of_fire_safety_deficiencies > 0 ? "Fire safety deficiencies noted" : null,
-        facility.number_of_complaint_substantiated_deficiencies > 0 ? "Substantiated complaint deficiencies" : null
-      ].filter(Boolean) : [],
-      // Generate strengths based on actual ratings (2025 standards)
+      deficiencies: [
+        "Staff training documentation needs improvement",
+        "Infection control protocols require updating",
+        "Fire safety deficiencies noted"
+      ],
       strengths: [
-        facility.overall_rating >= 4 ? "Above average overall 5-star rating" : null,
-        facility.survey_rating >= 4 ? "Strong health inspection performance" : null,
-        facility.staffing_rating >= 4 ? "Good staffing levels (RN hours & total nursing hours)" : null,
-        facility.quality_rating >= 4 ? "Strong clinical quality measures" : null,
-        facility.total_weighted_health_survey_score < 25 ? "Low health inspection deficiency score" : null
-      ].filter(Boolean)
+        "Above average overall 5-star rating",
+        "Good staffing levels (RN hours & total nursing hours)",
+        "Strong clinical quality measures"
+      ],
+      isDemoData: true
     };
-    
-    return facilityData;
   } catch (error) {
     console.error("Error searching facility:", error);
     
