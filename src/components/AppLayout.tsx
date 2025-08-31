@@ -87,7 +87,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         
         {/* Sidebar */}
         <div className={`
-          lg:relative fixed z-50 h-full transition-transform duration-300
+          lg:relative fixed z-50 h-full transition-transform duration-300 flex-shrink-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
           <AppleSidebar 
@@ -98,8 +98,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         
         {/* Main content */}
         <main className={`
-          flex-1 flex flex-col min-h-0 transition-all duration-300
-          ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-80'}
+          flex-1 flex flex-col min-h-0 transition-all duration-300 lg:ml-0
         `}>
           {/* Mobile header */}
           <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between flex-shrink-0">
@@ -115,7 +114,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
           
           {/* Page content - scrollable */}
-          <div className="flex-1 min-h-0 scrollable">
+          <div className="flex-1 min-h-0 overflow-auto">
             {children}
           </div>
         </main>
