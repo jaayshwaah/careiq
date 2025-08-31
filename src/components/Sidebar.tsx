@@ -520,13 +520,13 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                       <span>Survey Training</span>
                     </Link>
                     <Link
-                      href="/census"
+                      href="/census-dashboard"
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/census' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        pathname === '/census-dashboard' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
                       }`}
                     >
-                      <HeadphonesIcon size={12} />
-                      <span>Census</span>
+                      <BarChart3 size={12} />
+                      <span>Census Analytics</span>
                     </Link>
                     <Link
                       href="/incident-reports"
