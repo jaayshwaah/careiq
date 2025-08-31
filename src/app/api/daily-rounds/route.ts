@@ -324,16 +324,17 @@ export async function POST(req: NextRequest) {
     const { data: savedRound, error: saveError } = await supa
       .from("knowledge_base")
       .insert({
+        user_id: user.id,
+        content_type: 'daily_round_template',
         title: recordToInsert.title,
-        content: JSON.stringify(recordToInsert),
-        created_by: recordToInsert.created_by,
-        facility_id: profile?.facility_id || null,
+        data: recordToInsert,
+        tags: [template_type, unit, shift],
         metadata: {
           ...recordToInsert.metadata,
           content_type: 'daily_round_template',
           unit: recordToInsert.unit,
           shift: recordToInsert.shift,
-          daily_round_data: recordToInsert
+          facility_id: profile?.facility_id
         }
       })
       .select()
@@ -419,7 +420,8 @@ export async function GET(req: NextRequest) {
       const { data: allRounds, error } = await supa
         .from("knowledge_base")
         .select("id, title, created_at, metadata")
-        .eq("created_by", user.id)
+        .eq("user_id", user.id)
+        .eq("content_type", "daily_round_template")
         .order("created_at", { ascending: false })
         .limit(50); // Get more to filter by content type
       
