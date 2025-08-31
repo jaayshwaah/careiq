@@ -26,6 +26,7 @@ import {
   CheckSquare,
   Upload,
   FileSpreadsheet,
+  ListTodo,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -52,6 +53,7 @@ const mainNavigationItems = [
 const toolsNavigationItems = [
   { href: "/ppd-calculator", label: "PPD Calculator", icon: Calculator },
   { href: "/daily-rounds", label: "Daily Rounds", icon: CheckSquare },
+  { href: "/task-management", label: "Task Management", icon: ListTodo },
   { href: "/schedule-import", label: "Schedule Import", icon: Upload },
   { href: "/survey-prep", label: "Survey Prep", icon: Shield },
   { href: "/calendar", label: "Calendar", icon: Calendar },
@@ -197,34 +199,9 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
     loadChats();
   }, [loadProfile, loadChats]);
 
-  // Create new chat
-  const createNewChat = async () => {
-    if (!isAuthenticated) return;
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-
-      const response = await fetch("/api/chats", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ title: "New chat" }),
-      });
-
-      if (response.ok) {
-        const { chat } = await response.json();
-        if (chat?.id) {
-          router.push(`/chat/${chat.id}`);
-        }
-      }
-    } catch (error) {
-      console.warn("Failed to create new chat:", error);
-      const chatId = crypto.randomUUID();
-      router.push(`/chat/${chatId}`);
-    }
+  // Create new chat - go to home page
+  const createNewChat = () => {
+    router.push('/');
   };
 
   // Edit chat title
