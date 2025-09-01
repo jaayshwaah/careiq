@@ -511,57 +511,57 @@ export default function PPDCalculatorPage() {
           <h2 className="text-lg font-semibold mb-4">Enter Daily Staffing Data</h2>
           <form onSubmit={handleManualSubmit} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Date</label>
+              <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">Date</label>
               <input
                 type="date"
                 value={manualData.date}
                 onChange={(e) => setManualData({...manualData, date: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Census</label>
+              <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">Census</label>
               <input
                 type="number"
                 min="1"
                 value={manualData.census || ''}
                 onChange={(e) => setManualData({...manualData, census: parseInt(e.target.value) || 0})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">RN Hours</label>
+              <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">RN Hours</label>
               <input
                 type="number"
                 step="0.25"
                 min="0"
                 value={manualData.rn_hours || ''}
                 onChange={(e) => setManualData({...manualData, rn_hours: parseFloat(e.target.value) || 0})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">LPN Hours</label>
+              <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">LPN Hours</label>
               <input
                 type="number"
                 step="0.25"
                 min="0"
                 value={manualData.lpn_hours || ''}
                 onChange={(e) => setManualData({...manualData, lpn_hours: parseFloat(e.target.value) || 0})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">CNA Hours</label>
+              <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">CNA Hours</label>
               <input
                 type="number"
                 step="0.25"
                 min="0"
                 value={manualData.cna_hours || ''}
                 onChange={(e) => setManualData({...manualData, cna_hours: parseFloat(e.target.value) || 0})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               />
             </div>
             <div className="flex items-end">
@@ -662,12 +662,12 @@ export default function PPDCalculatorPage() {
           
           <form onSubmit={handleFileUpload} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Select CSV File</label>
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Select CSV File</label>
               <input
                 type="file"
                 accept=".csv"
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 required
               />
             </div>
@@ -895,21 +895,21 @@ export default function PPDCalculatorPage() {
         {/* Date Range Filter */}
         <div className="flex gap-4 mb-6">
           <div>
-            <label className="block text-sm font-medium mb-1">From Date</label>
+            <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">From Date</label>
             <input
               type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
-              className="px-3 py-2 border border-gray-300 rounded-md"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">To Date</label>
+            <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">To Date</label>
             <input
               type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
-              className="px-3 py-2 border border-gray-300 rounded-md"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
         </div>

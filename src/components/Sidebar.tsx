@@ -495,15 +495,6 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                       <span>Daily Rounds</span>
                     </Link>
                     <Link
-                      href="/schedule-import"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/schedule-import' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <Upload size={12} />
-                      <span>Schedule Import</span>
-                    </Link>
-                    <Link
                       href="/survey-prep"
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
                         pathname === '/survey-prep' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'

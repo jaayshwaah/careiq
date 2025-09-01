@@ -257,8 +257,8 @@ export default function AdminKnowledgePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Knowledge Base Management</h1>
-          <p className="text-gray-600">Manage regulations, policies, and documentation</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Knowledge Base Management</h1>
+          <p className="text-gray-600 dark:text-gray-400">Manage regulations, policies, and documentation</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -270,8 +270,8 @@ export default function AdminKnowledgePage() {
       </div>
 
       {/* Upload Section */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
           <Upload className="h-5 w-5" />
           Upload Documents
         </h2>
@@ -280,7 +280,7 @@ export default function AdminKnowledgePage() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="border rounded-lg px-3 py-2"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
             <option value="">Select Category</option>
             <option value="CMS">CMS Regulations</option>
@@ -293,7 +293,7 @@ export default function AdminKnowledgePage() {
           <select
             value={selectedState}
             onChange={(e) => setSelectedState(e.target.value)}
-            className="border rounded-lg px-3 py-2"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
             <option value="">Select State (Optional)</option>
             <option value="CA">California</option>
@@ -348,13 +348,13 @@ export default function AdminKnowledgePage() {
               placeholder="Search entries..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
             />
           </div>
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="border rounded-lg px-3 py-2"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Categories</option>
             {categories.map(cat => (
@@ -364,7 +364,7 @@ export default function AdminKnowledgePage() {
           <select
             value={selectedState}
             onChange={(e) => setSelectedState(e.target.value)}
-            className="border rounded-lg px-3 py-2"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
             <option value="">All States</option>
             {states.map(state => (
@@ -373,35 +373,35 @@ export default function AdminKnowledgePage() {
           </select>
         </div>
 
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           Showing {filteredEntries.length} of {entries.length} entries
         </p>
       </div>
 
       {/* Entries List */}
-      <div className="bg-white rounded-lg shadow-sm border">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Updated</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Title</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">State</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Updated</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
               {filteredEntries.map((entry) => (
-                <tr key={entry.id} className="hover:bg-gray-50">
+                <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4">
                     <div className="flex items-start gap-3">
-                      <FileText className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                      <FileText className="h-5 w-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                           {entry.title}
                         </p>
-                        <p className="text-sm text-gray-500 line-clamp-2">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
                           {entry.content.slice(0, 120)}...
                         </p>
                         {entry.source_url && (
@@ -409,7 +409,7 @@ export default function AdminKnowledgePage() {
                             href={entry.source_url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1"
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1 mt-1"
                           >
                             <ExternalLink className="h-3 w-3" />
                             Source
@@ -420,33 +420,33 @@ export default function AdminKnowledgePage() {
                   </td>
                   <td className="px-6 py-4">
                     {entry.category && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                         {entry.category}
                       </span>
                     )}
                   </td>
                   <td className="px-6 py-4">
                     {entry.state && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                         {entry.state}
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                     {new Date(entry.last_updated).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => setSelectedEntry(entry)}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                         title="View"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteEntry(entry.id)}
-                        className="text-red-400 hover:text-red-600"
+                        className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400"
                         title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />

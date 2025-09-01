@@ -94,8 +94,8 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-600">System overview and key metrics</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Dashboard</h1>
+        <p className="text-gray-600 dark:text-gray-400">System overview and key metrics</p>
       </div>
 
       {/* Key Metrics */}
@@ -131,8 +131,8 @@ export default function AdminDashboard() {
 
       {/* System Health */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <Server className="h-5 w-5" />
             System Health
           </h2>
@@ -165,8 +165,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <Shield className="h-5 w-5" />
             Admin Quick Actions
           </h2>
@@ -206,15 +206,15 @@ export default function AdminDashboard() {
         </div>
 
         {/* All Pages Navigation */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <ExternalLink className="h-5 w-5" />
             All Application Pages
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Main App Pages */}
             <div>
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Main Pages</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Main Pages</h3>
               <div className="space-y-2">
                 <QuickAction href="/" title="Home" description="Landing page" icon={MessageSquare} />
                 <QuickAction href="/chat/new" title="New Chat" description="Start a new conversation" icon={MessageSquare} />
@@ -225,7 +225,7 @@ export default function AdminDashboard() {
 
             {/* User Features */}
             <div>
-              <h3 className="text-sm font-medium text-gray-600 mb-2">User Features</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">User Features</h3>
               <div className="space-y-2">
                 <QuickAction href="/calendar" title="Calendar" description="Schedule and events" icon={Calendar} />
                 <QuickAction href="/analytics" title="Analytics" description="Usage analytics" icon={BarChart3} />
@@ -236,7 +236,7 @@ export default function AdminDashboard() {
 
             {/* Account & Settings */}
             <div>
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Account</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Account</h3>
               <div className="space-y-2">
                 <QuickAction href="/settings" title="Settings" description="User preferences" icon={Settings} />
                 <QuickAction href="/billing" title="Billing" description="Subscription and billing" icon={CreditCard} />
@@ -247,15 +247,15 @@ export default function AdminDashboard() {
         </div>
 
         {/* API Endpoints for Testing */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <Code className="h-5 w-5" />
             API Endpoints (Testing)
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Core APIs */}
             <div>
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Core APIs</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Core APIs</h3>
               <div className="space-y-2">
                 <QuickAction href="/api/health" title="Health Check" description="System health status" icon={Activity} external />
                 <QuickAction href="/api/profile" title="User Profile" description="Get user profile" icon={Users} external />
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
 
             {/* AI & Processing */}
             <div>
-              <h3 className="text-sm font-medium text-gray-600 mb-2">AI & Processing</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">AI & Processing</h3>
               <div className="space-y-2">
                 <QuickAction href="/api/chat" title="Chat Completion" description="AI chat responses" icon={Zap} external />
                 <QuickAction href="/api/facility-analysis" title="Facility Analysis" description="AI facility analysis" icon={BarChart3} external />
@@ -277,7 +277,7 @@ export default function AdminDashboard() {
 
             {/* Debug & Admin APIs */}
             <div>
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Debug & Admin</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Debug & Admin</h3>
               <div className="space-y-2">
                 <QuickAction href="/api/debug/openrouter" title="OpenRouter Debug" description="Test OpenRouter connection" icon={Bug} external />
                 <QuickAction href="/api/test-openrouter" title="OpenRouter Test" description="OpenRouter API test" icon={Bug} external />
@@ -291,7 +291,7 @@ export default function AdminDashboard() {
 
       {/* Recent Activity */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
+        <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Recent Activity</h2>
         <div className="space-y-3">
           <ActivityItem
             type="info"
@@ -335,12 +335,12 @@ function MetricCard({
   trendUp?: boolean;
 }) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {value} {subtitle && <span className="text-sm text-gray-500">{subtitle}</span>}
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {value} {subtitle && <span className="text-sm text-gray-500 dark:text-gray-400">{subtitle}</span>}
           </p>
           {trend && (
             <p className={`text-xs mt-1 ${trendUp ? 'text-green-600' : 'text-gray-500'}`}>
@@ -348,8 +348,8 @@ function MetricCard({
             </p>
           )}
         </div>
-        <div className="p-3 bg-blue-50 rounded-lg">
-          <Icon className="h-6 w-6 text-blue-600" />
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
         </div>
       </div>
     </div>
@@ -366,14 +366,14 @@ function HealthItem({
   status: 'good' | 'warning' | 'error';
 }) {
   const statusColors = {
-    good: 'text-green-600 bg-green-50',
-    warning: 'text-yellow-600 bg-yellow-50',
-    error: 'text-red-600 bg-red-50'
+    good: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20',
+    warning: 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20',
+    error: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20'
   };
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-600">{label}</span>
+      <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
       <span className={`px-2 py-1 rounded-md text-xs font-medium ${statusColors[status]}`}>
         {value}
       </span>
@@ -401,17 +401,17 @@ function QuickAction({
   return (
     <a
       {...linkProps}
-      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors group"
+      className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group"
     >
-      <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-        <Icon className="h-4 w-4 text-blue-600" />
+      <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition-colors">
+        <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="font-medium text-sm truncate">{title}</p>
-          {external && <ExternalLink className="h-3 w-3 text-gray-400" />}
+          <p className="font-medium text-sm truncate text-gray-900 dark:text-gray-100">{title}</p>
+          {external && <ExternalLink className="h-3 w-3 text-gray-400 dark:text-gray-500" />}
         </div>
-        <p className="text-xs text-gray-500 truncate">{description}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{description}</p>
       </div>
     </a>
   );
@@ -427,18 +427,18 @@ function ActivityItem({
   timestamp: string;
 }) {
   const typeStyles = {
-    info: 'bg-blue-50 text-blue-600',
-    warning: 'bg-yellow-50 text-yellow-600',
-    success: 'bg-green-50 text-green-600',
-    error: 'bg-red-50 text-red-600'
+    info: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
+    warning: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400',
+    success: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400',
+    error: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
   };
 
   return (
     <div className="flex items-start gap-3">
       <div className={`w-2 h-2 rounded-full mt-2 ${typeStyles[type]}`}></div>
       <div className="flex-1">
-        <p className="text-sm text-gray-900">{message}</p>
-        <p className="text-xs text-gray-500">{timestamp}</p>
+        <p className="text-sm text-gray-900 dark:text-gray-100">{message}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{timestamp}</p>
       </div>
     </div>
   );

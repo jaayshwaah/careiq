@@ -223,27 +223,27 @@ export default function ComplianceCalendarPage() {
       {/* Survey Window Calculator */}
       {showSurveyCalculator && (
         <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-900/10 p-6">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Calculator className="text-blue-600" size={20} />
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
+            <Calculator className="text-blue-600 dark:text-blue-400" size={20} />
             Survey Window Calculator
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Last Survey Date</label>
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Last Survey Date</label>
               <input
                 type="date"
                 value={lastSurveyDate}
                 onChange={(e) => setLastSurveyDate(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2"
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Facility State</label>
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Facility State</label>
               <select
                 value={facilityState}
                 onChange={(e) => setFacilityState(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2"
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
                 <option value="">Select State</option>
                 {Object.entries(stateWindows).map(([state, config]) => (
@@ -262,8 +262,8 @@ export default function ComplianceCalendarPage() {
           </button>
           
           {surveyWindow && (
-            <div className="mt-6 p-4 rounded-lg bg-white dark:bg-gray-800 border">
-              <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+            <div className="mt-6 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-lg mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
                 {surveyWindow.isOverdue ? (
                   <AlertTriangle className="text-red-600" size={20} />
                 ) : surveyWindow.isInWindow ? (
@@ -274,12 +274,12 @@ export default function ComplianceCalendarPage() {
                 Survey Window Results
               </h3>
               
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm text-gray-900 dark:text-gray-100">
                 <p><strong>State:</strong> {surveyWindow.state}</p>
                 <p><strong>Last Survey:</strong> {surveyWindow.lastSurveyDate.toLocaleDateString()}</p>
                 <p><strong>Window Opens:</strong> {surveyWindow.windowStart.toLocaleDateString()}</p>
                 <p><strong>Window Closes:</strong> {surveyWindow.windowEnd.toLocaleDateString()}</p>
-                <p className="text-gray-600 text-xs">{surveyWindow.description}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-xs">{surveyWindow.description}</p>
               </div>
               
               <div className={`mt-3 p-3 rounded-md ${
