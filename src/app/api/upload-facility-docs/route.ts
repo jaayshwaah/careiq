@@ -211,7 +211,7 @@ export async function GET(req: NextRequest) {
     const { data: documents, error } = await supa
       .from("knowledge_base")
       .select("id, title, category, metadata, created_at, last_updated")
-      .eq("facility_name", profile.facility_name)
+      .eq("facility_id", profile.facility_id)
       .order("created_at", { ascending: false });
 
     if (error) {

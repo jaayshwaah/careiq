@@ -328,6 +328,7 @@ export async function POST(req: NextRequest) {
         category: 'Facility Policy',
         title: recordToInsert.title,
         content: JSON.stringify(recordToInsert),
+        created_by: user.id,
         metadata: {
           ...recordToInsert.metadata,
           content_type: 'daily_round_template',

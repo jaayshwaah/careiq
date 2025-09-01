@@ -54,7 +54,6 @@ const toolsNavigationItems = [
   { href: "/ppd-calculator", label: "PPD Calculator", icon: Calculator },
   { href: "/daily-rounds", label: "Daily Rounds", icon: CheckSquare },
   { href: "/task-management", label: "Task Management", icon: ListTodo },
-  { href: "/schedule-import", label: "Schedule Import", icon: Upload },
   { href: "/survey-prep", label: "Survey Prep", icon: Shield },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen, adminOnly: true },

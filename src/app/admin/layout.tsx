@@ -109,10 +109,10 @@ export default function AdminLayout({
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600">Checking admin access...</p>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Checking admin access...</p>
         </div>
       </div>
     );
@@ -120,33 +120,33 @@ export default function AdminLayout({
 
   if (!isAuthorized) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
           <Shield className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-gray-900">Access Denied</h1>
-          <p className="text-gray-600">You don't have permission to access this area.</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Access Denied</h1>
+          <p className="text-gray-600 dark:text-gray-400">You don't have permission to access this area.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full bg-gray-50">
+    <div className="flex h-full bg-gray-50 dark:bg-gray-900">
       {/* Admin Sidebar */}
-      <div className="w-64 bg-white shadow-lg border-r flex flex-col">
+      <div className="w-64 bg-white dark:bg-gray-800 shadow-lg border-r border-gray-200 dark:border-gray-700 flex flex-col">
         <div className="flex-shrink-0 p-4 border-b">
           <div className="flex items-center gap-2">
             <Shield className="h-6 w-6 text-blue-600" />
-            <h1 className="text-lg font-semibold">CareIQ Admin</h1>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">CareIQ Admin</h1>
           </div>
-          <p className="text-xs text-gray-500 mt-1">{userEmail}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{userEmail}</p>
         </div>
         
         <nav className="flex-1 p-4 scrollable">
           <div className="mb-4">
             <Link
               href="/"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
               <Home className="h-4 w-4" />
               Back to App
@@ -161,12 +161,12 @@ export default function AdminLayout({
         </nav>
 
         <div className="flex-shrink-0 p-4">
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <span className="text-xs font-medium text-yellow-800">Admin Mode</span>
+              <span className="text-xs font-medium text-yellow-800 dark:text-yellow-400">Admin Mode</span>
             </div>
-            <p className="text-xs text-yellow-700 mt-1">
+            <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
               You have administrative privileges. Use with caution.
             </p>
           </div>
@@ -174,7 +174,7 @@ export default function AdminLayout({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 min-h-0 scrollable">
+      <div className="flex-1 min-h-0 scrollable bg-white dark:bg-gray-900">
         <div className="p-6">
           {children}
         </div>
@@ -195,7 +195,7 @@ function AdminNavItem({
   return (
     <Link
       href={href}
-      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
     >
       <Icon className="h-4 w-4" />
       {label}
