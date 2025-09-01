@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink, MessageSquare, Send, Palette, Upload, Image, Link as LinkIcon, Unlink, RefreshCw, Database, Globe, Server } from "lucide-react";
+import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink, MessageSquare, Send, Palette, Upload, Image, Link as LinkIcon, Unlink, RefreshCw, Database, Globe, Server, Trash2 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
@@ -52,6 +52,11 @@ export default function SettingsPage() {
     meditech: { connected: false, server: '', database: '', lastSync: null }
   });
   const [savingIntegrations, setSavingIntegrations] = useState(false);
+
+  // Facility logo state
+  const [facilityLogoFile, setFacilityLogoFile] = useState<File | null>(null);
+  const [facilityLogoPreview, setFacilityLogoPreview] = useState<string>('');
+  const [savingFacilityLogo, setSavingFacilityLogo] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -310,8 +315,123 @@ export default function SettingsPage() {
     if (profile?.role?.includes('administrator')) {
       loadBrandingSettings();
       loadIntegrations();
+      loadFacilityLogo();
     }
   }, [profile]);
+
+  // Load facility logo
+  const loadFacilityLogo = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const response = await fetch('/api/facility/logo', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok && data.logoUrl) {
+          setFacilityLogoPreview(data.logoUrl);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load facility logo:", error);
+    }
+  };
+
+  // Save facility logo
+  const saveFacilityLogo = async () => {
+    if (!facilityLogoFile) return;
+    
+    setSavingFacilityLogo(true);
+    setMessage(null);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+
+      const formData = new FormData();
+      formData.append('logo', facilityLogoFile);
+
+      const response = await fetch('/api/facility/logo', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.ok) {
+        setMessage({ type: 'success', text: 'Facility logo updated successfully!' });
+        setFacilityLogoFile(null);
+        setFacilityLogoPreview(data.logoUrl);
+      } else {
+        throw new Error(data.error || 'Failed to upload facility logo');
+      }
+      
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to save facility logo' });
+      setTimeout(() => setMessage(null), 5000);
+    } finally {
+      setSavingFacilityLogo(false);
+    }
+  };
+
+  // Remove facility logo
+  const removeFacilityLogo = async () => {
+    if (!confirm('Are you sure you want to remove the facility logo?')) return;
+    
+    setSavingFacilityLogo(true);
+    setMessage(null);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+
+      const response = await fetch('/api/facility/logo', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.ok) {
+        setMessage({ type: 'success', text: 'Facility logo removed successfully!' });
+        setFacilityLogoPreview('');
+        setFacilityLogoFile(null);
+      } else {
+        throw new Error(data.error || 'Failed to remove facility logo');
+      }
+      
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to remove facility logo' });
+      setTimeout(() => setMessage(null), 5000);
+    } finally {
+      setSavingFacilityLogo(false);
+    }
+  };
+
+  // Handle facility logo file change
+  const handleFacilityLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFacilityLogoFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFacilityLogoPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Integration functions
   const loadIntegrations = async () => {
@@ -565,6 +685,110 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+
+          {/* Facility Logo Management - Only for admins */}
+          {profile?.role?.includes('administrator') && (
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Image className="h-5 w-5" />
+                Facility Logo
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Logo Preview */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Current Logo
+                  </label>
+                  <div className="w-32 h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center bg-gray-50 dark:bg-gray-700">
+                    {facilityLogoPreview ? (
+                      <img 
+                        src={facilityLogoPreview} 
+                        alt="Facility logo preview"
+                        className="w-full h-full object-contain rounded-lg"
+                      />
+                    ) : (
+                      <div className="text-center">
+                        <Image className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <span className="text-sm text-gray-500 dark:text-gray-400">No logo uploaded</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Logo Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Upload New Logo
+                  </label>
+                  <div className="space-y-3">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={handleFacilityLogoChange}
+                      className="block w-full text-sm text-gray-500 dark:text-gray-400
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-lg file:border-0
+                        file:text-sm file:font-medium
+                        file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900/20 dark:file:text-blue-400
+                        hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Recommended: 200x200px, max 2MB, JPEG/PNG/WebP format
+                    </p>
+                    
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={saveFacilityLogo}
+                        disabled={!facilityLogoFile || savingFacilityLogo}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-800"
+                      >
+                        {savingFacilityLogo ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            Upload Logo
+                          </>
+                        )}
+                      </button>
+                      
+                      {facilityLogoPreview && (
+                        <button
+                          type="button"
+                          onClick={removeFacilityLogo}
+                          disabled={savingFacilityLogo}
+                          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30 dark:focus:ring-offset-gray-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Remove Logo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Image className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                      Facility Logo Information
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                      This logo will appear in the top-left corner of the sidebar for all users at your facility. 
+                      It replaces the default CareIQ branding and helps create a personalized experience.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
             <p className="text-sm text-yellow-800 dark:text-yellow-300">

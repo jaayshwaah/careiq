@@ -70,6 +70,8 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
+  const [facilityLogo, setFacilityLogo] = useState<string | null>(null);
+  const [facilityName, setFacilityName] = useState<string>("");
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const supabase = getBrowserSupabase();
 
@@ -84,18 +86,27 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
     }
   };
 
-  // Load user profile
+  // Load user profile and facility logo
   const loadProfile = useCallback(async () => {
     if (!user?.id) return;
     try {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("user_id, role, is_admin, email, full_name")
+        .select("user_id, role, is_admin, email, full_name, facility_name, facility_logo_url")
         .eq("user_id", user.id)
         .single();
+      
       setUserProfile(profile);
       
-      // Load branding settings if admin
+      // Set facility information
+      if (profile?.facility_name) {
+        setFacilityName(profile.facility_name);
+      }
+      if (profile?.facility_logo_url) {
+        setFacilityLogo(profile.facility_logo_url);
+      }
+      
+      // Load branding settings if admin (fallback for custom branding)
       if (profile?.role?.includes('administrator')) {
         try {
           const { data: branding } = await supabase
@@ -312,23 +323,25 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
                   : 'linear-gradient(to bottom right, #3b82f6, #2563eb)'
               }}
             >
-              {brandingSettings?.logo_url ? (
+              {facilityLogo || brandingSettings?.logo_url ? (
                 <img 
-                  src={brandingSettings.logo_url} 
-                  alt="Company logo" 
+                  src={facilityLogo || brandingSettings.logo_url} 
+                  alt={facilityName ? `${facilityName} logo` : "Company logo"} 
                   className="w-full h-full object-contain rounded-lg"
                 />
               ) : (
                 <span className="text-white font-semibold text-sm">
-                  {brandingSettings?.company_name 
-                    ? brandingSettings.company_name.charAt(0).toUpperCase() 
-                    : 'CIQ'}
+                  {facilityName 
+                    ? facilityName.charAt(0).toUpperCase() 
+                    : brandingSettings?.company_name 
+                      ? brandingSettings.company_name.charAt(0).toUpperCase() 
+                      : 'CIQ'}
                 </span>
               )}
             </div>
             {!isCollapsed && (
               <span className="font-semibold text-gray-900 dark:text-white text-lg">
-                {brandingSettings?.company_name || 'CareIQ'}
+                {facilityName || brandingSettings?.company_name || 'CareIQ'}
               </span>
             )}
           </div>
