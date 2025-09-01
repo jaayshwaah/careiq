@@ -69,10 +69,39 @@ export default function DailyRoundsPage() {
         @media print {
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
-          .print-area { position: absolute; left: 0; top: 0; width: 100% !important; }
+          .print-area { 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100% !important;
+            font-size: 11px !important;
+            line-height: 1.3 !important;
+          }
           .no-print { display: none !important; }
           .print-break-inside-avoid { break-inside: avoid; }
-          @page { margin: 0.5in; }
+          
+          /* Compact spacing for print */
+          .print-area h1, .print-area h2, .print-area h3 { 
+            font-size: 14px !important; 
+            margin: 8px 0 4px 0 !important;
+          }
+          .print-area .bg-white, .print-area .bg-gray-800 { 
+            background: transparent !important; 
+            border: 1px solid #ccc !important;
+            margin: 4px 0 !important;
+            padding: 8px !important;
+          }
+          .print-area .space-y-6 > * + * { margin-top: 8px !important; }
+          .print-area .space-y-4 > * + * { margin-top: 4px !important; }
+          .print-area .p-6 { padding: 6px !important; }
+          .print-area .p-4 { padding: 4px !important; }
+          .print-area .mb-4 { margin-bottom: 4px !important; }
+          .print-area .mt-2 { margin-top: 2px !important; }
+          
+          @page { 
+            margin: 0.3in; 
+            size: letter;
+          }
         }
       </style>
     `;
@@ -472,18 +501,6 @@ export default function DailyRoundsPage() {
                   </div>
                   
                   <div className="flex items-end gap-2">
-                    <div className="flex-1">
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Minutes</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="120"
-                        value={10}
-                        onChange={() => {}}
-                        className="hidden"
-                        className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
                     <button
                       onClick={() => removeCustomItem(index)}
                       className="p-2 text-red-600 hover:text-red-800 rounded"
@@ -715,7 +732,6 @@ export default function DailyRoundsPage() {
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400">
                         <div className="flex justify-between">
                           <span>Completed by: _________________</span>
-                          <span>Time: ________</span>
                         </div>
                       </div>
                     </div>

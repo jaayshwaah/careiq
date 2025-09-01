@@ -245,9 +245,11 @@ Return a JSON response with:
 
   } catch (error: any) {
     console.error("PDF generation error:", error);
+    console.error("PDF generation error stack:", error.stack);
+    console.error("PDF generation error details:", JSON.stringify(error, null, 2));
     return NextResponse.json({ 
       ok: false, 
-      error: error.message || "Failed to generate PDF" 
+      error: `PDF generation failed: ${error.message || error.toString()}` 
     }, { status: 500 });
   }
 }
