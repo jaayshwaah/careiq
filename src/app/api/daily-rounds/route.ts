@@ -328,12 +328,12 @@ export async function POST(req: NextRequest) {
         category: 'Facility Policy',
         title: recordToInsert.title,
         content: JSON.stringify(recordToInsert),
-        created_by: user.id,
         metadata: {
           ...recordToInsert.metadata,
           content_type: 'daily_round_template',
           unit: recordToInsert.unit,
           shift: recordToInsert.shift,
+          created_by: user.id, // Move created_by to metadata instead
           facility_id: profile?.facility_id,
           user_id: user.id
         },
