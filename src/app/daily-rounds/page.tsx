@@ -81,6 +81,8 @@ export default function DailyRoundsPage() {
   const [aiCustomize, setAiCustomize] = useState(false);
   const [specialFocusAreas, setSpecialFocusAreas] = useState<string[]>([]);
   const [customItems, setCustomItems] = useState<CustomRoundItem[]>([]);
+  const [includeDate, setIncludeDate] = useState(false);
+  const [customDate, setCustomDate] = useState('');
 
   const templateOptions = [
     { value: 'unit_manager', label: 'Unit Manager', description: 'Comprehensive facility oversight and compliance' },
@@ -190,44 +192,51 @@ export default function DailyRoundsPage() {
   };
 
   const generatePDF = async (round: DailyRound) => {
-    // Generate PDF content
-    const pdfContent = `
-DAILY ROUND CHECKLIST
-${round.title}
-Generated: ${new Date().toLocaleDateString()}
+    try {
+      setLoading(true);
+      
+      // Send the round data to AI for PDF generation
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Not authenticated");
+      }
 
-Unit: ${round.unit}
-Shift: ${round.shift}
-Estimated Time: ${Math.round(round.metadata.estimated_total_time / 60)} hours ${round.metadata.estimated_total_time % 60} minutes
+      const response = await fetch('/api/daily-rounds/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ 
+          roundData: round,
+          format: 'single-page',
+          includeDate,
+          customDate: customDate || new Date().toLocaleDateString()
+        })
+      });
 
-${round.items.map((item, index) => `
-${index + 1}. [  ] ${item.task}
-   Category: ${item.category}
-   Priority: ${item.priority.toUpperCase()}
-   Time: ${item.estimated_minutes} min
-   ${item.compliance_related ? '⚠️ COMPLIANCE RELATED' : ''}
-   ${item.notes ? `Notes: ${item.notes}` : ''}
-   
-   Completed by: _________________ Time: _______
-   
-`).join('')}
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
 
-Staff Signature: _____________________ Date: __________
-
-Notes/Issues Identified:
-_________________________________________________
-_________________________________________________
-_________________________________________________
-`;
-
-    // Create and download PDF
-    const blob = new Blob([pdfContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `daily-rounds-${round.unit}-${round.shift}-${new Date().toISOString().split('T')[0]}.txt`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      // Get the PDF blob
+      const pdfBlob = await response.blob();
+      
+      // Download the PDF
+      const url = window.URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `daily-rounds-${round.unit}-${round.shift}-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderCreateTab = () => (
@@ -294,6 +303,42 @@ _________________________________________________
               <option value="medium">Medium Acuity</option>
               <option value="high">High Acuity</option>
             </select>
+          </div>
+        </div>
+        
+        {/* Date Option */}
+        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3">PDF Options</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="includeDate"
+                checked={includeDate}
+                onChange={(e) => setIncludeDate(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-600"
+              />
+              <label htmlFor="includeDate" className="text-sm text-gray-900 dark:text-gray-100">
+                Include specific date on PDF (instead of "Generated" date)
+              </label>
+            </div>
+            {includeDate && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Date for Rounds
+                </label>
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  placeholder={new Date().toLocaleDateString()}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Leave empty to use today's date ({new Date().toLocaleDateString()})
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
