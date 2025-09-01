@@ -129,6 +129,23 @@ export default function DailyRoundsPage() {
   const [aiCustomize, setAiCustomize] = useState(false);
   const [specialFocusAreas, setSpecialFocusAreas] = useState<string[]>([]);
   const [customItems, setCustomItems] = useState<CustomRoundItem[]>([]);
+
+  // Load custom items from localStorage on component mount
+  useEffect(() => {
+    const savedCustomItems = localStorage.getItem('dailyRoundCustomItems');
+    if (savedCustomItems) {
+      try {
+        setCustomItems(JSON.parse(savedCustomItems));
+      } catch (error) {
+        console.error('Failed to load saved custom items:', error);
+      }
+    }
+  }, []);
+
+  // Save custom items to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('dailyRoundCustomItems', JSON.stringify(customItems));
+  }, [customItems]);
   const [includeDate, setIncludeDate] = useState(false);
   const [customDate, setCustomDate] = useState('');
 

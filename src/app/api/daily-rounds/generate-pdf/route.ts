@@ -34,9 +34,11 @@ interface DailyRound {
 
 export async function POST(req: NextRequest) {
   try {
+    console.log("PDF generation started");
     const authHeader = req.headers.get("authorization") || undefined;
     const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
     const supa = supabaseServerWithAuth(accessToken);
+    console.log("Auth setup complete");
 
     const { data: { user }, error: userError } = await supa.auth.getUser();
     if (userError || !user) {
@@ -44,11 +46,14 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    console.log("Request body parsed:", JSON.stringify(body, null, 2));
     const { roundData, format = 'single-page', includeDate = false, customDate = null } = body;
 
     if (!roundData || !roundData.items) {
+      console.log("Invalid round data:", roundData);
       return NextResponse.json({ ok: false, error: "Invalid round data" }, { status: 400 });
     }
+    console.log("Round data validation passed");
 
     // Generate optimized PDF layout using AI
     const provider = providerFromEnv();
