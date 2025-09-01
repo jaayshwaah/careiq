@@ -66,7 +66,6 @@ Title: ${roundData.title}
 Unit: ${roundData.unit}
 Shift: ${roundData.shift}
 Facility: ${roundData.metadata.facility_name}
-Estimated Time: ${Math.round(roundData.metadata.estimated_total_time / 60)} hours ${roundData.metadata.estimated_total_time % 60} minutes
 
 Items (${roundData.items.length} total):
 ${roundData.items.map((item: RoundItem, index: number) => `
