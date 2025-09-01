@@ -16,7 +16,6 @@ interface RoundItem {
   frequency: string;
   priority: 'high' | 'medium' | 'low';
   compliance_related: boolean;
-  estimated_minutes: number;
   notes?: string;
 }
 
@@ -30,7 +29,6 @@ interface DailyRound {
   metadata: {
     facility_name: string;
     template_type: string;
-    estimated_total_time: number;
   };
 }
 
@@ -102,7 +100,7 @@ Return a JSON response with:
         sections: [
           {
             type: "header",
-            content: `DAILY ROUND CHECKLIST\n${roundData.title}\nGenerated: ${new Date().toLocaleDateString()}\nUnit: ${roundData.unit} | Shift: ${roundData.shift}\nEstimated Time: ${Math.round(roundData.metadata.estimated_total_time / 60)}h ${roundData.metadata.estimated_total_time % 60}m`
+            content: `DAILY ROUND CHECKLIST\n${roundData.title}\nGenerated: ${new Date().toLocaleDateString()}\nUnit: ${roundData.unit} | Shift: ${roundData.shift}`
           },
           {
             type: "items",

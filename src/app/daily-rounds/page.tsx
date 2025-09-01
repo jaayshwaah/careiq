@@ -478,8 +478,9 @@ export default function DailyRoundsPage() {
                         type="number"
                         min="1"
                         max="120"
-                        value={item.estimated_minutes}
-                        onChange={(e) => updateCustomItem(index, 'estimated_minutes', parseInt(e.target.value) || 10)}
+                        value={10}
+                        onChange={() => {}}
+                        className="hidden"
                         className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       />
                     </div>
@@ -707,7 +708,6 @@ export default function DailyRoundsPage() {
                           )}
                           
                           <span className="text-xs">
-                            {item.estimated_minutes} min
                           </span>
                         </div>
                       </div>
