@@ -34,11 +34,9 @@ interface DailyRound {
 
 export async function POST(req: NextRequest) {
   try {
-    console.log("PDF generation started");
     const authHeader = req.headers.get("authorization") || undefined;
     const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
     const supa = supabaseServerWithAuth(accessToken);
-    console.log("Auth setup complete");
 
     const { data: { user }, error: userError } = await supa.auth.getUser();
     if (userError || !user) {
@@ -46,14 +44,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    console.log("Request body parsed:", JSON.stringify(body, null, 2));
     const { roundData, format = 'single-page', includeDate = false, customDate = null } = body;
 
     if (!roundData || !roundData.items) {
-      console.log("Invalid round data:", roundData);
       return NextResponse.json({ ok: false, error: "Invalid round data" }, { status: 400 });
     }
-    console.log("Round data validation passed");
 
     // Generate optimized PDF layout using AI
     const provider = providerFromEnv();
@@ -142,17 +137,17 @@ Return a JSON response with:
     // Header section
     const headerSection = pdfLayout.sections.find((s: any) => s.type === 'header');
     if (headerSection) {
-      doc.fontSize(16).font('Helvetica-Bold').text('DAILY ROUND CHECKLIST', 50, currentY, { align: 'center' });
+      doc.fontSize(16).text('DAILY ROUND CHECKLIST', 50, currentY, { align: 'center' });
       currentY += 25;
       
-      doc.fontSize(14).font('Helvetica-Bold').text(roundData.title, 50, currentY, { align: 'center' });
+      doc.fontSize(14).text(roundData.title, 50, currentY, { align: 'center' });
       currentY += 20;
       
       const dateText = includeDate 
         ? `Date: ${customDate || new Date().toLocaleDateString()}` 
         : `Generated: ${new Date().toLocaleDateString()}`;
       
-      doc.fontSize(10).font('Helvetica')
+      doc.fontSize(10)
         .text(dateText, 50, currentY)
         .text(`Unit: ${roundData.unit}`, 200, currentY)
         .text(`Shift: ${roundData.shift}`, 350, currentY);
@@ -177,7 +172,7 @@ Return a JSON response with:
       }
       
       // Category header
-      doc.fontSize(12).font('Helvetica-Bold').text(category, 50, currentY);
+      doc.fontSize(12).text(category, 50, currentY);
       currentY += 15;
       
       (items as RoundItem[]).forEach((item: RoundItem) => {
@@ -186,7 +181,7 @@ Return a JSON response with:
         }
         
         const fontSize = currentY > pageHeight - 80 ? 7 : 9;
-        doc.fontSize(fontSize).font('Helvetica');
+        doc.fontSize(fontSize);
         
         // Checkbox and task
         doc.text('☐', 60, currentY)
@@ -209,7 +204,7 @@ Return a JSON response with:
 
     // Footer section
     if (currentY < pageHeight - 60) {
-      doc.fontSize(10).font('Helvetica-Bold').text('Staff Signature: _____________________ Date: __________', 50, currentY);
+      doc.fontSize(10).text('Staff Signature: _____________________ Date: __________', 50, currentY);
       currentY += 25;
       
       doc.text('Notes/Issues Identified:', 50, currentY);
@@ -250,11 +245,9 @@ Return a JSON response with:
 
   } catch (error: any) {
     console.error("PDF generation error:", error);
-    console.error("PDF generation error stack:", error.stack);
-    console.error("PDF generation error details:", JSON.stringify(error, null, 2));
     return NextResponse.json({ 
       ok: false, 
-      error: `PDF generation failed: ${error.message || error.toString()}` 
+      error: error.message || "Failed to generate PDF" 
     }, { status: 500 });
   }
 }
