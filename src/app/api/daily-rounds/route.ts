@@ -325,20 +325,24 @@ export async function POST(req: NextRequest) {
       .from("knowledge_base")
       .insert({
         facility_id: profile?.facility_id,
+        facility_name: profile?.facility_name,
+        state: profile?.facility_state,
         category: 'Facility Policy',
         title: recordToInsert.title,
         content: JSON.stringify(recordToInsert),
+        source_url: null,
+        last_updated: new Date().toISOString(),
+        embedding: null, // No embedding needed for daily rounds
         metadata: {
           ...recordToInsert.metadata,
           content_type: 'daily_round_template',
           unit: recordToInsert.unit,
           shift: recordToInsert.shift,
-          created_by: user.id, // Move created_by to metadata instead
+          created_by: user.id,
           facility_id: profile?.facility_id,
-          user_id: user.id
-        },
-        source_url: null,
-        last_updated: new Date().toISOString()
+          user_id: user.id,
+          template_type: recordToInsert.metadata.template_type
+        }
       })
       .select()
       .single();
