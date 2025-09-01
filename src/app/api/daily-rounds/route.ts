@@ -11,9 +11,7 @@ interface RoundItem {
   category: string;
   task: string;
   frequency: 'hourly' | 'every_2_hours' | 'every_4_hours' | 'every_8_hours' | 'daily' | 'weekly';
-  priority: 'high' | 'medium' | 'low';
   compliance_related: boolean;
-  estimated_minutes: number;
   notes?: string;
 }
 
@@ -28,7 +26,6 @@ interface DailyRound {
   metadata: {
     facility_name: string;
     template_type: string;
-    estimated_total_time: number;
   };
 }
 
@@ -37,47 +34,47 @@ const defaultRoundTemplates = {
     {
       category: 'Safety & Environment',
       items: [
-        { task: 'Check emergency equipment functionality', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Inspect call bell system operation', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 10 },
-        { task: 'Verify fire safety equipment', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 10 },
-        { task: 'Check hallway lighting and safety', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Inspect resident room safety', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 30 }
+        { task: 'Check emergency equipment functionality', frequency: 'daily', compliance_related: true },
+        { task: 'Inspect call bell system operation', frequency: 'daily', compliance_related: true },
+        { task: 'Verify fire safety equipment', frequency: 'daily', compliance_related: true },
+        { task: 'Check hallway lighting and safety', frequency: 'daily', compliance_related: true },
+        { task: 'Inspect resident room safety', frequency: 'daily', compliance_related: true }
       ]
     },
     {
       category: 'Infection Control',
       items: [
-        { task: 'Verify hand sanitizer availability', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 10 },
-        { task: 'Check isolation precautions compliance', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 },
-        { task: 'Review housekeeping standards', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Monitor PPE supply and usage', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 10 }
+        { task: 'Verify hand sanitizer availability', frequency: 'daily', compliance_related: true},
+        { task: 'Check isolation precautions compliance', frequency: 'daily', compliance_related: true},
+        { task: 'Review housekeeping standards', frequency: 'daily', compliance_related: true},
+        { task: 'Monitor PPE supply and usage', frequency: 'daily', compliance_related: true}
       ]
     },
     {
       category: 'Resident Care Quality',
       items: [
-        { task: 'Review resident care plans', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 45 },
-        { task: 'Check medication administration accuracy', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 30 },
-        { task: 'Monitor pain management protocols', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 },
-        { task: 'Assess resident dignity and privacy', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 25 }
+        { task: 'Review resident care plans', frequency: 'daily', compliance_related: true},
+        { task: 'Check medication administration accuracy', frequency: 'daily', compliance_related: true},
+        { task: 'Monitor pain management protocols', frequency: 'daily', compliance_related: true},
+        { task: 'Assess resident dignity and privacy', frequency: 'daily', compliance_related: true}
       ]
     },
     {
       category: 'Staffing & Operations',
       items: [
-        { task: 'Verify adequate staffing levels', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Review staff competency compliance', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 20 },
-        { task: 'Check staff break coverage', frequency: 'daily', priority: 'medium', compliance_related: false, estimated_minutes: 10 },
-        { task: 'Monitor overtime and scheduling', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 15 }
+        { task: 'Verify adequate staffing levels', frequency: 'daily', compliance_related: true},
+        { task: 'Review staff competency compliance', frequency: 'daily', compliance_related: true},
+        { task: 'Check staff break coverage', frequency: 'daily', compliance_related: false},
+        { task: 'Monitor overtime and scheduling', frequency: 'daily', compliance_related: true}
       ]
     },
     {
       category: 'Documentation & Compliance',
       items: [
-        { task: 'Review incident reports and follow-ups', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 30 },
-        { task: 'Check medical record completeness', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 25 },
-        { task: 'Verify physician order implementation', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 },
-        { task: 'Review quality indicator metrics', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 15 }
+        { task: 'Review incident reports and follow-ups', frequency: 'daily', compliance_related: true},
+        { task: 'Check medical record completeness', frequency: 'daily', compliance_related: true},
+        { task: 'Verify physician order implementation', frequency: 'daily', compliance_related: true},
+        { task: 'Review quality indicator metrics', frequency: 'daily', compliance_related: true}
       ]
     }
   ],
@@ -85,28 +82,28 @@ const defaultRoundTemplates = {
     {
       category: 'Patient Assessment',
       items: [
-        { task: 'Review 24-hour report and concerns', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 },
-        { task: 'Assess high-risk residents', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 30 },
-        { task: 'Check residents with recent changes', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 25 },
-        { task: 'Monitor pain assessment compliance', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 }
+        { task: 'Review 24-hour report and concerns', frequency: 'daily', compliance_related: true},
+        { task: 'Assess high-risk residents', frequency: 'daily', compliance_related: true},
+        { task: 'Check residents with recent changes', frequency: 'daily', compliance_related: true},
+        { task: 'Monitor pain assessment compliance', frequency: 'daily', compliance_related: true}
       ]
     },
     {
       category: 'Medication Management',
       items: [
-        { task: 'Verify medication administration times', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 },
-        { task: 'Check controlled substance records', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Review PRN medication usage', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Monitor medication storage compliance', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 10 }
+        { task: 'Verify medication administration times', frequency: 'daily', compliance_related: true},
+        { task: 'Check controlled substance records', frequency: 'daily', compliance_related: true},
+        { task: 'Review PRN medication usage', frequency: 'daily', compliance_related: true},
+        { task: 'Monitor medication storage compliance', frequency: 'daily', compliance_related: true}
       ]
     },
     {
       category: 'Staff Supervision',
       items: [
-        { task: 'Monitor CNA task completion', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 25 },
-        { task: 'Review delegation appropriateness', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Check staff break scheduling', frequency: 'daily', priority: 'medium', compliance_related: false, estimated_minutes: 10 },
-        { task: 'Address staff concerns or questions', frequency: 'daily', priority: 'medium', compliance_related: false, estimated_minutes: 20 }
+        { task: 'Monitor CNA task completion', frequency: 'daily', compliance_related: true},
+        { task: 'Review delegation appropriateness', frequency: 'daily', compliance_related: true},
+        { task: 'Check staff break scheduling', frequency: 'daily', compliance_related: false},
+        { task: 'Address staff concerns or questions', frequency: 'daily', compliance_related: false}
       ]
     }
   ],
@@ -114,28 +111,28 @@ const defaultRoundTemplates = {
     {
       category: 'Operations Overview',
       items: [
-        { task: 'Review daily census and occupancy', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 10 },
-        { task: 'Check overall facility safety status', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Review staffing adequacy across departments', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Monitor facility-wide compliance issues', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 }
+        { task: 'Review daily census and occupancy', frequency: 'daily', compliance_related: true},
+        { task: 'Check overall facility safety status', frequency: 'daily', compliance_related: true},
+        { task: 'Review staffing adequacy across departments', frequency: 'daily', compliance_related: true},
+        { task: 'Monitor facility-wide compliance issues', frequency: 'daily', compliance_related: true}
       ]
     },
     {
       category: 'Quality & Safety',
       items: [
-        { task: 'Check incident report summary', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 10 },
-        { task: 'Review infection control status', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Monitor resident satisfaction concerns', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Assess overall care quality indicators', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 }
+        { task: 'Check incident report summary', frequency: 'daily', compliance_related: true},
+        { task: 'Review infection control status', frequency: 'daily', compliance_related: true},
+        { task: 'Monitor resident satisfaction concerns', frequency: 'daily', compliance_related: true},
+        { task: 'Assess overall care quality indicators', frequency: 'daily', compliance_related: true}
       ]
     },
     {
       category: 'Administrative Tasks',
       items: [
-        { task: 'Review department communications', frequency: 'daily', priority: 'medium', compliance_related: false, estimated_minutes: 15 },
-        { task: 'Address urgent facility issues', frequency: 'daily', priority: 'high', compliance_related: false, estimated_minutes: 30 },
-        { task: 'Check regulatory updates and notices', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 10 },
-        { task: 'Plan and prioritize upcoming tasks', frequency: 'daily', priority: 'medium', compliance_related: false, estimated_minutes: 20 }
+        { task: 'Review department communications', frequency: 'daily', compliance_related: false},
+        { task: 'Address urgent facility issues', frequency: 'daily', compliance_related: false},
+        { task: 'Check regulatory updates and notices', frequency: 'daily', compliance_related: true},
+        { task: 'Plan and prioritize upcoming tasks', frequency: 'daily', compliance_related: false}
       ]
     }
   ],
@@ -143,19 +140,19 @@ const defaultRoundTemplates = {
     {
       category: 'Quality & Compliance',
       items: [
-        { task: 'Review quality indicator reports', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 30 },
-        { task: 'Check regulatory compliance status', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 25 },
-        { task: 'Review incident trend analysis', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 },
-        { task: 'Monitor survey readiness status', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 }
+        { task: 'Review quality indicator reports', frequency: 'daily', compliance_related: true},
+        { task: 'Check regulatory compliance status', frequency: 'daily', compliance_related: true},
+        { task: 'Review incident trend analysis', frequency: 'daily', compliance_related: true},
+        { task: 'Monitor survey readiness status', frequency: 'daily', compliance_related: true}
       ]
     },
     {
       category: 'Staffing Management',
       items: [
-        { task: 'Review staffing adequacy metrics', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Check overtime and agency usage', frequency: 'daily', priority: 'medium', compliance_related: true, estimated_minutes: 15 },
-        { task: 'Monitor staff training compliance', frequency: 'daily', priority: 'high', compliance_related: true, estimated_minutes: 20 },
-        { task: 'Address staffing concerns', frequency: 'daily', priority: 'high', compliance_related: false, estimated_minutes: 25 }
+        { task: 'Review staffing adequacy metrics', frequency: 'daily', compliance_related: true},
+        { task: 'Check overtime and agency usage', frequency: 'daily', compliance_related: true},
+        { task: 'Monitor staff training compliance', frequency: 'daily', compliance_related: true},
+        { task: 'Address staffing concerns', frequency: 'daily', compliance_related: false}
       ]
     }
   ]
@@ -229,9 +226,7 @@ export async function POST(req: NextRequest) {
         category: item.category || 'Custom',
         task: item.task,
         frequency: item.frequency || 'daily',
-        priority: item.priority || 'medium',
         compliance_related: item.compliance_related || false,
-        estimated_minutes: item.estimated_minutes || 10,
         notes: item.notes
       });
     });
@@ -254,9 +249,7 @@ export async function POST(req: NextRequest) {
             category: item.category,
             task: item.task,
             frequency: item.frequency,
-            priority: item.priority,
             compliance_related: item.compliance_related,
-            estimated_minutes: item.estimated_minutes,
             notes: item.notes
           });
         });
@@ -266,10 +259,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Calculate total estimated time
-    const totalEstimatedMinutes = roundItems.reduce((sum, item) => sum + item.estimated_minutes, 0);
-    
-    console.log(`Final round items count: ${roundItems.length}, total minutes: ${totalEstimatedMinutes}`);
+    console.log(`Final round items count: ${roundItems.length}`);
 
     // Ensure we have at least some items - add fallback if empty
     if (roundItems.length === 0) {
@@ -307,8 +297,7 @@ export async function POST(req: NextRequest) {
       items: roundItems,
       metadata: {
         facility_name: profile.facility_name,
-        template_type,
-        estimated_total_time: totalEstimatedMinutes
+        template_type
       }
     };
 
@@ -366,9 +355,7 @@ export async function POST(req: NextRequest) {
       },
       summary: {
         total_items: roundItems.length,
-        compliance_items: roundItems.filter(item => item.compliance_related).length,
-        estimated_time_hours: Math.round(totalEstimatedMinutes / 60 * 10) / 10,
-        estimated_time_minutes: totalEstimatedMinutes
+        compliance_items: roundItems.filter(item => item.compliance_related).length
       }
     });
 
@@ -475,30 +462,61 @@ async function generateAICustomizations(
   specialFocusAreas: string[],
   profile: any
 ): Promise<RoundItem[]> {
-  const systemPrompt = `You are CareIQ, an AI assistant specialized in nursing home operations and compliance. 
-Generate additional daily round checklist items based on the specific needs and focus areas provided.
+  const currentDate = new Date().toLocaleDateString();
+  const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  
+  const systemPrompt = `You are a CMS compliance expert with comprehensive knowledge of 42 CFR Part 483 nursing home regulations, F-tags, and current healthcare standards. Generate dynamic, regulation-specific daily round checklist items that vary based on current conditions and requirements.
 
-Consider:
-- Regulatory requirements for nursing homes
-- Best practices for ${templateType.replace('_', ' ')} role
-- Unit-specific needs (${unit})
-- Shift-specific considerations (${shift})
-- Resident acuity level (${residentAcuity})
-- Special focus areas: ${specialFocusAreas.join(', ')}
-- State-specific requirements for ${profile.facility_state}
+CONTEXT (${currentDate}):
+- Role: ${templateType.replace('_', ' ')}
+- Unit: ${unit} (${residentAcuity} acuity)
+- Shift: ${shift}
+- Facility: ${profile?.facility_name || 'Nursing facility'} in ${profile?.facility_state || 'Unknown state'}
+- Focus Areas: ${specialFocusAreas.join(', ')}
+- Current Period: ${currentMonth}
 
-Return a JSON array of additional round items with this format:
+GENERATE 4-6 UNIQUE, SPECIFIC ITEMS that:
+✅ Reference specific CMS F-tags and regulations
+✅ Vary based on current date/season
+✅ Address ${profile?.facility_state || 'state'}-specific requirements
+✅ Reflect ${shift} shift priorities and ${residentAcuity} acuity needs
+✅ Include emerging healthcare trends and recent CMS updates
+✅ Go beyond standard generic tasks
+
+REGULATORY FOCUS GUIDANCE:
+${specialFocusAreas.map(area => {
+  const regulations = {
+    'Infection Control': 'F880 (Infection Prevention), CDC Guidelines, OSHA Bloodborne Standards - Focus on current outbreak prevention, seasonal flu protocols',
+    'Fall Prevention': 'F689 (Quality of Care), F656 (Accident Prevention) - Include mobility assessments, environmental hazards, post-fall analysis',
+    'Medication Safety': 'F758 (Pharmacy Services), F760 (Drug Regimen Review) - DEA compliance, controlled substance monitoring, timing accuracy',
+    'Wound Care': 'F686 (Pressure Ulcer Prevention), F314 (Skin Integrity) - Include staging protocols, nutrition correlation, repositioning schedules',
+    'Dementia Care': 'F692 (Dementia-Specific Requirements), F584 (Person-Centered Care) - Behavioral interventions, environment modifications',
+    'End-of-Life Care': 'F707 (Life Safety), F583 (Advance Directives) - Comfort care protocols, family communication, hospice coordination',
+    'Nutritional Support': 'F812 (Food Service), F692 (Nutrition) - Include hydration monitoring, therapeutic diets, swallowing assessments',
+    'Mental Health': 'F740 (Mental Health Services), F744 (Psychotropic Medications) - Depression screening, social engagement, medication monitoring',
+    'Physical Therapy': 'F679 (Rehabilitation Services) - Medicare Part A/B compliance, progress documentation, discharge planning',
+    'Emergency Preparedness': 'F838 (Emergency Preparedness Plan) - Include seasonal preparedness, equipment checks, staff training verification',
+    'Family Communication': 'F622 (Right to Information), F572 (Grievance Process) - Communication documentation, care plan updates'
+  };
+  return `${area}: ${regulations[area] || 'Relevant CMS quality measures and compliance requirements'}`;
+}).join('\n')}
+
+EXAMPLES OF DYNAMIC, REGULATION-SPECIFIC TASKS:
+- "Audit F-880 hand hygiene compliance during medication pass, documenting staff adherence rates"
+- "Verify F-689 fall risk reassessment completion for residents with condition changes in past 48 hours"
+- "Review F-758 controlled substance administration logs for timing compliance and witness documentation"
+- "Document F-686 pressure ulcer prevention interventions for high-risk residents per care plan requirements"
+
+Return ONLY a JSON array with this format (NO priority or estimated_minutes fields):
 [{
-  "category": "Category Name",
-  "task": "Specific task description",
-  "frequency": "daily|hourly|every_2_hours|every_4_hours|every_8_hours|weekly",
-  "priority": "high|medium|low",
+  "category": "Regulation-Specific Category",
+  "task": "Detailed, F-tag referenced task with specific compliance requirements",
+  "frequency": "daily",
   "compliance_related": true/false,
-  "estimated_minutes": number,
-  "notes": "Optional additional guidance"
+  "notes": "CMS regulation reference (e.g., 'F-tag F689', '42 CFR 483.12') and brief compliance context"
 }]
 
-Focus on items that would be specific to the provided focus areas and wouldn't already be covered in a standard template.`;
+Make each item unique, specific, and directly tied to current CMS compliance requirements.`;
 
   const userPrompt = `Generate 3-5 additional daily round items for:
 

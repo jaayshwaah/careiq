@@ -159,15 +159,42 @@ async function searchFacility(facilityName: string, state: string) {
     const searchStrategies = [
       // Exact match
       facilityName,
-      // Partial match - first two words
+      
+      // Remove common facility suffixes/types for better matching
+      facilityName.replace(/\b(nursing home|skilled nursing facility|SNF|rehabilitation center|rehab center|care center|health center|healthcare center|medical center|manor|villa|gardens|commons|residence|assisted living|memory care|long term care|LTC)\b/gi, '').trim(),
+      
+      // Remove "the", "of", "at", etc. and normalize spacing
+      facilityName.replace(/\b(the|of|at|in|a|an|and|&)\b/gi, '').replace(/\s+/g, ' ').trim(),
+      
+      // Try different word combinations
+      facilityName.split(' ').slice(0, 3).join(' '),
       facilityName.split(' ').slice(0, 2).join(' '),
-      // Partial match - first word
-      facilityName.split(' ')[0],
-      // Partial match - without common words
-      facilityName.replace(/\b(health|care|center|nursing|home|rehabilitation|skilled|facility)\b/gi, '').trim(),
-      // Just the main identifier (for Pioneer Valley)
-      facilityName.includes('Pioneer') ? 'Pioneer Valley' : facilityName.split(' ')[0]
-    ].filter(s => s.trim().length > 0);
+      
+      // Remove parentheses and content inside
+      facilityName.replace(/\([^)]*\)/g, '').trim(),
+      
+      // Saint <-> St conversions (very common in facility names)
+      facilityName.replace(/\bSaint\b/gi, 'St'),
+      facilityName.replace(/\bSt\.?\b/gi, 'Saint'),
+      
+      // Remove numbers, hyphens, and normalize
+      facilityName.replace(/[0-9\-\.]/g, ' ').replace(/\s+/g, ' ').trim(),
+      
+      // Try with "Healthcare", "Health Care", "Health" variations
+      facilityName.replace(/\bHealthcare\b/gi, 'Health Care'),
+      facilityName.replace(/\bHealth Care\b/gi, 'Healthcare'),
+      facilityName.replace(/\bHealth\b/gi, '').trim(),
+      
+      // Remove location identifiers that might not be in CMS data
+      facilityName.replace(/\b(north|south|east|west|central|downtown|uptown)\b/gi, '').trim(),
+      
+      // First significant word only (last resort)
+      facilityName.split(' ').find(word => word.length > 3 && !/(the|of|at|in|and|a|an)/i.test(word)) || facilityName.split(' ')[0]
+    ].filter((strategy, index, arr) => 
+      strategy && 
+      strategy.length > 2 && 
+      arr.indexOf(strategy) === index // Remove duplicates
+    );
 
     for (const searchName of searchStrategies) {
       try {

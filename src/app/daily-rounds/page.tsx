@@ -29,9 +29,7 @@ interface RoundItem {
   category: string;
   task: string;
   frequency: string;
-  priority: 'high' | 'medium' | 'low';
   compliance_related: boolean;
-  estimated_minutes: number;
   notes?: string;
   completed?: boolean;
   completed_at?: string;
@@ -48,7 +46,6 @@ interface DailyRound {
   metadata: {
     facility_name: string;
     template_type: string;
-    estimated_total_time: number;
   };
 }
 
@@ -56,9 +53,7 @@ interface CustomRoundItem {
   category: string;
   task: string;
   frequency: string;
-  priority: string;
   compliance_related: boolean;
-  estimated_minutes: number;
   notes?: string;
 }
 
@@ -66,6 +61,30 @@ export default function DailyRoundsPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const supabase = getBrowserSupabase();
+
+  // Add print styles
+  React.useEffect(() => {
+    const printStyles = `
+      <style>
+        @media print {
+          body * { visibility: hidden; }
+          .print-area, .print-area * { visibility: visible; }
+          .print-area { position: absolute; left: 0; top: 0; width: 100% !important; }
+          .no-print { display: none !important; }
+          .print-break-inside-avoid { break-inside: avoid; }
+          @page { margin: 0.5in; }
+        }
+      </style>
+    `;
+    const existingStyles = document.head.querySelector('#daily-round-print-styles');
+    if (!existingStyles) {
+      document.head.insertAdjacentHTML('beforeend', printStyles.replace('<style>', '<style id="daily-round-print-styles">'));
+    }
+    return () => {
+      const styles = document.head.querySelector('#daily-round-print-styles');
+      if (styles) styles.remove();
+    };
+  }, []);
   
   const [activeTab, setActiveTab] = useState<'create' | 'history'>('create');
   const [loading, setLoading] = useState(false);
@@ -167,9 +186,7 @@ export default function DailyRoundsPage() {
       category: 'Custom',
       task: '',
       frequency: 'daily',
-      priority: 'medium',
-      compliance_related: false,
-      estimated_minutes: 10
+      compliance_related: false
     }]);
   };
 
@@ -604,12 +621,12 @@ export default function DailyRoundsPage() {
     }, {} as Record<string, RoundItem[]>);
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 print-area">
         {/* Round Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{currentRound.title}</h2>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 no-print">
               <button
                 onClick={() => generatePDF(currentRound)}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -642,18 +659,18 @@ export default function DailyRoundsPage() {
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-gray-400" />
-              <span>~{Math.round(currentRound.metadata.estimated_total_time / 60)} hours</span>
+              <span>Created: {new Date(currentRound.created_at).toLocaleDateString()}</span>
             </div>
           </div>
         </div>
 
         {/* Round Items by Category */}
         {Object.entries(categorizedItems).map(([category, items]) => (
-          <div key={category} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div key={category} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 print-break-inside-avoid">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">{category}</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {items.length} items • ~{items.reduce((sum, item) => sum + item.estimated_minutes, 0)} minutes
+                {items.length} items
               </p>
             </div>
             
