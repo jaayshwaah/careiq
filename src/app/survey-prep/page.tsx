@@ -472,44 +472,44 @@ const SurveyPreparation = () => {
         <h2 className="text-lg font-semibold mb-4">Survey Configuration</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Survey Type</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Survey Type</label>
             <select
               value={selectedSurveyType}
               onChange={(e) => setSelectedSurveyType(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               {surveyTypes.map(type => (
                 <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {surveyTypes.find(t => t.value === selectedSurveyType)?.description}
             </p>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Facility Type</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Facility Type</label>
             <select
               value={facilityType}
               onChange={(e) => setFacilityType(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               {facilityTypes.map(type => (
                 <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {facilityTypes.find(t => t.value === facilityType)?.description}
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Expected Survey Date</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Expected Survey Date</label>
             <input
               type="date"
               value={surveyDate}
               onChange={(e) => setSurveyDate(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
             {daysUntil !== null && (
               <p className={`text-xs mt-1 ${daysUntil < 7 ? 'text-red-600' : daysUntil < 14 ? 'text-orange-600' : 'text-green-600'}`}>
@@ -523,11 +523,11 @@ const SurveyPreparation = () => {
       {/* Progress Overview */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Preparation Progress</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Preparation Progress</h2>
           <div className="flex gap-2">
             <button
               onClick={generatePDF}
-              className="flex items-center gap-2 px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="flex items-center gap-2 px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
               <Download className="h-4 w-4" />
               Export PDF
@@ -543,33 +543,33 @@ const SurveyPreparation = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">{stats.completedItems}/{stats.totalItems}</div>
-            <div className="text-sm text-gray-600">Tasks Complete</div>
-            <div className="mt-2 bg-gray-200 rounded-full h-2">
+          <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.completedItems}/{stats.totalItems}</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Tasks Complete</div>
+            <div className="mt-2 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
               <div
-                className="bg-blue-600 rounded-full h-2 transition-all duration-300"
+                className="bg-blue-600 dark:bg-blue-500 rounded-full h-2 transition-all duration-300"
                 style={{ width: `${(stats.completedItems / stats.totalItems) * 100}%` }}
               />
             </div>
           </div>
           
-          <div className="text-center p-4 bg-red-50 rounded-lg">
-            <div className="text-2xl font-bold text-red-700">{stats.completedCritical}/{stats.criticalItems}</div>
-            <div className="text-sm text-red-600">Critical Items</div>
-            <div className="mt-2 bg-red-200 rounded-full h-2">
+          <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+            <div className="text-2xl font-bold text-red-700 dark:text-red-400">{stats.completedCritical}/{stats.criticalItems}</div>
+            <div className="text-sm text-red-600 dark:text-red-400">Critical Items</div>
+            <div className="mt-2 bg-red-200 dark:bg-red-800 rounded-full h-2">
               <div
-                className="bg-red-600 rounded-full h-2 transition-all duration-300"
+                className="bg-red-600 dark:bg-red-500 rounded-full h-2 transition-all duration-300"
                 style={{ width: `${(stats.completedCritical / stats.criticalItems) * 100}%` }}
               />
             </div>
           </div>
           
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-700">
+          <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <div className="text-2xl font-bold text-green-700 dark:text-green-400">
               {Math.round((stats.completedItems / stats.totalItems) * 100)}%
             </div>
-            <div className="text-sm text-green-600">Overall Progress</div>
+            <div className="text-sm text-green-600 dark:text-green-400">Overall Progress</div>
             <div className="flex items-center justify-center mt-2">
               {Math.round((stats.completedItems / stats.totalItems) * 100) >= 80 ? (
                 <Award className="h-5 w-5 text-green-600" />
@@ -581,32 +581,32 @@ const SurveyPreparation = () => {
             </div>
           </div>
           
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <Calendar className="h-6 w-6 mx-auto mb-1 text-blue-600" />
-            <div className="text-sm text-blue-600">Survey Ready</div>
-            <div className="text-xs text-gray-500 mt-1">
+          <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <Calendar className="h-6 w-6 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
+            <div className="text-sm text-blue-600 dark:text-blue-400">Survey Ready</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {stats.completedCritical === stats.criticalItems ? 'All critical items complete' : 'Complete critical items'}
             </div>
           </div>
         </div>
 
         {/* Readiness Assessment */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h3 className="font-medium mb-2">Readiness Assessment</h3>
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <h3 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Readiness Assessment</h3>
           <div className="space-y-2">
             {stats.completedCritical === stats.criticalItems ? (
-              <div className="flex items-center gap-2 text-green-700">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                 <CheckSquare className="h-4 w-4" />
                 <span className="text-sm">All critical requirements completed</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-red-700">
+              <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                 <AlertTriangle className="h-4 w-4" />
                 <span className="text-sm">{stats.criticalItems - stats.completedCritical} critical items remain</span>
               </div>
             )}
             
-            <div className="flex items-center gap-2 text-gray-600">
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
               <Clock className="h-4 w-4" />
               <span className="text-sm">
                 Estimated {Object.values(prepSections).reduce((total, section) => 
@@ -620,7 +620,7 @@ const SurveyPreparation = () => {
 
       {/* Survey History */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
-        <h2 className="text-lg font-semibold mb-4">Previous Survey History</h2>
+        <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Previous Survey History</h2>
         {surveyHistory.length > 0 ? (
           <div className="space-y-3">
             {surveyHistory.map((survey, index) => (
@@ -671,18 +671,18 @@ const SurveyPreparation = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <SectionIcon className={`h-5 w-5 text-${section.color}-600`} />
-                  <h3 className="font-semibold">{section.title}</h3>
-                  <span className="text-sm text-gray-500">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">{section.title}</h3>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
                     ({sectionCompleted}/{sectionTotal})
                   </span>
                 </div>
                 {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                  <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 ) : (
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                  <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 )}
               </div>
-              <div className="mt-2 bg-gray-200 rounded-full h-2">
+              <div className="mt-2 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div
                   className={`bg-${section.color}-600 rounded-full h-2 transition-all duration-300`}
                   style={{ width: `${(sectionCompleted / sectionTotal) * 100}%` }}
@@ -691,16 +691,16 @@ const SurveyPreparation = () => {
             </div>
             
             {isExpanded && (
-              <div className="border-t p-4 space-y-4">
+              <div className="border-t border-gray-200 dark:border-gray-600 p-4 space-y-4">
                 {section.items.map((item) => (
-                  <div key={item.id} className="border rounded-lg p-4">
+                  <div key={item.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-white dark:bg-gray-800">
                     <div className="flex items-start gap-3">
                       <button
                         onClick={() => toggleItem(item.id)}
                         className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center ${
                           checkedItems.has(item.id)
                             ? 'bg-green-600 border-green-600 text-white'
-                            : 'border-gray-300 hover:border-green-400'
+                            : 'border-gray-300 dark:border-gray-600 hover:border-green-400 dark:hover:border-green-500'
                         }`}
                       >
                         {checkedItems.has(item.id) && <CheckSquare className="h-3 w-3" />}
@@ -709,23 +709,23 @@ const SurveyPreparation = () => {
                       <div className="flex-1">
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className={`font-medium ${checkedItems.has(item.id) ? 'line-through text-gray-500' : ''}`}>
+                            <p className={`font-medium ${checkedItems.has(item.id) ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
                               {item.task}
                             </p>
-                            <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{item.description}</p>
                             
                             <div className="flex flex-wrap gap-2 mt-2">
                               {item.critical && (
-                                <span className="inline-block px-2 py-1 bg-red-100 text-red-700 text-xs rounded">
+                                <span className="inline-block px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs rounded">
                                   Critical
                                 </span>
                               )}
                               {item.ftag && (
-                                <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                                <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs rounded">
                                   {item.ftag}
                                 </span>
                               )}
-                              <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                              <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
                                 {item.timeRequired}
                               </span>
                             </div>
@@ -735,7 +735,7 @@ const SurveyPreparation = () => {
                             <select
                               value={teamAssignments[item.id] || item.responsible || ''}
                               onChange={(e) => updateAssignment(item.id, e.target.value)}
-                              className="text-xs border rounded px-2 py-1 w-full"
+                              className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                             >
                               <option value="">Assign to...</option>
                               {teamRoles.map(role => (
@@ -750,7 +750,7 @@ const SurveyPreparation = () => {
                             placeholder="Add notes, progress updates, or specific instructions..."
                             value={notes[item.id] || ''}
                             onChange={(e) => updateNote(item.id, e.target.value)}
-                            className="w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                             rows={2}
                           />
                         </div>
@@ -769,7 +769,7 @@ const SurveyPreparation = () => {
   const renderTeamTab = () => (
     <div className="space-y-6">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
-        <h2 className="text-lg font-semibold mb-4">Team Assignments</h2>
+        <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Team Assignments</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {teamRoles.map(role => {
             const assignments = Object.entries(teamAssignments).filter(([_, assignee]) => assignee === role);
@@ -781,11 +781,11 @@ const SurveyPreparation = () => {
             }).filter(Boolean);
 
             return (
-              <div key={role} className="border rounded-lg p-4">
-                <h3 className="font-medium flex items-center gap-2 mb-3">
+              <div key={role} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                <h3 className="font-medium flex items-center gap-2 mb-3 text-gray-900 dark:text-gray-100">
                   <Users className="h-4 w-4" />
                   {role}
-                  <span className="text-sm text-gray-500">({assignments.length} tasks)</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">({assignments.length} tasks)</span>
                 </h3>
                 
                 {assignedItems.length > 0 ? (
@@ -796,7 +796,7 @@ const SurveyPreparation = () => {
                           checkedItems.has(item.id) ? 'bg-green-500' : 
                           item.critical ? 'bg-red-500' : 'bg-gray-300'
                         }`} />
-                        <span className={checkedItems.has(item.id) ? 'line-through text-gray-500' : ''}>
+                        <span className={checkedItems.has(item.id) ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100'}>
                           {item.task}
                         </span>
                       </li>
@@ -817,14 +817,14 @@ const SurveyPreparation = () => {
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600/90 to-blue-600/90 text-white rounded-lg p-6 glass">
-        <h1 className="text-2xl font-bold mb-2">Survey Preparation Assistant</h1>
+        <h1 className="text-2xl font-bold mb-2 text-white">Survey Preparation Assistant</h1>
         <p className="text-purple-100">
           Comprehensive checklist and team coordination for regulatory survey readiness.
         </p>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8">
           {[
             { id: 'overview', label: 'Overview', icon: BarChart3 },
@@ -836,8 +836,8 @@ const SurveyPreparation = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               <div className="flex items-center gap-2">

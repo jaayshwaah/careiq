@@ -325,7 +325,7 @@ export async function POST(req: NextRequest) {
       .from("knowledge_base")
       .insert({
         facility_id: profile?.facility_id,
-        category: 'general',
+        category: 'Facility Policy',
         title: recordToInsert.title,
         content: JSON.stringify(recordToInsert),
         metadata: {

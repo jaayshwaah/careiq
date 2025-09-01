@@ -243,12 +243,12 @@ _________________________________________________
               onClick={() => setTemplateType(option.value)}
               className={`p-4 rounded-lg border-2 text-left transition-all ${
                 templateType === option.value
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-400'
+                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
               }`}
             >
-              <h4 className="font-medium text-gray-900">{option.label}</h4>
-              <p className="text-sm text-gray-600 mt-1">{option.description}</p>
+              <h4 className="font-medium text-gray-900 dark:text-gray-100">{option.label}</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{option.description}</p>
             </button>
           ))}
         </div>
@@ -260,22 +260,22 @@ _________________________________________________
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unit</label>
             <input
               type="text"
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="e.g., ICU, Medical, Dementia"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Shift</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Shift</label>
             <select
               value={shift}
               onChange={(e) => setShift(e.target.value as any)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="7a-3p">Day Shift (7a-3p)</option>
               <option value="3p-11p">Evening Shift (3p-11p)</option>
@@ -284,11 +284,11 @@ _________________________________________________
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Resident Acuity</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Resident Acuity</label>
             <select
               value={residentAcuity}
               onChange={(e) => setResidentAcuity(e.target.value as any)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="low">Low Acuity</option>
               <option value="medium">Medium Acuity</option>
@@ -301,8 +301,8 @@ _________________________________________________
       {/* AI Customization */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="h-5 w-5 text-purple-600" />
-          <h3 className="text-lg font-semibold">AI Customization</h3>
+          <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">AI Customization</h3>
         </div>
         
         <label className="flex items-center gap-3 mb-4">
@@ -312,13 +312,13 @@ _________________________________________________
             onChange={(e) => setAiCustomize(e.target.checked)}
             className="rounded"
           />
-          <span>Add AI-generated items based on special focus areas</span>
+          <span className="text-gray-900 dark:text-gray-100">Add AI-generated items based on special focus areas</span>
         </label>
         
         {aiCustomize && (
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Select areas that need special attention to get customized round items:
               </p>
               <button
@@ -344,7 +344,7 @@ _________________________________________________
                     onChange={() => toggleFocusArea(area)}
                     className="rounded"
                   />
-                  <span className="text-sm">{area}</span>
+                  <span className="text-sm text-gray-900 dark:text-gray-100">{area}</span>
                 </label>
               ))}
             </div>
@@ -355,7 +355,7 @@ _________________________________________________
       {/* Custom Items */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Custom Round Items</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Custom Round Items</h3>
           <button
             onClick={addCustomItem}
             className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -366,42 +366,42 @@ _________________________________________________
         </div>
         
         {customItems.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
+          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
             No custom items added. Click "Add Custom Item" to create facility-specific round items.
           </p>
         ) : (
           <div className="space-y-4">
             {customItems.map((item, index) => (
-              <div key={index} className="p-4 bg-gray-50 rounded-lg">
+              <div key={index} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Task</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Task</label>
                     <input
                       type="text"
                       value={item.task}
                       onChange={(e) => updateCustomItem(index, 'task', e.target.value)}
-                      className="w-full p-2 text-sm border border-gray-300 rounded"
+                      className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       placeholder="Enter task description"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Category</label>
                     <input
                       type="text"
                       value={item.category}
                       onChange={(e) => updateCustomItem(index, 'category', e.target.value)}
-                      className="w-full p-2 text-sm border border-gray-300 rounded"
+                      className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       placeholder="Category"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Priority</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Priority</label>
                     <select
                       value={item.priority}
                       onChange={(e) => updateCustomItem(index, 'priority', e.target.value)}
-                      className="w-full p-2 text-sm border border-gray-300 rounded"
+                      className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -411,14 +411,14 @@ _________________________________________________
                   
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Minutes</label>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Minutes</label>
                       <input
                         type="number"
                         min="1"
                         max="120"
                         value={item.estimated_minutes}
                         onChange={(e) => updateCustomItem(index, 'estimated_minutes', parseInt(e.target.value) || 10)}
-                        className="w-full p-2 text-sm border border-gray-300 rounded"
+                        className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       />
                     </div>
                     <button
@@ -438,7 +438,7 @@ _________________________________________________
                       onChange={(e) => updateCustomItem(index, 'compliance_related', e.target.checked)}
                       className="rounded"
                     />
-                    <span className="text-sm">Compliance Related</span>
+                    <span className="text-sm text-gray-900 dark:text-gray-100">Compliance Related</span>
                   </label>
                 </div>
               </div>
@@ -473,9 +473,9 @@ _________________________________________________
   const renderHistoryTab = () => (
     <div className="space-y-6">
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Recent Daily Rounds</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Daily Rounds</h3>
             <button
               onClick={loadRecentRounds}
               className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
@@ -486,24 +486,24 @@ _________________________________________________
           </div>
         </div>
         
-        <div className="divide-y divide-gray-200">
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {recentRounds.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              <CheckSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+              <CheckSquare className="h-12 w-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
               <p>No daily rounds generated yet.</p>
               <p className="text-sm">Create your first round to see history here.</p>
             </div>
           ) : (
             recentRounds.map((round) => (
-              <div key={round.id} className="p-6 hover:bg-gray-50">
+              <div key={round.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <CheckSquare className="h-5 w-5 text-blue-600" />
-                      <h4 className="font-medium text-gray-900">{round.title}</h4>
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100">{round.title}</h4>
                     </div>
                     
-                    <div className="flex items-center gap-6 text-sm text-gray-600">
+                    <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
                       <span className="flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
                         {round.unit} Unit
@@ -563,7 +563,7 @@ _________________________________________________
         {/* Round Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">{currentRound.title}</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{currentRound.title}</h2>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => generatePDF(currentRound)}
@@ -574,7 +574,7 @@ _________________________________________________
               </button>
               <button
                 onClick={() => window.print()}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
               >
                 <Printer className="h-4 w-4" />
                 Print
@@ -605,14 +605,14 @@ _________________________________________________
         {/* Round Items by Category */}
         {Object.entries(categorizedItems).map(([category, items]) => (
           <div key={category} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <h3 className="font-semibold text-gray-900">{category}</h3>
-              <p className="text-sm text-gray-600">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{category}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 {items.length} items • ~{items.reduce((sum, item) => sum + item.estimated_minutes, 0)} minutes
               </p>
             </div>
             
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-gray-600">
               {items.map((item, index) => (
                 <div key={item.id} className="p-4">
                   <div className="flex items-start gap-3">
@@ -621,9 +621,9 @@ _________________________________________________
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-medium text-gray-900">{item.task}</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{item.task}</p>
                           {item.notes && (
-                            <p className="text-sm text-gray-600 mt-1">{item.notes}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{item.notes}</p>
                           )}
                         </div>
                         
@@ -650,7 +650,7 @@ _________________________________________________
                         </div>
                       </div>
                       
-                      <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
+                      <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400">
                         <div className="flex justify-between">
                           <span>Completed by: _________________</span>
                           <span>Time: ________</span>
@@ -666,17 +666,17 @@ _________________________________________________
 
         {/* Signature Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="font-semibold mb-4">Round Completion</h3>
+          <h3 className="font-semibold mb-4 text-gray-900 dark:text-gray-100">Round Completion</h3>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Staff Member</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Staff Member</label>
                 <div className="border-b border-gray-300 pb-2">
                   <span className="text-gray-400">_________________________________</span>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date & Time</label>
                 <div className="border-b border-gray-300 pb-2">
                   <span className="text-gray-400">_________________________________</span>
                 </div>
@@ -684,7 +684,7 @@ _________________________________________________
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Notes/Issues Identified</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notes/Issues Identified</label>
               <div className="space-y-2">
                 <div className="border-b border-gray-300 pb-2">
                   <span className="text-gray-400">_________________________________________________________________</span>
@@ -703,7 +703,7 @@ _________________________________________________
         <div className="flex justify-center">
           <button
             onClick={() => setShowRoundView(false)}
-            className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
             Back to Rounds
           </button>

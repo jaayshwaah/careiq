@@ -35,7 +35,7 @@ export default function PPDCalculatorPage() {
   
   const [loading, setLoading] = useState(false);
   const [calculations, setCalculations] = useState<PPDCalculation[]>([]);
-  const [showUpload, setShowUpload] = useState(false);
+  const [activeTab, setActiveTab] = useState<'manual' | 'upload' | 'schedule'>('manual');
   
   // Manual entry state
   const [manualData, setManualData] = useState<StaffingData>({
@@ -50,6 +50,12 @@ export default function PPDCalculatorPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadResults, setUploadResults] = useState<any[]>([]);
   
+  // Schedule import state
+  const [scheduleFile, setScheduleFile] = useState<File | null>(null);
+  const [facilityCapacity, setFacilityCapacity] = useState<number>(0);
+  const [importType, setImportType] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [scheduleImportResults, setScheduleImportResults] = useState<any>(null);
+  
   // Reporting filters
   const [dateRange, setDateRange] = useState({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
@@ -62,6 +68,7 @@ export default function PPDCalculatorPage() {
       return;
     }
     loadCalculations();
+    loadFacilityCapacity();
   }, [isAuthenticated, user]);
 
   const loadCalculations = async () => {
@@ -96,6 +103,68 @@ export default function PPDCalculatorPage() {
       setCalculations(ppdData);
     } catch (error) {
       console.error('Failed to load PPD calculations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFacilityCapacity = async () => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('metadata')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (profile?.metadata?.facility_capacity) {
+        setFacilityCapacity(profile.metadata.facility_capacity);
+      }
+    } catch (error) {
+      console.error('Failed to load facility capacity:', error);
+    }
+  };
+
+  const handleScheduleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setScheduleFile(file);
+      setScheduleImportResults(null);
+    }
+  };
+
+  const handleScheduleImport = async () => {
+    if (!scheduleFile || !user?.id) return;
+
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const formData = new FormData();
+      formData.append('schedule_file', scheduleFile);
+      formData.append('import_type', importType);
+      formData.append('facility_capacity', facilityCapacity.toString());
+
+      const response = await fetch('/api/schedule-import', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setScheduleImportResults(result);
+        setScheduleFile(null);
+        // Reload calculations since new PPD data may be available
+        await loadCalculations();
+      } else {
+        const error = await response.json();
+        alert(`Schedule import failed: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Schedule import failed:', error);
+      alert('Schedule import failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -408,8 +477,8 @@ export default function PPDCalculatorPage() {
       {/* Action Tabs */}
       <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
         <button
-          onClick={() => setShowUpload(false)}
-          className={`px-4 py-2 font-medium ${!showUpload 
+          onClick={() => setActiveTab('manual')}
+          className={`px-4 py-2 font-medium ${activeTab === 'manual'
             ? 'border-b-2 border-green-600 text-green-600' 
             : 'text-gray-600 hover:text-gray-900'
           }`}
@@ -417,18 +486,27 @@ export default function PPDCalculatorPage() {
           Manual Entry
         </button>
         <button
-          onClick={() => setShowUpload(true)}
-          className={`px-4 py-2 font-medium ${showUpload 
+          onClick={() => setActiveTab('upload')}
+          className={`px-4 py-2 font-medium ${activeTab === 'upload'
             ? 'border-b-2 border-green-600 text-green-600' 
             : 'text-gray-600 hover:text-gray-900'
           }`}
         >
           Bulk Upload
         </button>
+        <button
+          onClick={() => setActiveTab('schedule')}
+          className={`px-4 py-2 font-medium ${activeTab === 'schedule'
+            ? 'border-b-2 border-green-600 text-green-600' 
+            : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Schedule Import
+        </button>
       </div>
 
       {/* Manual Entry Form */}
-      {!showUpload && (
+      {activeTab === 'manual' && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
           <h2 className="text-lg font-semibold mb-4">Enter Daily Staffing Data</h2>
           <form onSubmit={handleManualSubmit} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -570,7 +648,7 @@ export default function PPDCalculatorPage() {
       )}
 
       {/* File Upload Form */}
-      {showUpload && (
+      {activeTab === 'upload' && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
           <h2 className="text-lg font-semibold mb-4">Bulk Upload Staffing Data</h2>
           <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -608,6 +686,190 @@ export default function PPDCalculatorPage() {
               <div className="text-sm">
                 Success: {uploadResults.filter(r => r.status === 'success').length}<br />
                 Errors: {uploadResults.filter(r => r.status === 'error').length}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Schedule Import Form */}
+      {activeTab === 'schedule' && (
+        <div className="space-y-6">
+          {/* Import Configuration */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+            <h2 className="text-lg font-semibold mb-4">Schedule Import Settings</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Import Type
+                </label>
+                <select
+                  value={importType}
+                  onChange={(e) => setImportType(e.target.value as any)}
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="daily">Daily Schedule</option>
+                  <option value="weekly">Weekly Schedule</option>
+                  <option value="monthly">Monthly Schedule</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Facility Capacity (beds)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={facilityCapacity || ''}
+                  onChange={(e) => setFacilityCapacity(parseInt(e.target.value) || 0)}
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  placeholder="e.g., 120"
+                />
+              </div>
+              
+              <div className="flex items-end">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="font-medium mb-1">Used for PPD calculations</p>
+                  <p>Helps calculate staffing ratios from schedules</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CSV Format Guide */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-400 mb-4 flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Required CSV Format for Schedule Import
+            </h3>
+            
+            <div className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+              <p className="mb-2">Your CSV file must include these columns:</p>
+              <code className="block bg-blue-100 dark:bg-blue-800 p-3 rounded font-mono text-xs">
+                Employee Name,Role,Date,Start Time,End Time,Hours,Employee ID,Unit<br/>
+                John Doe,RN,2024-01-15,07:00,19:00,12,EMP001,ICU<br/>
+                Jane Smith,LPN,2024-01-15,19:00,07:00,12,EMP002,Medical<br/>
+                Bob Johnson,CNA,2024-01-15,07:00,15:00,8,EMP003,Dementia
+              </code>
+            </div>
+          </div>
+
+          {/* File Upload */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Upload Schedule File</h3>
+            
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+              <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              
+              {scheduleFile ? (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{scheduleFile.name}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {(scheduleFile.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setScheduleFile(null)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={handleScheduleImport}
+                    disabled={loading || facilityCapacity === 0}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        Processing Schedule...
+                      </>
+                    ) : (
+                      <>
+                        <Calculator className="h-4 w-4" />
+                        Import & Calculate PPD
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-lg font-medium mb-2 text-gray-900 dark:text-gray-100">Drop CSV file here or click to browse</p>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">Supports CSV files up to 10MB</p>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleScheduleFileSelect}
+                    className="hidden"
+                    id="schedule-file-upload"
+                  />
+                  <label
+                    htmlFor="schedule-file-upload"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Choose File
+                  </label>
+                </div>
+              )}
+            </div>
+            
+            {facilityCapacity === 0 && (
+              <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded text-orange-700 dark:text-orange-400 text-sm">
+                <AlertTriangle className="h-4 w-4 inline mr-2" />
+                Please set your facility capacity above before importing schedules.
+              </div>
+            )}
+          </div>
+
+          {/* Import Results */}
+          {scheduleImportResults && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Import Results
+              </h3>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {scheduleImportResults.summary?.total_shifts || 0}
+                  </div>
+                  <div className="text-sm text-blue-800 dark:text-blue-300">Shifts Imported</div>
+                </div>
+                
+                <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {scheduleImportResults.ppd_calculations?.length || 0}
+                  </div>
+                  <div className="text-sm text-green-800 dark:text-green-300">PPD Calculations</div>
+                </div>
+                
+                <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {scheduleImportResults.summary?.warnings || 0}
+                  </div>
+                  <div className="text-sm text-orange-800 dark:text-orange-300">Warnings</div>
+                </div>
+                
+                <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                    {scheduleImportResults.summary?.critical_issues || 0}
+                  </div>
+                  <div className="text-sm text-red-800 dark:text-red-300">Issues</div>
+                </div>
               </div>
             </div>
           )}
