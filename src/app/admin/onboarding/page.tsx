@@ -20,7 +20,7 @@ import {
   Save,
   UserPlus
 } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { getBrowserSupabase } from "@/lib/supabaseClient";
 
 interface OnboardingStep {
   id: string;
@@ -155,6 +155,7 @@ export default function ClientOnboarding() {
       setLoading(true);
 
       // 1. Create facility record
+      const supabase = getBrowserSupabase();
       const { data: facility, error: facilityError } = await supabase
         .from('facilities')
         .insert({
