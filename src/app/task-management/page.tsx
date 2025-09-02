@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
-import { Plus, CheckCircle, Clock, AlertTriangle, User, Calendar, Filter, MoreHorizontal, Bell, Repeat, Zap } from 'lucide-react';
+import { Plus, CheckCircle, Clock, AlertTriangle, User, Calendar, Filter, MoreHorizontal, Bell, Repeat, Zap, CheckSquare } from 'lucide-react';
 
 interface Task {
   id: string;

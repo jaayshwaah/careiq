@@ -342,8 +342,10 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           </div>
         )}
 
-        {/* Chat List */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Chat List - Scrollable */}
+          <div className="flex-1 overflow-y-auto">
           {!collapsed && (
             <div className="mb-3 flex items-center justify-between px-2">
               <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -569,7 +571,12 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                   </div>
                 )}
               </div>
-              
+            </div>
+          </div>
+
+          {/* Sticky Bottom Section - Only visible when not collapsed */}
+          {!collapsed && (
+            <div className="shrink-0 space-y-3 border-t border-gray-200 dark:border-gray-700 pt-3">
               {/* Quick Links */}
               <div className="grid grid-cols-2 gap-2">
                 <Link
@@ -616,7 +623,11 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 </div>
               )}
             </div>
-          ) : (
+          )}
+        </div>
+
+        {/* Collapsed Sidebar Icons */}
+        {collapsed && (
             <div className="flex flex-col items-center gap-2">
               {/* Admin button for collapsed sidebar */}
               {isAdmin && (
