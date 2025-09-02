@@ -212,51 +212,67 @@ Return a JSON response with:
 </body>
 </html>`;
 
-    // Generate PDF using Puppeteer with Chromium for serverless
-    const browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        '--hide-scrollbars',
-        '--disable-web-security',
-      ],
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-      ignoreHTTPSErrors: true,
-    });
-
+    // Try Puppeteer PDF generation, fallback to HTML in development
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     try {
-      const page = await browser.newPage();
-      await page.setContent(htmlContent, { 
-        waitUntil: 'networkidle0',
-        timeout: 30000 
+      // Generate PDF using Puppeteer with Chromium for serverless
+      const browser = await puppeteer.launch({
+        args: [
+          ...chromium.args,
+          '--hide-scrollbars',
+          '--disable-web-security',
+        ],
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+        ignoreHTTPSErrors: true,
       });
 
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        margin: {
-          top: '0.5in',
-          right: '0.5in',
-          bottom: '0.5in',
-          left: '0.5in'
-        },
-        printBackground: true
-      });
+      try {
+        const page = await browser.newPage();
+        await page.setContent(htmlContent, { 
+          waitUntil: 'networkidle0',
+          timeout: 30000 
+        });
 
-      await browser.close();
+        const pdfBuffer = await page.pdf({
+          format: 'A4',
+          margin: {
+            top: '0.5in',
+            right: '0.5in',
+            bottom: '0.5in',
+            left: '0.5in'
+          },
+          printBackground: true
+        });
 
-      console.log("PDF generated successfully, buffer size:", pdfBuffer.length);
+        await browser.close();
 
-      return new NextResponse(pdfBuffer, {
+        console.log("PDF generated successfully, buffer size:", pdfBuffer.length);
+
+        return new NextResponse(pdfBuffer, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="daily-rounds-${roundData.unit}-${roundData.shift}-${new Date().toISOString().split('T')[0]}.pdf"`,
+          },
+        });
+
+      } catch (pdfError) {
+        await browser.close();
+        throw pdfError;
+      }
+
+    } catch (puppeteerError) {
+      console.warn('Puppeteer failed, falling back to HTML:', puppeteerError.message);
+      
+      // Fallback to HTML for development or when Puppeteer fails
+      return new NextResponse(htmlContent, {
         headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="daily-rounds-${roundData.unit}-${roundData.shift}-${new Date().toISOString().split('T')[0]}.pdf"`,
+          'Content-Type': 'text/html',
+          'Content-Disposition': `inline; filename="daily-rounds-${roundData.unit}-${roundData.shift}-${new Date().toISOString().split('T')[0]}.html"`,
         },
       });
-
-    } catch (pdfError) {
-      await browser.close();
-      throw pdfError;
     }
 
   } catch (error: any) {
