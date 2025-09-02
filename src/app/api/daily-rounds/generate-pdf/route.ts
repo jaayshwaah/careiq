@@ -101,8 +101,7 @@ Return a JSON response with:
   ]
 }`;
 
-    const aiResponse = await provider.generateText({
-      messages: [{ role: "user", content: aiPrompt }],
+    const aiResponse = await provider.complete([{ role: "user", content: aiPrompt }], {
       max_tokens: 2000
     });
 
