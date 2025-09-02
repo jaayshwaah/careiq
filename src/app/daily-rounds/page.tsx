@@ -649,7 +649,9 @@ export default function DailyRoundsPage() {
   const renderRoundView = () => {
     if (!currentRound) return null;
 
-    const categorizedItems = currentRound.items.reduce((acc, item) => {
+    // Safely handle missing or invalid items array
+    const items = Array.isArray(currentRound.items) ? currentRound.items : [];
+    const categorizedItems = items.reduce((acc, item) => {
       if (!acc[item.category]) acc[item.category] = [];
       acc[item.category].push(item);
       return acc;
@@ -690,7 +692,7 @@ export default function DailyRoundsPage() {
             </div>
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-gray-400" />
-              <span>{currentRound.items.length} Items</span>
+              <span>{items.length} Items</span>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-gray-400" />

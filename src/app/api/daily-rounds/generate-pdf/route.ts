@@ -2,9 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { providerFromEnv } from "@/lib/ai/providers";
-import PDFDocument from 'pdfkit';
-import fs from 'fs';
-import path from 'path';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,126 +114,107 @@ Return a JSON response with:
       };
     }
 
-    // Create PDF using PDFKit with minimal settings to avoid font loading issues
-    const doc = new PDFDocument({
-      size: 'A4',
-      margins: { top: 30, bottom: 30, left: 40, right: 40 }
-    });
-    
-    // Don't explicitly set any font - use PDFKit defaults only
-
-    // Collect PDF data
-    const chunks: Buffer[] = [];
-    doc.on('data', (chunk) => chunks.push(chunk));
-    
-    const pdfPromise = new Promise<Buffer>((resolve) => {
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-    });
-
-    // Calculate available space and font sizes for optimal single-page fit
-    const pageHeight = doc.page.height - 60; // Account for margins
-    const availableHeight = pageHeight - 120; // Reserve space for header and footer
-    const itemCount = roundData.items.length;
-    
-    // Dynamically calculate font sizes based on content
-    const baseItemHeight = Math.max(12, Math.min(20, availableHeight / (itemCount + 5))); // +5 for header/footer
-    const titleFontSize = Math.min(16, baseItemHeight + 4);
-    const itemFontSize = Math.max(7, Math.min(10, baseItemHeight * 0.6));
-    
-    let currentY = 40;
-
-    // Compact Header
-    doc.fontSize(titleFontSize).text('DAILY ROUND CHECKLIST', 40, currentY, { align: 'center' });
-    currentY += titleFontSize + 5;
-    
-    doc.fontSize(itemFontSize + 2).text(roundData.title, 40, currentY, { align: 'center' });
-    currentY += itemFontSize + 8;
-    
-    // Single line for date and facility info
+    // Create PDF using simple HTML approach to avoid font loading issues
     const dateText = includeDate 
       ? `Date: ${customDate || new Date().toLocaleDateString()}` 
       : `Generated: ${new Date().toLocaleDateString()}`;
     
-    doc.fontSize(itemFontSize)
-      .text(`${dateText} | Unit: ${roundData.unit} | Shift: ${roundData.shift} | ${roundData.metadata.facility_name}`, 40, currentY, { align: 'center' });
-    currentY += itemFontSize + 8;
-
-    // Compact Items List - Two columns if space allows
-    const totalItems = roundData.items.length;
-    const useColumns = totalItems > 15; // Use columns for many items
-    const columnWidth = useColumns ? 250 : 500;
-    const rightColumnX = 300;
+    // Calculate font sizes for single page fit
+    const itemCount = roundData.items.length;
+    const baseFontSize = Math.max(8, Math.min(12, 600 / itemCount));
+    const useColumns = itemCount > 20;
     
-    let leftColumnY = currentY;
-    let rightColumnY = currentY;
-    let itemIndex = 1;
+    // Generate HTML content
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page { 
+            size: A4; 
+            margin: 0.5in; 
+        }
+        body { 
+            font-family: Arial, sans-serif; 
+            font-size: ${baseFontSize}px; 
+            line-height: 1.2; 
+            margin: 0; 
+            padding: 0;
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 15px; 
+        }
+        .title { 
+            font-size: ${Math.min(16, baseFontSize + 4)}px; 
+            font-weight: bold; 
+            margin-bottom: 5px; 
+        }
+        .subtitle { 
+            font-size: ${baseFontSize + 1}px; 
+            margin-bottom: 10px; 
+        }
+        .info { 
+            font-size: ${baseFontSize}px; 
+            margin-bottom: 15px; 
+        }
+        .items { 
+            ${useColumns ? 'columns: 2; column-gap: 20px;' : ''}
+            margin-bottom: 15px;
+        }
+        .item { 
+            break-inside: avoid; 
+            margin-bottom: 8px; 
+            font-size: ${baseFontSize}px;
+        }
+        .compliance { 
+            color: #d2691e; 
+            font-weight: bold; 
+        }
+        .footer { 
+            margin-top: 20px; 
+            font-size: ${baseFontSize}px;
+            border-top: 1px solid #ccc; 
+            padding-top: 10px;
+        }
+        .checkbox { 
+            font-family: monospace; 
+            margin-right: 5px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">DAILY ROUND CHECKLIST</div>
+        <div class="subtitle">${roundData.title}</div>
+        <div class="info">${dateText} | Unit: ${roundData.unit} | Shift: ${roundData.shift} | ${roundData.metadata.facility_name}</div>
+    </div>
     
-    roundData.items.forEach((item: RoundItem, index: number) => {
-      const useRightColumn = useColumns && index >= Math.ceil(totalItems / 2);
-      const itemX = useRightColumn ? rightColumnX : 40;
-      const itemY = useRightColumn ? rightColumnY : leftColumnY;
-      
-      // Compact item format - single line per item
-      const taskText = `${itemIndex}. ☐ ${item.task}`;
-      const complianceText = item.compliance_related ? ' [COMPLIANCE]' : '';
-      const fullText = taskText + complianceText;
-      
-      doc.fontSize(itemFontSize).text(fullText, itemX, itemY, { 
-        width: columnWidth,
-        height: baseItemHeight
-      });
-      
-      // Update Y position
-      if (useRightColumn) {
-        rightColumnY += baseItemHeight;
-      } else {
-        leftColumnY += baseItemHeight;
-      }
-      
-      itemIndex++;
-    });
+    <div class="items">
+        ${roundData.items.map((item: RoundItem, index: number) => `
+            <div class="item">
+                <span class="checkbox">☐</span>
+                <strong>${index + 1}.</strong> ${item.task}
+                ${item.compliance_related ? '<span class="compliance"> [COMPLIANCE]</span>' : ''}
+            </div>
+        `).join('')}
+    </div>
     
-    // Update currentY to the lower of the two columns
-    currentY = Math.max(leftColumnY, rightColumnY) + 10;
+    <div class="footer">
+        <div>Staff Signature: _________________________ Date: _____________ Time: _________</div>
+        <br>
+        <div>Notes: _________________________________________________</div>
+        <div>_______________________________________________________</div>
+    </div>
+</body>
+</html>`;
 
-    // Compact Footer - only if space remains
-    const remainingSpace = pageHeight - currentY;
-    if (remainingSpace > 40) {
-      doc.fontSize(itemFontSize)
-        .text('Staff Signature: _________________________ Date: _____________ Time: _________', 40, currentY);
-      currentY += itemFontSize + 5;
-      
-      if (remainingSpace > 60) {
-        doc.text('Notes: _________________________________________________', 40, currentY);
-        currentY += itemFontSize + 5;
-        doc.text('_______________________________________________________', 40, currentY);
-      }
-    }
-
-    // Add CareIQ logo watermark
-    try {
-      const logoPath = path.join(process.cwd(), 'public', 'careiq-logo.png');
-      if (fs.existsSync(logoPath)) {
-        // Add subtle watermark in bottom right
-        doc.opacity(0.1); // Very light watermark
-        doc.image(logoPath, doc.page.width - 150, doc.page.height - 150, {
-          fit: [100, 100],
-          align: 'center',
-          valign: 'center'
-        });
-        doc.opacity(1); // Reset opacity
-      }
-    } catch (error) {
-      console.warn('Could not add logo watermark:', error);
-    }
-
-    doc.end();
-    const pdfBuffer = await pdfPromise;
-
-    return new NextResponse(pdfBuffer, {
+    // Return HTML content that can be printed as PDF by the browser
+    return new NextResponse(htmlContent, {
       headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="daily-rounds-${roundData.unit}-${roundData.shift}-${new Date().toISOString().split('T')[0]}.pdf"`,
+        'Content-Type': 'text/html',
+        'Content-Disposition': `inline; filename="daily-rounds-${roundData.unit}-${roundData.shift}-${new Date().toISOString().split('T')[0]}.html"`,
       },
     });
 
