@@ -33,12 +33,31 @@ interface DailyRound {
 
 export async function POST(req: NextRequest) {
   try {
+    console.log("Daily rounds PDF generation started...");
+    
+    // Try Bearer token first, then fall back to cookie auth
     const authHeader = req.headers.get("authorization") || undefined;
+    console.log("Auth header:", authHeader ? "present" : "missing");
+    
     const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
-    const supa = supabaseServerWithAuth(accessToken);
-
-    const { data: { user }, error: userError } = await supa.auth.getUser();
+    
+    // Try both auth methods
+    let supa = supabaseServerWithAuth(accessToken);
+    let { data: { user }, error: userError } = await supa.auth.getUser();
+    
+    // If Bearer token fails, try cookie-based auth
     if (userError || !user) {
+      console.log("Bearer auth failed, trying cookie auth...");
+      supa = supabaseServerWithAuth(undefined); // No token = cookie auth
+      const result = await supa.auth.getUser();
+      user = result.data.user;
+      userError = result.error;
+    }
+    
+    console.log("User auth result:", { user: !!user, error: userError?.message });
+    
+    if (userError || !user) {
+      console.log("All authentication methods failed, returning 401");
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
@@ -277,6 +296,10 @@ Return a JSON response with:
 
   } catch (error: any) {
     console.error("PDF generation error:", error);
+    console.error("Error stack:", error.stack);
+    console.error("Error name:", error.name);
+    console.error("Error code:", error.code);
+    
     return NextResponse.json({ 
       ok: false, 
       error: error.message || "Failed to generate PDF" 

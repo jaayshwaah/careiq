@@ -4,6 +4,9 @@ import chromium from '@sparticuz/chromium';
 
 export async function GET() {
   try {
+    console.log("=== TEST PDF GENERATION STARTED ===");
+    console.log("Environment:", process.env.NODE_ENV);
+    console.log("Platform:", process.platform);
     console.log("Testing HTML-based PDF generation...");
     
     // Create HTML content for browser PDF printing
@@ -75,8 +78,11 @@ export async function GET() {
 </html>`;
 
     console.log("HTML test content generated, attempting PDF generation...");
+    console.log("Chromium args:", chromium.args);
+    console.log("Chromium executable path:", await chromium.executablePath().catch(e => `ERROR: ${e.message}`));
 
     try {
+      console.log("Launching Puppeteer browser...");
       // Generate PDF using Puppeteer with Chromium for serverless
       const browser = await puppeteer.launch({
         args: [
@@ -90,13 +96,18 @@ export async function GET() {
         ignoreHTTPSErrors: true,
       });
 
+      console.log("Browser launched successfully");
+
       try {
+        console.log("Creating new page...");
         const page = await browser.newPage();
+        console.log("Setting page content...");
         await page.setContent(htmlContent, { 
           waitUntil: 'networkidle0',
           timeout: 30000 
         });
 
+        console.log("Generating PDF...");
         const pdfBuffer = await page.pdf({
           format: 'A4',
           margin: {
@@ -125,6 +136,12 @@ export async function GET() {
       }
 
     } catch (puppeteerError) {
+      console.error('=== PUPPETEER FAILURE ===');
+      console.error('Error message:', puppeteerError.message);
+      console.error('Error code:', puppeteerError.code);
+      console.error('Error errno:', puppeteerError.errno);
+      console.error('Error syscall:', puppeteerError.syscall);
+      console.error('Full error:', puppeteerError);
       console.warn('Puppeteer failed, falling back to HTML:', puppeteerError.message);
       
       // Fallback to HTML for development or when Puppeteer fails
@@ -137,7 +154,11 @@ export async function GET() {
     }
 
   } catch (error: any) {
+    console.error("=== OUTER CATCH ERROR ===");
     console.error("PDF test error:", error);
+    console.error("Error stack:", error.stack);
+    console.error("Error name:", error.name);
+    console.error("Error code:", error.code);
     return NextResponse.json({ 
       error: error.message 
     }, { status: 500 });
