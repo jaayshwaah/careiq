@@ -74,53 +74,66 @@ export async function GET() {
 </body>
 </html>`;
 
-    console.log("HTML test content generated, creating PDF with Puppeteer...");
-
-    // Generate PDF using Puppeteer with Chromium for serverless
-    const browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        '--hide-scrollbars',
-        '--disable-web-security',
-      ],
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-      ignoreHTTPSErrors: true,
-    });
+    console.log("HTML test content generated, attempting PDF generation...");
 
     try {
-      const page = await browser.newPage();
-      await page.setContent(htmlContent, { 
-        waitUntil: 'networkidle0',
-        timeout: 30000 
+      // Generate PDF using Puppeteer with Chromium for serverless
+      const browser = await puppeteer.launch({
+        args: [
+          ...chromium.args,
+          '--hide-scrollbars',
+          '--disable-web-security',
+        ],
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+        ignoreHTTPSErrors: true,
       });
 
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        margin: {
-          top: '1in',
-          right: '1in',
-          bottom: '1in',
-          left: '1in'
-        },
-        printBackground: true
-      });
+      try {
+        const page = await browser.newPage();
+        await page.setContent(htmlContent, { 
+          waitUntil: 'networkidle0',
+          timeout: 30000 
+        });
 
-      await browser.close();
+        const pdfBuffer = await page.pdf({
+          format: 'A4',
+          margin: {
+            top: '1in',
+            right: '1in',
+            bottom: '1in',
+            left: '1in'
+          },
+          printBackground: true
+        });
 
-      console.log("PDF test successful, buffer size:", pdfBuffer.length);
+        await browser.close();
 
-      return new NextResponse(pdfBuffer, {
+        console.log("PDF test successful, buffer size:", pdfBuffer.length);
+
+        return new NextResponse(pdfBuffer, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': 'attachment; filename="test.pdf"',
+          },
+        });
+
+      } catch (pdfError) {
+        await browser.close();
+        throw pdfError;
+      }
+
+    } catch (puppeteerError) {
+      console.warn('Puppeteer failed, falling back to HTML:', puppeteerError.message);
+      
+      // Fallback to HTML for development or when Puppeteer fails
+      return new NextResponse(htmlContent, {
         headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': 'attachment; filename="test.pdf"',
+          'Content-Type': 'text/html',
+          'Content-Disposition': 'inline; filename="test.html"',
         },
       });
-
-    } catch (pdfError) {
-      await browser.close();
-      throw pdfError;
     }
 
   } catch (error: any) {

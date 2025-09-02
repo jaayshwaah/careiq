@@ -279,17 +279,30 @@ export default function DailyRoundsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate PDF');
       }
 
-      // Get the PDF blob
-      const pdfBlob = await response.blob();
+      const contentType = response.headers.get('content-type');
+      const blob = await response.blob();
       
-      // Download the PDF
-      const url = window.URL.createObjectURL(pdfBlob);
+      // Handle both PDF and HTML responses
+      let filename, downloadBlob;
+      if (contentType?.includes('application/pdf')) {
+        filename = `daily-rounds-${round.unit}-${round.shift}-${new Date().toISOString().split('T')[0]}.pdf`;
+        downloadBlob = blob;
+      } else {
+        // HTML fallback - user can print to PDF
+        filename = `daily-rounds-${round.unit}-${round.shift}-${new Date().toISOString().split('T')[0]}.html`;
+        downloadBlob = blob;
+        alert('PDF generation fell back to HTML. You can open the file and print to PDF.');
+      }
+      
+      // Download the file
+      const url = window.URL.createObjectURL(downloadBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `daily-rounds-${round.unit}-${round.shift}-${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
