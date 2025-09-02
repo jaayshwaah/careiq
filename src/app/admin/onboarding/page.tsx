@@ -91,21 +91,21 @@ export default function ClientOnboarding() {
   });
 
   const [documents, setDocuments] = useState<DocumentUpload[]>([
-    { id: 'license', name: 'Facility License', type: 'license', uploaded: false, required: true },
-    { id: 'insurance', name: 'Liability Insurance Certificate', type: 'insurance', uploaded: false, required: true },
-    { id: 'cms_cert', name: 'CMS Certification', type: 'cms', uploaded: false, required: true },
-    { id: 'state_cert', name: 'State Health Department Certification', type: 'state', uploaded: false, required: true },
+    { id: 'license', name: 'Facility License', type: 'license', uploaded: false, required: false },
+    { id: 'insurance', name: 'Liability Insurance Certificate', type: 'insurance', uploaded: false, required: false },
+    { id: 'cms_cert', name: 'CMS Certification', type: 'cms', uploaded: false, required: false },
+    { id: 'state_cert', name: 'State Health Department Certification', type: 'state', uploaded: false, required: false },
     { id: 'fire_cert', name: 'Fire Department Certification', type: 'fire', uploaded: false, required: false },
-    { id: 'policies', name: 'Facility Policies Manual', type: 'policies', uploaded: false, required: true },
+    { id: 'policies', name: 'Facility Policies Manual', type: 'policies', uploaded: false, required: false },
     { id: 'org_chart', name: 'Organizational Chart', type: 'org_chart', uploaded: false, required: false },
-    { id: 'emergency_plan', name: 'Emergency Preparedness Plan', type: 'emergency', uploaded: false, required: true },
+    { id: 'emergency_plan', name: 'Emergency Preparedness Plan', type: 'emergency', uploaded: false, required: false },
   ]);
 
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([
     { id: 'facility_info', title: 'Facility Information', description: 'Basic facility details and contact information', completed: false, required: true },
     { id: 'admin_setup', title: 'Administrator Setup', description: 'Create facility administrator account', completed: false, required: true },
     { id: 'compliance', title: 'Compliance Information', description: 'License numbers and regulatory details', completed: false, required: true },
-    { id: 'documents', title: 'Document Upload', description: 'Upload required facility documents', completed: false, required: true },
+    { id: 'documents', title: 'Document Upload', description: 'Upload facility documents (optional but recommended)', completed: false, required: true },
     { id: 'configuration', title: 'System Configuration', description: 'Configure CareIQ settings for facility', completed: false, required: true },
     { id: 'review', title: 'Review & Complete', description: 'Review all information and complete onboarding', completed: false, required: true }
   ]);
@@ -130,8 +130,8 @@ export default function ClientOnboarding() {
         return !!(clientData.adminFirstName && clientData.adminLastName && clientData.adminEmail);
       case 2: // Compliance
         return !!(clientData.licenseNumber && clientData.bedCount > 0);
-      case 3: // Documents
-        return documents.filter(doc => doc.required).every(doc => doc.uploaded);
+      case 3: // Documents (all optional now, so always valid)
+        return true;
       case 4: // Configuration
         return !!(clientData.contractStartDate && clientData.planType);
       default:
@@ -675,9 +675,16 @@ Temporary password: ${password}
           {/* Step 3: Document Upload */}
           {activeStep === 3 && (
             <div className="p-6">
-              <div className="flex items-center mb-6">
-                <FileText className="w-6 h-6 text-blue-600 mr-3" />
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Document Upload</h2>
+              <div className="mb-6">
+                <div className="flex items-center mb-3">
+                  <FileText className="w-6 h-6 text-blue-600 mr-3" />
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Document Upload</h2>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <p className="text-blue-700 dark:text-blue-300 text-sm">
+                    <strong>All documents are optional</strong> but recommended for compliance tracking. You can upload them now or add them later through the facility management interface.
+                  </p>
+                </div>
               </div>
               
               <div className="space-y-4">
@@ -686,12 +693,11 @@ Temporary password: ${password}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <div className={`w-4 h-4 rounded-full mr-3 ${
-                          doc.uploaded ? 'bg-green-500' : doc.required ? 'bg-red-200' : 'bg-gray-200'
+                          doc.uploaded ? 'bg-green-500' : 'bg-gray-200'
                         }`} />
                         <div>
                           <h4 className="font-medium text-gray-900 dark:text-gray-100">
                             {doc.name}
-                            {doc.required && <span className="text-red-500 ml-1">*</span>}
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             {doc.uploaded ? 'Uploaded successfully' : 'Not uploaded'}
@@ -857,7 +863,7 @@ Temporary password: ${password}
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Documents</h3>
                   <div className="text-sm text-gray-600 dark:text-gray-400">
                     <p>{documents.filter(d => d.uploaded).length} of {documents.length} documents uploaded</p>
-                    <p>All required documents: {documents.filter(d => d.required).every(d => d.uploaded) ? 'Complete' : 'Incomplete'}</p>
+                    <p>Documents are optional but recommended for compliance tracking</p>
                   </div>
                 </div>
               </div>

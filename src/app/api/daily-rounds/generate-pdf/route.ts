@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
 3. Clear checkboxes and completion fields
 4. Organized by category with proper spacing
 5. Include signature and notes sections at bottom
+6. DO NOT specify any fonts or font families - use plain text only
 
 Daily Round Data:
 Title: ${roundData.title}
@@ -116,10 +117,11 @@ Return a JSON response with:
       };
     }
 
-    // Create PDF using PDFKit
+    // Create PDF using PDFKit with explicit font to avoid Helvetica loading
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 50, bottom: 50, left: 50, right: 50 }
+      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      font: 'Times-Roman' // Use built-in font instead of Helvetica
     });
 
     // Collect PDF data
