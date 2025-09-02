@@ -3,11 +3,25 @@ import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
 export async function GET() {
+  const logs: string[] = [];
+  
+  function addLog(message: string, data?: any) {
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] ${message}`;
+    if (data) {
+      logs.push(`${logEntry}: ${JSON.stringify(data, null, 2)}`);
+    } else {
+      logs.push(logEntry);
+    }
+    console.log(logEntry, data || '');
+  }
+
   try {
-    console.log("=== TEST PDF GENERATION STARTED ===");
-    console.log("Environment:", process.env.NODE_ENV);
-    console.log("Platform:", process.platform);
-    console.log("Testing HTML-based PDF generation...");
+    addLog("=== TEST PDF GENERATION STARTED ===");
+    addLog("Environment", process.env.NODE_ENV);
+    addLog("Platform", process.platform);
+    addLog("Node version", process.version);
+    addLog("Testing HTML-based PDF generation...");
     
     // Create HTML content for browser PDF printing
     const htmlContent = `
@@ -77,12 +91,21 @@ export async function GET() {
 </body>
 </html>`;
 
-    console.log("HTML test content generated, attempting PDF generation...");
-    console.log("Chromium args:", chromium.args);
-    console.log("Chromium executable path:", await chromium.executablePath().catch(e => `ERROR: ${e.message}`));
+    addLog("HTML test content generated, attempting PDF generation...");
+    
+    try {
+      const execPath = await chromium.executablePath();
+      addLog("Chromium executable path", execPath);
+    } catch (execError) {
+      addLog("Chromium executable path ERROR", execError.message);
+    }
+    
+    addLog("Chromium args", chromium.args);
+    addLog("Chromium defaultViewport", chromium.defaultViewport);
+    addLog("Chromium headless", chromium.headless);
 
     try {
-      console.log("Launching Puppeteer browser...");
+      addLog("Launching Puppeteer browser...");
       // Generate PDF using Puppeteer with Chromium for serverless
       const browser = await puppeteer.launch({
         args: [
@@ -96,18 +119,18 @@ export async function GET() {
         ignoreHTTPSErrors: true,
       });
 
-      console.log("Browser launched successfully");
+      addLog("Browser launched successfully");
 
       try {
-        console.log("Creating new page...");
+        addLog("Creating new page...");
         const page = await browser.newPage();
-        console.log("Setting page content...");
+        addLog("Setting page content...");
         await page.setContent(htmlContent, { 
           waitUntil: 'networkidle0',
           timeout: 30000 
         });
 
-        console.log("Generating PDF...");
+        addLog("Generating PDF...");
         const pdfBuffer = await page.pdf({
           format: 'A4',
           margin: {
@@ -121,46 +144,93 @@ export async function GET() {
 
         await browser.close();
 
-        console.log("PDF test successful, buffer size:", pdfBuffer.length);
+        addLog("PDF test successful, buffer size", pdfBuffer.length);
 
-        return new NextResponse(pdfBuffer, {
+        addLog("=== SUCCESS: Returning PDF ===");
+        
+        // Return logs page instead of PDF for debugging
+        return new NextResponse(createLogsPage(logs, "SUCCESS: PDF generated successfully"), {
           headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': 'attachment; filename="test.pdf"',
+            'Content-Type': 'text/html',
           },
         });
 
       } catch (pdfError) {
         await browser.close();
+        addLog("PDF generation error", {
+          message: pdfError.message,
+          code: pdfError.code,
+          name: pdfError.name
+        });
         throw pdfError;
       }
 
     } catch (puppeteerError) {
-      console.error('=== PUPPETEER FAILURE ===');
-      console.error('Error message:', puppeteerError.message);
-      console.error('Error code:', puppeteerError.code);
-      console.error('Error errno:', puppeteerError.errno);
-      console.error('Error syscall:', puppeteerError.syscall);
-      console.error('Full error:', puppeteerError);
-      console.warn('Puppeteer failed, falling back to HTML:', puppeteerError.message);
+      addLog("=== PUPPETEER FAILURE ===");
+      addLog("Error message", puppeteerError.message);
+      addLog("Error code", puppeteerError.code);
+      addLog("Error errno", puppeteerError.errno);
+      addLog("Error syscall", puppeteerError.syscall);
+      addLog("Error name", puppeteerError.name);
+      addLog("Error stack", puppeteerError.stack);
       
-      // Fallback to HTML for development or when Puppeteer fails
-      return new NextResponse(htmlContent, {
+      // Return logs page with error details
+      return new NextResponse(createLogsPage(logs, `PUPPETEER FAILURE: ${puppeteerError.message}`), {
         headers: {
           'Content-Type': 'text/html',
-          'Content-Disposition': 'inline; filename="test.html"',
         },
       });
     }
 
   } catch (error: any) {
-    console.error("=== OUTER CATCH ERROR ===");
-    console.error("PDF test error:", error);
-    console.error("Error stack:", error.stack);
-    console.error("Error name:", error.name);
-    console.error("Error code:", error.code);
-    return NextResponse.json({ 
-      error: error.message 
-    }, { status: 500 });
+    addLog("=== OUTER CATCH ERROR ===");
+    addLog("PDF test error", error.message);
+    addLog("Error stack", error.stack);
+    addLog("Error name", error.name);
+    addLog("Error code", error.code);
+    
+    return new NextResponse(createLogsPage(logs, `OUTER ERROR: ${error.message}`), {
+      headers: {
+        'Content-Type': 'text/html',
+      },
+    });
   }
+}
+
+function createLogsPage(logs: string[], status: string) {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Test Logs</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        .status { padding: 10px; margin-bottom: 20px; border-radius: 5px; font-weight: bold; }
+        .success { background: #155724; color: #d1ecf1; border: 1px solid #c3e6cb; }
+        .error { background: #721c24; color: #f8d7da; border: 1px solid #f5c6cb; }
+        .logs { background: #2d2d2d; padding: 15px; border-radius: 5px; white-space: pre-wrap; }
+        button { margin: 10px 5px; padding: 8px 15px; }
+    </style>
+</head>
+<body>
+    <h1>PDF Generation Test Logs</h1>
+    <div class="status ${status.includes('SUCCESS') ? 'success' : 'error'}">
+        Status: ${status}
+    </div>
+    
+    <button onclick="copyLogs()">Copy All Logs</button>
+    <button onclick="location.reload()">Refresh Test</button>
+    
+    <div class="logs" id="logs">${logs.join('\n')}</div>
+    
+    <script>
+        function copyLogs() {
+            const logs = document.getElementById('logs').textContent;
+            navigator.clipboard.writeText(logs).then(() => {
+                alert('Logs copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>`;
 }
