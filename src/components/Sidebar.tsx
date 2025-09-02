@@ -580,7 +580,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               {/* Quick Links */}
               <div className="grid grid-cols-2 gap-2">
                 <Link
-                  href="/calendar"
+                  href="/calendar-integrations"
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors"
                 >
                   <CalendarDays size={14} />
@@ -671,7 +671,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               </Link>
               
               <Link
-                href="/calendar"
+                href="/calendar-integrations"
                 className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
                 title="Calendar"
               >

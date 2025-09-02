@@ -221,38 +221,109 @@ async function searchFacility(facilityName: string, state: string) {
               console.log(`${idx + 1}. ${result.facility_name} - Overall: ${result.overall_rating} stars`);
             });
 
-            // Find the best match
+            // Find the best match with improved scoring
             let bestMatch = cmsData.results[0];
             let bestScore = 0;
             
-            // More sophisticated matching
+            console.log(`🔍 Finding best match for "${facilityName}" among ${cmsData.results.length} results:`);
+            
+            // More sophisticated matching with detailed scoring
             for (const result of cmsData.results) {
               let score = 0;
               const resultName = result.facility_name?.toLowerCase() || '';
               const searchLower = facilityName.toLowerCase();
               
-              // Exact match gets highest score
-              if (resultName === searchLower) {
+              // Normalize both names for better comparison
+              const normalizeForComparison = (name) => {
+                return name
+                  .replace(/\b(nursing home|skilled nursing facility|SNF|rehabilitation center|rehab center|care center|health center|healthcare center|medical center|manor|villa|gardens|commons|residence|assisted living|memory care|long term care|LTC|the|of|at|in|a|an|and|&)\b/gi, '')
+                  .replace(/[^\w\s]/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+              };
+              
+              const normalizedResult = normalizeForComparison(resultName);
+              const normalizedSearch = normalizeForComparison(searchLower);
+              
+              // Exact match (normalized) gets highest score
+              if (normalizedResult === normalizedSearch) {
                 score = 100;
+                console.log(`  ✅ EXACT MATCH: "${result.facility_name}" (score: 100)`);
               }
-              // Partial matches
-              else if (resultName.includes(searchLower)) {
-                score = 80;
+              // Direct substring match
+              else if (resultName.includes(searchLower) || searchLower.includes(resultName.substring(0, Math.min(resultName.length, searchLower.length * 0.8)))) {
+                score = 85;
+                console.log(`  ✅ SUBSTRING MATCH: "${result.facility_name}" (score: 85)`);
               }
-              // Word matches
+              // Normalized substring match
+              else if (normalizedResult.includes(normalizedSearch) || normalizedSearch.includes(normalizedResult)) {
+                score = 75;
+                console.log(`  ✅ NORMALIZED MATCH: "${result.facility_name}" (score: 75)`);
+              }
+              // Word matches with position weighting
               else {
-                const searchWords = searchLower.split(' ');
-                const resultWords = resultName.split(' ');
-                const matchingWords = searchWords.filter(word => 
-                  resultWords.some(rWord => rWord.includes(word) || word.includes(rWord))
-                );
-                score = (matchingWords.length / searchWords.length) * 60;
+                const searchWords = normalizedSearch.split(' ').filter(w => w.length > 2);
+                const resultWords = normalizedResult.split(' ').filter(w => w.length > 2);
+                
+                let matchingWords = 0;
+                let totalWords = searchWords.length;
+                
+                // Check for word matches (including partial)
+                for (let i = 0; i < searchWords.length; i++) {
+                  const searchWord = searchWords[i];
+                  for (const resultWord of resultWords) {
+                    // Exact word match
+                    if (searchWord === resultWord) {
+                      matchingWords += 1;
+                      break;
+                    }
+                    // Partial word match (at least 4 characters)
+                    else if (searchWord.length >= 4 && resultWord.length >= 4) {
+                      if (searchWord.includes(resultWord) || resultWord.includes(searchWord)) {
+                        matchingWords += 0.8;
+                        break;
+                      }
+                    }
+                  }
+                }
+                
+                score = totalWords > 0 ? (matchingWords / totalWords) * 60 : 0;
+                
+                // Bonus for first word match (facility names often start with key identifier)
+                if (searchWords.length > 0 && resultWords.length > 0) {
+                  if (searchWords[0] === resultWords[0] || 
+                      (searchWords[0].length >= 4 && resultWords[0].length >= 4 && 
+                       (searchWords[0].includes(resultWords[0]) || resultWords[0].includes(searchWords[0])))) {
+                    score += 15;
+                  }
+                }
+                
+                console.log(`  📊 WORD MATCH: "${result.facility_name}" - ${matchingWords.toFixed(1)}/${totalWords} words (score: ${score.toFixed(1)})`);
+              }
+              
+              // Additional bonus for matching state
+              if (result.provider_state === state) {
+                score += 5;
+              }
+              
+              // Penalty for very different lengths (likely different facilities)
+              const lengthDiff = Math.abs(resultName.length - searchLower.length);
+              if (lengthDiff > searchLower.length * 0.5) {
+                score -= 10;
               }
               
               if (score > bestScore) {
                 bestScore = score;
                 bestMatch = result;
               }
+            }
+            
+            console.log(`🎯 SELECTED: "${bestMatch.facility_name}" with score ${bestScore.toFixed(1)}`);
+            
+            // Only return result if score is above threshold
+            if (bestScore < 30) {
+              console.log(`❌ SCORE TOO LOW (${bestScore.toFixed(1)} < 30) - No confident match found`);
+              continue; // Try next search strategy
             }
             
             console.log(`Selected best match: "${bestMatch.facility_name}" with score ${bestScore}`);

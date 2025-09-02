@@ -205,27 +205,33 @@ CREATE POLICY "Users can update their own sync conflicts" ON calendar_sync_confl
     FOR UPDATE USING (auth.uid() = user_id);
 
 -- Migrate existing compliance_events to new calendar_events table
-INSERT INTO calendar_events (
-    user_id,
-    title,
-    start_time,
-    category,
-    description,
-    compliance_related,
-    created_at,
-    updated_at
-)
-SELECT 
-    user_id,
-    title,
-    date::timestamptz,
-    COALESCE(category, 'compliance'),
-    notes,
-    true, -- All existing events are compliance-related
-    created_at,
-    updated_at
-FROM compliance_events
-ON CONFLICT DO NOTHING;
+-- Only migrate if compliance_events table exists and has data
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'compliance_events') THEN
+        INSERT INTO calendar_events (
+            user_id,
+            title,
+            start_time,
+            category,
+            description,
+            compliance_related,
+            created_at,
+            updated_at
+        )
+        SELECT 
+            user_id,
+            title,
+            date::timestamptz,
+            COALESCE(category, 'compliance'),
+            notes,
+            true, -- All existing events are compliance-related
+            now(), -- Set created_at to current time since compliance_events doesn't have it
+            now()  -- Set updated_at to current time since compliance_events doesn't have it
+        FROM compliance_events
+        ON CONFLICT DO NOTHING;
+    END IF;
+END $$;
 
 -- Create default calendar types for each user
 INSERT INTO calendar_types (user_id, name, description, category, color)
