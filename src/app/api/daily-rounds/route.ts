@@ -32,78 +32,94 @@ interface DailyRound {
 const defaultRoundTemplates = {
   'unit_manager': [
     {
-      category: 'Safety & Environment',
+      category: 'Safety & Environment (F-Tag 323)',
       items: [
-        { task: 'Check emergency equipment functionality', frequency: 'daily', compliance_related: true },
-        { task: 'Inspect call bell system operation', frequency: 'daily', compliance_related: true },
-        { task: 'Verify fire safety equipment', frequency: 'daily', compliance_related: true },
-        { task: 'Check hallway lighting and safety', frequency: 'daily', compliance_related: true },
-        { task: 'Inspect resident room safety', frequency: 'daily', compliance_related: true }
+        { task: 'Check call bells within reach from bed and wheelchair positions', frequency: 'daily', compliance_related: true },
+        { task: 'Verify no personal items blocking egress paths or fire exits', frequency: 'daily', compliance_related: true },
+        { task: 'Inspect for loose handrails, broken furniture, or trip hazards', frequency: 'daily', compliance_related: true },
+        { task: 'Check that oxygen tanks are properly secured and away from heat sources', frequency: 'daily', compliance_related: true },
+        { task: 'Verify emergency lighting works and exit signs are illuminated', frequency: 'daily', compliance_related: true },
+        { task: 'Check that resident beds are at safe height with working locks', frequency: 'daily', compliance_related: true }
       ]
     },
     {
-      category: 'Infection Control',
+      category: 'Infection Control (F-Tag 441)',
       items: [
-        { task: 'Verify hand sanitizer availability', frequency: 'daily', compliance_related: true},
-        { task: 'Check isolation precautions compliance', frequency: 'daily', compliance_related: true},
-        { task: 'Review housekeeping standards', frequency: 'daily', compliance_related: true},
-        { task: 'Monitor PPE supply and usage', frequency: 'daily', compliance_related: true}
+        { task: 'Observe staff removing gloves before leaving resident rooms', frequency: 'daily', compliance_related: true},
+        { task: 'Check isolation room doors are closed with proper signage posted', frequency: 'daily', compliance_related: true},
+        { task: 'Verify hand sanitizer dispensers are filled and functioning', frequency: 'daily', compliance_related: true},
+        { task: 'Observe proper donning/doffing of PPE when entering isolation rooms', frequency: 'daily', compliance_related: true},
+        { task: 'Check that soiled linens are bagged at point of origin, not in hallways', frequency: 'daily', compliance_related: true},
+        { task: 'Verify sharps containers are not overfilled (3/4 full maximum)', frequency: 'daily', compliance_related: true}
       ]
     },
     {
-      category: 'Resident Care Quality',
+      category: 'Resident Rights & Dignity (F-Tag 550-578)',
       items: [
-        { task: 'Review resident care plans', frequency: 'daily', compliance_related: true},
-        { task: 'Check medication administration accuracy', frequency: 'daily', compliance_related: true},
-        { task: 'Monitor pain management protocols', frequency: 'daily', compliance_related: true},
-        { task: 'Assess resident dignity and privacy', frequency: 'daily', compliance_related: true}
+        { task: 'Check that residents are dressed appropriately and not exposed', frequency: 'daily', compliance_related: true},
+        { task: 'Verify room doors/curtains closed during personal care', frequency: 'daily', compliance_related: true},
+        { task: 'Observe staff speaking respectfully and not discussing residents in public areas', frequency: 'daily', compliance_related: true},
+        { task: 'Check residents have access to personal belongings and call bells', frequency: 'daily', compliance_related: true},
+        { task: 'Verify residents are positioned with dignity (no slouching, proper alignment)', frequency: 'daily', compliance_related: true}
       ]
     },
     {
-      category: 'Staffing & Operations',
+      category: 'Immediate Jeopardy Risks',
       items: [
-        { task: 'Verify adequate staffing levels', frequency: 'daily', compliance_related: true},
-        { task: 'Review staff competency compliance', frequency: 'daily', compliance_related: true},
-        { task: 'Check staff break coverage', frequency: 'daily', compliance_related: false},
-        { task: 'Monitor overtime and scheduling', frequency: 'daily', compliance_related: true}
+        { task: 'Check no residents left unattended on toilets >15 minutes', frequency: 'every_2_hours', compliance_related: true},
+        { task: 'Verify mechanical lifts have working emergency stops and monthly inspections', frequency: 'daily', compliance_related: true},
+        { task: 'Check medication cart is locked when nurse leaves area', frequency: 'every_4_hours', compliance_related: true},
+        { task: 'Verify elopement risk residents have proper monitoring/alarms', frequency: 'every_8_hours', compliance_related: true},
+        { task: 'Check wound care supplies are sterile and within expiration dates', frequency: 'daily', compliance_related: true}
       ]
     },
     {
-      category: 'Documentation & Compliance',
+      category: 'Documentation & Care Planning (F-Tag 655-685)',
       items: [
-        { task: 'Review incident reports and follow-ups', frequency: 'daily', compliance_related: true},
-        { task: 'Check medical record completeness', frequency: 'daily', compliance_related: true},
-        { task: 'Verify physician order implementation', frequency: 'daily', compliance_related: true},
-        { task: 'Review quality indicator metrics', frequency: 'daily', compliance_related: true}
+        { task: 'Verify care plan interventions match current resident conditions', frequency: 'daily', compliance_related: true},
+        { task: 'Check physician orders are signed and implemented within 24 hours', frequency: 'daily', compliance_related: true},
+        { task: 'Verify incident reports filed within 24 hours with proper follow-up', frequency: 'daily', compliance_related: true},
+        { task: 'Check ADL assessments match current resident functional status', frequency: 'daily', compliance_related: true}
       ]
     }
   ],
   'charge_nurse': [
     {
-      category: 'Patient Assessment',
+      category: 'Medication Safety (F-Tag 428)',
       items: [
-        { task: 'Review 24-hour report and concerns', frequency: 'daily', compliance_related: true},
-        { task: 'Assess high-risk residents', frequency: 'daily', compliance_related: true},
-        { task: 'Check residents with recent changes', frequency: 'daily', compliance_related: true},
-        { task: 'Monitor pain assessment compliance', frequency: 'daily', compliance_related: true}
+        { task: 'Verify controlled substances double-locked and count matches records', frequency: 'every_8_hours', compliance_related: true},
+        { task: 'Check PRN medications given with proper documentation of effectiveness', frequency: 'daily', compliance_related: true},
+        { task: 'Observe medication cart locked when nurse away >10 feet', frequency: 'every_4_hours', compliance_related: true},
+        { task: 'Verify refrigerated medications stored at 36-46°F with temp logs', frequency: 'daily', compliance_related: true},
+        { task: 'Check no expired medications in active medication areas', frequency: 'daily', compliance_related: true}
       ]
     },
     {
-      category: 'Medication Management',
+      category: 'Resident Assessment & Care (F-Tag 636-655)',
       items: [
-        { task: 'Verify medication administration times', frequency: 'daily', compliance_related: true},
-        { task: 'Check controlled substance records', frequency: 'daily', compliance_related: true},
-        { task: 'Review PRN medication usage', frequency: 'daily', compliance_related: true},
-        { task: 'Monitor medication storage compliance', frequency: 'daily', compliance_related: true}
+        { task: 'Check residents at risk for falls have proper interventions in place', frequency: 'daily', compliance_related: true},
+        { task: 'Verify pain assessments done and documented per facility policy', frequency: 'daily', compliance_related: true},
+        { task: 'Check pressure ulcer prevention for high-risk residents', frequency: 'daily', compliance_related: true},
+        { task: 'Observe residents with feeding tubes for proper positioning', frequency: 'daily', compliance_related: true},
+        { task: 'Verify restraint assessments current for residents with bed rails/restraints', frequency: 'daily', compliance_related: true}
       ]
     },
     {
-      category: 'Staff Supervision',
+      category: 'Staff Competency & Delegation (F-Tag 405)',
       items: [
-        { task: 'Monitor CNA task completion', frequency: 'daily', compliance_related: true},
-        { task: 'Review delegation appropriateness', frequency: 'daily', compliance_related: true},
-        { task: 'Check staff break scheduling', frequency: 'daily', compliance_related: false},
-        { task: 'Address staff concerns or questions', frequency: 'daily', compliance_related: false}
+        { task: 'Observe CNAs performing delegated nursing tasks correctly', frequency: 'daily', compliance_related: true},
+        { task: 'Check that only qualified staff administer medications', frequency: 'daily', compliance_related: true},
+        { task: 'Verify staff demonstrate proper infection control practices', frequency: 'daily', compliance_related: true},
+        { task: 'Check that wound care only performed by licensed nurses', frequency: 'daily', compliance_related: true}
+      ]
+    },
+    {
+      category: 'Emergency Preparedness',
+      items: [
+        { task: 'Check crash cart sealed and within expiration dates', frequency: 'daily', compliance_related: true},
+        { task: 'Verify oxygen concentrator/tanks functioning and secure', frequency: 'daily', compliance_related: true},
+        { task: 'Check emergency medications available and not expired', frequency: 'daily', compliance_related: true},
+        { task: 'Verify emergency contact numbers current and accessible', frequency: 'daily', compliance_related: true}
       ]
     }
   ],
@@ -501,11 +517,23 @@ ${specialFocusAreas.map(area => {
   return `${area}: ${regulations[area] || 'Relevant CMS quality measures and compliance requirements'}`;
 }).join('\n')}
 
-EXAMPLES OF DYNAMIC, REGULATION-SPECIFIC TASKS:
-- "Audit F-880 hand hygiene compliance during medication pass, documenting staff adherence rates"
-- "Verify F-689 fall risk reassessment completion for residents with condition changes in past 48 hours"
-- "Review F-758 controlled substance administration logs for timing compliance and witness documentation"
-- "Document F-686 pressure ulcer prevention interventions for high-risk residents per care plan requirements"
+EXAMPLES OF SPECIFIC, CITATION-PREVENTIVE TASKS:
+🚨 IMMEDIATE JEOPARDY SCENARIOS TO CHECK:
+- "Observe: No residents left unattended on toilets >15 minutes (F-689 immediate jeopardy risk)"
+- "Verify: Call bells within reach from bed, wheelchair, and toilet positions (F-323 accessibility)"
+- "Check: Staff remove gloves before exiting resident rooms and entering hallways (F-880 infection control)"
+- "Ensure: Medication carts locked when nurse moves >10 feet away (F-758 medication security)"
+- "Confirm: Isolation room doors closed with proper signage posted and visible (F-880 transmission precautions)"
+
+🔍 COMMON CITATION SCENARIOS TO MONITOR:
+- "Verify: No personal belongings blocking fire exits or egress paths (F-454 life safety)"
+- "Check: Residents properly dressed/covered during transport through public areas (F-573 dignity)"
+- "Observe: Staff not discussing resident information in elevators, hallways, or nursing stations (F-573 privacy)"
+- "Ensure: Sharps containers not overfilled (3/4 maximum per OSHA standards)"
+- "Verify: Mechanical lifts have current monthly inspection tags and working emergency stops (F-323)"
+- "Check: Oxygen tanks secured upright and away from heat sources/electrical equipment (F-323)"
+- "Monitor: No residents with elopement risk left unattended near exits (F-323 security)"
+- "Verify: Wound care supplies are sterile and within expiration dates (F-686 infection prevention)"
 
 Return ONLY a JSON array with this format (NO priority or estimated_minutes fields):
 [{

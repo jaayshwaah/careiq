@@ -117,15 +117,13 @@ Return a JSON response with:
       };
     }
 
-    // Create PDF using PDFKit with optimized settings for single page
+    // Create PDF using PDFKit with minimal settings to avoid font loading issues
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 30, bottom: 30, left: 40, right: 40 },
-      bufferPages: true
+      margins: { top: 30, bottom: 30, left: 40, right: 40 }
     });
     
-    // Use only built-in fonts that don't require file loading
-    doc.font('Helvetica');
+    // Don't explicitly set any font - use PDFKit defaults only
 
     // Collect PDF data
     const chunks: Buffer[] = [];
