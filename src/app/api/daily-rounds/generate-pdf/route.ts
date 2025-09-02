@@ -231,11 +231,17 @@ Return a JSON response with:
 </body>
 </html>`;
 
-    // Try Puppeteer PDF generation, fallback to HTML in development
-    const isProduction = process.env.NODE_ENV === 'production';
+    console.log("Starting PDF generation with working Puppeteer setup...");
+    console.log("Environment:", process.env.NODE_ENV);
+    console.log("Platform:", process.platform);
     
     try {
-      // Generate PDF using Puppeteer with Chromium for serverless
+      console.log("Getting Chromium executable path...");
+      const execPath = await chromium.executablePath();
+      console.log("Chromium executable path:", execPath);
+      
+      console.log("Launching browser with working config...");
+      // Use the exact same config that works in test-pdf
       const browser = await puppeteer.launch({
         args: [
           ...chromium.args,
@@ -248,13 +254,18 @@ Return a JSON response with:
         ignoreHTTPSErrors: true,
       });
 
+      console.log("Browser launched successfully");
+
       try {
+        console.log("Creating new page...");
         const page = await browser.newPage();
+        console.log("Setting page content...");
         await page.setContent(htmlContent, { 
           waitUntil: 'networkidle0',
           timeout: 30000 
         });
 
+        console.log("Generating PDF...");
         const pdfBuffer = await page.pdf({
           format: 'A4',
           margin: {
