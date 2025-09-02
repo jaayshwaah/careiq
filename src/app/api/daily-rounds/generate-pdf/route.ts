@@ -117,14 +117,15 @@ Return a JSON response with:
       };
     }
 
-    // Create PDF using PDFKit 
+    // Create PDF using PDFKit with optimized settings for single page
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 50, bottom: 50, left: 50, right: 50 }
+      margins: { top: 30, bottom: 30, left: 40, right: 40 },
+      bufferPages: true
     });
     
-    // Explicitly set font to built-in font to avoid Helvetica loading
-    doc.font('Times-Roman');
+    // Use only built-in fonts that don't require file loading
+    doc.font('Helvetica');
 
     // Collect PDF data
     const chunks: Buffer[] = [];
@@ -134,89 +135,83 @@ Return a JSON response with:
       doc.on('end', () => resolve(Buffer.concat(chunks)));
     });
 
-    // Generate PDF content based on AI layout
-    const pageHeight = doc.page.height - 100; // Account for margins
-    let currentY = 80;
+    // Calculate available space and font sizes for optimal single-page fit
+    const pageHeight = doc.page.height - 60; // Account for margins
+    const availableHeight = pageHeight - 120; // Reserve space for header and footer
+    const itemCount = roundData.items.length;
+    
+    // Dynamically calculate font sizes based on content
+    const baseItemHeight = Math.max(12, Math.min(20, availableHeight / (itemCount + 5))); // +5 for header/footer
+    const titleFontSize = Math.min(16, baseItemHeight + 4);
+    const itemFontSize = Math.max(7, Math.min(10, baseItemHeight * 0.6));
+    
+    let currentY = 40;
 
-    // Header section
-    const headerSection = pdfLayout.sections.find((s: any) => s.type === 'header');
-    if (headerSection) {
-      doc.fontSize(16).text('DAILY ROUND CHECKLIST', 50, currentY, { align: 'center' });
-      currentY += 25;
-      
-      doc.fontSize(14).text(roundData.title, 50, currentY, { align: 'center' });
-      currentY += 20;
-      
-      const dateText = includeDate 
-        ? `Date: ${customDate || new Date().toLocaleDateString()}` 
-        : `Generated: ${new Date().toLocaleDateString()}`;
-      
-      doc.fontSize(10)
-        .text(dateText, 50, currentY)
-        .text(`Unit: ${roundData.unit}`, 200, currentY)
-        .text(`Shift: ${roundData.shift}`, 350, currentY);
-      currentY += 15;
-      
-      doc.text(`Facility: ${roundData.metadata.facility_name}`, 50, currentY);
-      currentY += 25;
-    }
+    // Compact Header
+    doc.fontSize(titleFontSize).text('DAILY ROUND CHECKLIST', 40, currentY, { align: 'center' });
+    currentY += titleFontSize + 5;
+    
+    doc.fontSize(itemFontSize + 2).text(roundData.title, 40, currentY, { align: 'center' });
+    currentY += itemFontSize + 8;
+    
+    // Single line for date and facility info
+    const dateText = includeDate 
+      ? `Date: ${customDate || new Date().toLocaleDateString()}` 
+      : `Generated: ${new Date().toLocaleDateString()}`;
+    
+    doc.fontSize(itemFontSize)
+      .text(`${dateText} | Unit: ${roundData.unit} | Shift: ${roundData.shift} | ${roundData.metadata.facility_name}`, 40, currentY, { align: 'center' });
+    currentY += itemFontSize + 8;
 
-    // Items section - organize by category for better layout
-    const itemsByCategory = roundData.items.reduce((acc: any, item: RoundItem) => {
-      if (!acc[item.category]) acc[item.category] = [];
-      acc[item.category].push(item);
-      return acc;
-    }, {});
-
+    // Compact Items List - Two columns if space allows
+    const totalItems = roundData.items.length;
+    const useColumns = totalItems > 15; // Use columns for many items
+    const columnWidth = useColumns ? 250 : 500;
+    const rightColumnX = 300;
+    
+    let leftColumnY = currentY;
+    let rightColumnY = currentY;
     let itemIndex = 1;
-    Object.entries(itemsByCategory).forEach(([category, items]: [string, any]) => {
-      if (currentY > pageHeight - 100) {
-        // Not enough space, need to compress more
-        doc.fontSize(8);
-      }
+    
+    roundData.items.forEach((item: RoundItem, index: number) => {
+      const useRightColumn = useColumns && index >= Math.ceil(totalItems / 2);
+      const itemX = useRightColumn ? rightColumnX : 40;
+      const itemY = useRightColumn ? rightColumnY : leftColumnY;
       
-      // Category header
-      doc.fontSize(12).text(category, 50, currentY);
-      currentY += 15;
+      // Compact item format - single line per item
+      const taskText = `${itemIndex}. ☐ ${item.task}`;
+      const complianceText = item.compliance_related ? ' [COMPLIANCE]' : '';
+      const fullText = taskText + complianceText;
       
-      (items as RoundItem[]).forEach((item: RoundItem) => {
-        if (currentY > pageHeight - 80) {
-          doc.fontSize(7); // Make text smaller if running out of space
-        }
-        
-        const fontSize = currentY > pageHeight - 80 ? 7 : 9;
-        doc.fontSize(fontSize);
-        
-        // Checkbox and task
-        doc.text('☐', 60, currentY)
-          .text(`${itemIndex}. ${item.task}`, 75, currentY, { width: 400 });
-        
-        // Compliance info only
-        if (item.compliance_related) {
-          doc.fontSize(fontSize - 1).fillColor('red').text('⚠️ COMPLIANCE REQUIRED', 75, currentY + 12);
-        }
-        
-        // Completion line
-        doc.fillColor('black').text('Completed by: _________________ Time: _______', 75, currentY + 22);
-        
-        currentY += item.notes ? 45 : 35;
-        itemIndex++;
+      doc.fontSize(itemFontSize).text(fullText, itemX, itemY, { 
+        width: columnWidth,
+        height: baseItemHeight
       });
       
-      currentY += 10;
+      // Update Y position
+      if (useRightColumn) {
+        rightColumnY += baseItemHeight;
+      } else {
+        leftColumnY += baseItemHeight;
+      }
+      
+      itemIndex++;
     });
+    
+    // Update currentY to the lower of the two columns
+    currentY = Math.max(leftColumnY, rightColumnY) + 10;
 
-    // Footer section
-    if (currentY < pageHeight - 60) {
-      doc.fontSize(10).text('Staff Signature: _____________________ Date: __________', 50, currentY);
-      currentY += 25;
+    // Compact Footer - only if space remains
+    const remainingSpace = pageHeight - currentY;
+    if (remainingSpace > 40) {
+      doc.fontSize(itemFontSize)
+        .text('Staff Signature: _________________________ Date: _____________ Time: _________', 40, currentY);
+      currentY += itemFontSize + 5;
       
-      doc.text('Notes/Issues Identified:', 50, currentY);
-      currentY += 15;
-      
-      for (let i = 0; i < 3; i++) {
-        doc.text('_________________________________________________', 50, currentY);
-        currentY += 15;
+      if (remainingSpace > 60) {
+        doc.text('Notes: _________________________________________________', 40, currentY);
+        currentY += itemFontSize + 5;
+        doc.text('_______________________________________________________', 40, currentY);
       }
     }
 
