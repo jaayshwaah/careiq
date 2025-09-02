@@ -154,56 +154,9 @@ export default function TaskManagement() {
 
   const loadTasks = async () => {
     try {
-      // Mock data since task management tables don't exist yet
-      const mockTasks: Task[] = [
-        {
-          id: '1',
-          title: 'Complete Monthly Fire Drill',
-          description: 'Conduct mandatory fire safety drill for all residents and staff',
-          status: 'pending',
-          priority: 'high',
-          category: 'compliance',
-          assigned_to: 'Safety Officer',
-          assigned_by: 'Administrator',
-          due_date: '2025-01-05',
-          created_at: '2024-12-20',
-          automated: true,
-          recurring: {
-            frequency: 'monthly',
-            next_due: '2025-02-05'
-          }
-        },
-        {
-          id: '2',
-          title: 'Investigate Fall Incident - Room 205',
-          description: 'Complete investigation for resident fall incident reported this morning',
-          status: 'in_progress',
-          priority: 'urgent',
-          category: 'clinical',
-          assigned_to: 'DON',
-          assigned_by: 'Administrator',
-          due_date: '2024-12-31',
-          created_at: '2024-12-30',
-          automated: false,
-          workflow_step: 2
-        },
-        {
-          id: '3',
-          title: 'Update Emergency Contact Information',
-          description: 'Annual review and update of all resident emergency contacts',
-          status: 'completed',
-          priority: 'medium',
-          category: 'administrative',
-          assigned_to: 'Social Worker',
-          assigned_by: 'Administrator',
-          due_date: '2024-12-25',
-          created_at: '2024-12-15',
-          completed_at: '2024-12-24',
-          automated: false
-        }
-      ];
-
-      setTasks(mockTasks);
+      // TODO: Load tasks from database when task management tables are implemented
+      const tasks: Task[] = [];
+      setTasks(tasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -678,75 +631,386 @@ function WorkflowModal({ workflows, onClose }: {
   workflows: any[]; 
   onClose: () => void; 
 }) {
+  const [currentView, setCurrentView] = useState<'templates' | 'builder'>('templates');
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [workflowName, setWorkflowName] = useState('');
+  const [workflowDescription, setWorkflowDescription] = useState('');
+  const [workflowSteps, setWorkflowSteps] = useState<any[]>([]);
+
+  const handleUseTemplate = (template: any) => {
+    setSelectedTemplate(template);
+    setWorkflowName(template.name);
+    setWorkflowDescription(template.description);
+    setWorkflowSteps(template.steps.map((step: string, index: number) => ({
+      id: index + 1,
+      type: 'action',
+      title: step,
+      description: '',
+      settings: {}
+    })));
+    setCurrentView('builder');
+  };
+
+  const addWorkflowStep = (type: 'action' | 'condition' | 'delay' | 'notification') => {
+    const newStep = {
+      id: Date.now(),
+      type,
+      title: `New ${type}`,
+      description: '',
+      settings: {}
+    };
+    setWorkflowSteps([...workflowSteps, newStep]);
+  };
+
+  if (currentView === 'builder') {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-6xl w-full h-[90vh] flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="border-b border-gray-200 dark:border-gray-700 px-8 py-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <button
+                  onClick={() => setCurrentView('templates')}
+                  className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-2"
+                >
+                  ← Back to Templates
+                </button>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Workflow Builder
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  Design intelligent automation workflows
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
+              >
+                <Plus className="h-6 w-6 rotate-45 text-gray-500" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 flex overflow-hidden">
+            {/* Main Canvas */}
+            <div className="flex-1 flex flex-col">
+              {/* Canvas Header */}
+              <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="text"
+                      value={workflowName}
+                      onChange={(e) => setWorkflowName(e.target.value)}
+                      placeholder="Workflow name..."
+                      className="text-lg font-semibold bg-transparent border-none focus:ring-0 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium transition-colors">
+                      Save Draft
+                    </button>
+                    <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                      Publish Workflow
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Workflow Canvas */}
+              <div className="flex-1 p-6 bg-gray-50 dark:bg-gray-900/50 overflow-auto">
+                <div className="max-w-4xl mx-auto">
+                  {/* Start Node */}
+                  <div className="flex flex-col items-center space-y-6">
+                    <div className="flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-2xl border-2 border-green-300 dark:border-green-700">
+                      <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+                    </div>
+                    
+                    {/* Workflow Steps */}
+                    {workflowSteps.length === 0 ? (
+                      <>
+                        <div className="w-px h-12 bg-gray-300 dark:bg-gray-600"></div>
+                        <div className="w-full max-w-lg">
+                          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-8 text-center">
+                            <div className="flex flex-col items-center space-y-4">
+                              <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-2xl">
+                                <Plus className="h-8 w-8 text-gray-400" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                                  Add Your First Step
+                                </h4>
+                                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                  Build your workflow by adding actions and conditions
+                                </p>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                  <button 
+                                    onClick={() => addWorkflowStep('action')}
+                                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                                  >
+                                    <CheckSquare className="h-4 w-4" />
+                                    Action
+                                  </button>
+                                  <button 
+                                    onClick={() => addWorkflowStep('condition')}
+                                    className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                                  >
+                                    <AlertTriangle className="h-4 w-4" />
+                                    Condition
+                                  </button>
+                                  <button 
+                                    onClick={() => addWorkflowStep('delay')}
+                                    className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                                  >
+                                    <Clock className="h-4 w-4" />
+                                    Delay
+                                  </button>
+                                  <button 
+                                    onClick={() => addWorkflowStep('notification')}
+                                    className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                                  >
+                                    <Bell className="h-4 w-4" />
+                                    Notify
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {workflowSteps.map((step, index) => (
+                          <div key={step.id} className="flex flex-col items-center space-y-4">
+                            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                            <div className="w-full max-w-lg">
+                              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className={`p-2 rounded-lg ${
+                                    step.type === 'action' ? 'bg-blue-100 dark:bg-blue-900/20' :
+                                    step.type === 'condition' ? 'bg-yellow-100 dark:bg-yellow-900/20' :
+                                    step.type === 'delay' ? 'bg-purple-100 dark:bg-purple-900/20' :
+                                    'bg-green-100 dark:bg-green-900/20'
+                                  }`}>
+                                    {step.type === 'action' && <CheckSquare className="h-4 w-4 text-blue-600" />}
+                                    {step.type === 'condition' && <AlertTriangle className="h-4 w-4 text-yellow-600" />}
+                                    {step.type === 'delay' && <Clock className="h-4 w-4 text-purple-600" />}
+                                    {step.type === 'notification' && <Bell className="h-4 w-4 text-green-600" />}
+                                  </div>
+                                  <div className="flex-1">
+                                    <h4 className="font-medium text-gray-900 dark:text-white">
+                                      {step.title}
+                                    </h4>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+                                      {step.type} Step
+                                    </p>
+                                  </div>
+                                  <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                                    <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <button
+                          onClick={() => addWorkflowStep('action')}
+                          className="flex items-center justify-center w-12 h-12 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 transition-colors"
+                        >
+                          <Plus className="h-5 w-5 text-gray-400" />
+                        </button>
+                      </>
+                    )}
+
+                    <div className="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                    
+                    {/* End Node */}
+                    <div className="flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl border-2 border-gray-300 dark:border-gray-600">
+                      <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Properties Panel */}
+            <div className="w-80 border-l border-gray-200 dark:border-gray-700 p-6 overflow-y-auto">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Workflow Settings</h3>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={workflowDescription}
+                    onChange={(e) => setWorkflowDescription(e.target.value)}
+                    rows={3}
+                    placeholder="Describe what this workflow does..."
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Category
+                  </label>
+                  <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
+                    {TASK_CATEGORIES.map((category) => (
+                      <option key={category.value} value={category.value}>
+                        {category.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Trigger Type
+                  </label>
+                  <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
+                    <option>Manual Start</option>
+                    <option>Scheduled (Daily)</option>
+                    <option>Scheduled (Weekly)</option>
+                    <option>Scheduled (Monthly)</option>
+                    <option>Event-based</option>
+                    <option>Conditional</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      Enable notifications
+                    </span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      Allow manual override
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Templates View
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-5xl w-full h-[80vh] flex flex-col overflow-hidden">
+        <div className="border-b border-gray-200 dark:border-gray-700 px-8 py-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Automated Workflows
-            </h3>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Workflow Templates
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                Start with a pre-built template or create from scratch
+              </p>
+            </div>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
             >
-              ×
+              <Plus className="h-6 w-6 rotate-45 text-gray-500" />
             </button>
           </div>
         </div>
-        
-        <div className="px-6 py-4 space-y-6">
-          {workflows.map((workflow) => (
-            <div
-              key={workflow.id}
-              className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <Zap className="h-5 w-5 text-purple-600" />
-                <h4 className="font-semibold text-gray-900 dark:text-white">
-                  {workflow.name}
-                </h4>
-              </div>
-              
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                {workflow.description}
-              </p>
-              
-              <div className="mb-3">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Trigger: 
-                </span>
-                <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                  {workflow.trigger}
-                </span>
-              </div>
-              
-              <div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                  Workflow Steps:
-                </span>
-                <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                  {workflow.steps.map((step: string, index: number) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 text-xs rounded-full flex items-center justify-center font-medium">
-                        {index + 1}
-                      </span>
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-              </div>
 
-              <div className="mt-4 flex gap-2">
-                <button className="px-3 py-1 bg-green-100 text-green-600 hover:bg-green-200 rounded text-sm font-medium transition-colors">
-                  Active
-                </button>
-                <button className="px-3 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded text-sm font-medium transition-colors">
-                  Configure
-                </button>
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="mb-8">
+            <button
+              onClick={() => setCurrentView('builder')}
+              className="w-full p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group"
+            >
+              <div className="flex flex-col items-center space-y-3">
+                <div className="p-4 bg-blue-100 dark:bg-blue-900/20 rounded-2xl group-hover:bg-blue-200 transition-colors">
+                  <Plus className="h-8 w-8 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                    Create from Scratch
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    Build a custom workflow with our visual designer
+                  </p>
+                </div>
               </div>
+            </button>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-6">Pre-built Templates</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {workflows.map((template) => (
+                <div
+                  key={template.id}
+                  className="border border-gray-200 dark:border-gray-700 rounded-xl p-6 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all cursor-pointer group"
+                  onClick={() => handleUseTemplate(template)}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl group-hover:bg-purple-200 transition-colors">
+                      <Zap className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                        {template.name}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        {template.description}
+                      </p>
+                      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {template.steps.length} steps
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Repeat className="h-3 w-3" />
+                          {template.trigger}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Preview steps:</div>
+                    <div className="space-y-1">
+                      {template.steps.slice(0, 3).map((step: string, index: number) => (
+                        <div key={index} className="flex items-center gap-2 text-xs">
+                          <div className="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-400">
+                            {index + 1}
+                          </div>
+                          <span className="text-gray-600 dark:text-gray-400 truncate">{step}</span>
+                        </div>
+                      ))}
+                      {template.steps.length > 3 && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                          +{template.steps.length - 3} more steps
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </div>

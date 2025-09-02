@@ -46,6 +46,8 @@ export default function FacilityDashboard() {
     return stars.join('');
   };
 
+  const [complianceScore, setComplianceScore] = useState<{score: number, status: string} | null>(null);
+
   const [metrics, setMetrics] = useState<MetricCard[]>([
     {
       title: 'Compliance Score',
@@ -53,30 +55,6 @@ export default function FacilityDashboard() {
       change: 'No data yet',
       trend: 'stable',
       icon: CheckCircle,
-      color: 'text-gray-500'
-    },
-    {
-      title: 'Active Staff',
-      value: '—',
-      change: 'No data yet',
-      trend: 'stable', 
-      icon: Users,
-      color: 'text-gray-500'
-    },
-    {
-      title: 'Pending Training',
-      value: '—',
-      change: 'No data yet',
-      trend: 'stable',
-      icon: Clock,
-      color: 'text-gray-500'
-    },
-    {
-      title: 'Open Incidents',
-      value: '—',
-      change: 'No data yet',
-      trend: 'stable',
-      icon: AlertTriangle,
       color: 'text-gray-500'
     }
   ]);
@@ -181,6 +159,45 @@ export default function FacilityDashboard() {
     }
   };
 
+  // Load compliance score from survey prep progress
+  const loadComplianceScore = async () => {
+    try {
+      const response = await fetch('/api/survey-prep');
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Calculate compliance score based on survey prep progress
+        const totalItems = Object.values(data.sections || {}).reduce((sum: number, section: any) => sum + section.items.length, 0);
+        const completedItems = Object.keys(data.progress || {}).filter(key => data.progress[key]).length;
+        const score = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+        
+        let status = '';
+        if (score >= 90) status = 'Excellent';
+        else if (score >= 80) status = 'Good'; 
+        else if (score >= 70) status = 'Fair';
+        else if (score >= 50) status = 'Needs Work';
+        else status = 'Critical';
+        
+        setComplianceScore({ score, status });
+        
+        // Update the metrics array
+        setMetrics(prev => prev.map(metric => 
+          metric.title === 'Compliance Score' 
+            ? {
+                ...metric,
+                value: `${score}%`,
+                change: `Survey prep: ${status}`,
+                trend: score >= 80 ? 'up' : score >= 60 ? 'stable' : 'down',
+                color: score >= 80 ? 'text-green-600' : score >= 60 ? 'text-yellow-600' : 'text-red-600'
+              }
+            : metric
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to load compliance score:', error);
+    }
+  };
+
   // Load facility analysis
   const loadFacilityAnalysis = async () => {
     setLoadingAnalysis(true);
@@ -219,6 +236,7 @@ export default function FacilityDashboard() {
     if (isAuthenticated && user) {
       loadCurrentPPD();
       loadSurveyCountdown();
+      loadComplianceScore();
       
       // Update countdown every minute
       const interval = setInterval(loadSurveyCountdown, 60000);

@@ -816,11 +816,35 @@ const SurveyPreparation = () => {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600/90 to-blue-600/90 text-white rounded-lg p-6 glass">
-        <h1 className="text-2xl font-bold mb-2 text-white">Survey Preparation Assistant</h1>
-        <p className="text-purple-100">
-          Comprehensive checklist and team coordination for regulatory survey readiness.
-        </p>
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Survey Preparation</h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
+              Comprehensive checklist and team coordination for regulatory survey readiness
+            </p>
+            <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-1">
+                <Shield className="h-4 w-4" />
+                <span>Regulatory Compliance</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span>Team Coordination</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <CheckSquare className="h-4 w-4" />
+                <span>Progress Tracking</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end text-right">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {Math.round((checkedItems.size / 45) * 100)}%
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Complete</div>
+          </div>
+        </div>
       </div>
 
       {/* Navigation Tabs */}
