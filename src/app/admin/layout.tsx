@@ -14,12 +14,14 @@ import {
   FileText,
   Settings,
   Home,
-  AlertTriangle
+  AlertTriangle,
+  UserPlus
 } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
 const adminNavItems = [
   { href: "/admin", label: "Dashboard", icon: BarChart3 },
+  { href: "/admin/onboarding", label: "Client Onboarding", icon: UserPlus },
   { href: "/admin/knowledge", label: "Knowledge Base", icon: Database },
   { href: "/admin/users", label: "User Management", icon: Users },
   { href: "/admin/search", label: "Search Debug", icon: Search },
