@@ -29,6 +29,7 @@
     "node-cron": "^4.2.1",
     "openai": "5.12.2",
     "pdf-parse": "^1.1.1",
+    "puppeteer": "^24.18.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-markdown": "^9.0.3",

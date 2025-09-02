@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { providerFromEnv } from "@/lib/ai/providers";
+import puppeteer from 'puppeteer';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -210,13 +211,53 @@ Return a JSON response with:
 </body>
 </html>`;
 
-    // Return HTML content that can be printed as PDF by the browser
-    return new NextResponse(htmlContent, {
-      headers: {
-        'Content-Type': 'text/html',
-        'Content-Disposition': `inline; filename="daily-rounds-${roundData.unit}-${roundData.shift}-${new Date().toISOString().split('T')[0]}.html"`,
-      },
+    // Generate PDF using Puppeteer
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
     });
+
+    try {
+      const page = await browser.newPage();
+      await page.setContent(htmlContent, { 
+        waitUntil: 'networkidle0',
+        timeout: 30000 
+      });
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        margin: {
+          top: '0.5in',
+          right: '0.5in',
+          bottom: '0.5in',
+          left: '0.5in'
+        },
+        printBackground: true
+      });
+
+      await browser.close();
+
+      console.log("PDF generated successfully, buffer size:", pdfBuffer.length);
+
+      return new NextResponse(pdfBuffer, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="daily-rounds-${roundData.unit}-${roundData.shift}-${new Date().toISOString().split('T')[0]}.pdf"`,
+        },
+      });
+
+    } catch (pdfError) {
+      await browser.close();
+      throw pdfError;
+    }
 
   } catch (error: any) {
     console.error("PDF generation error:", error);

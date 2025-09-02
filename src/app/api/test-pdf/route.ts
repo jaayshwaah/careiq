@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import puppeteer from 'puppeteer';
 
 export async function GET() {
   try {
@@ -72,14 +73,55 @@ export async function GET() {
 </body>
 </html>`;
 
-    console.log("HTML test content generated successfully");
+    console.log("HTML test content generated, creating PDF with Puppeteer...");
 
-    return new NextResponse(htmlContent, {
-      headers: {
-        'Content-Type': 'text/html',
-        'Content-Disposition': 'inline; filename="pdf-test.html"',
-      },
+    // Generate PDF using Puppeteer
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
     });
+
+    try {
+      const page = await browser.newPage();
+      await page.setContent(htmlContent, { 
+        waitUntil: 'networkidle0',
+        timeout: 30000 
+      });
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        margin: {
+          top: '1in',
+          right: '1in',
+          bottom: '1in',
+          left: '1in'
+        },
+        printBackground: true
+      });
+
+      await browser.close();
+
+      console.log("PDF test successful, buffer size:", pdfBuffer.length);
+
+      return new NextResponse(pdfBuffer, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="test.pdf"',
+        },
+      });
+
+    } catch (pdfError) {
+      await browser.close();
+      throw pdfError;
+    }
 
   } catch (error: any) {
     console.error("PDF test error:", error);
