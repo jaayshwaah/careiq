@@ -117,12 +117,14 @@ Return a JSON response with:
       };
     }
 
-    // Create PDF using PDFKit with explicit font to avoid Helvetica loading
+    // Create PDF using PDFKit 
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 50, bottom: 50, left: 50, right: 50 },
-      font: 'Times-Roman' // Use built-in font instead of Helvetica
+      margins: { top: 50, bottom: 50, left: 50, right: 50 }
     });
+    
+    // Explicitly set font to built-in font to avoid Helvetica loading
+    doc.font('Times-Roman');
 
     // Collect PDF data
     const chunks: Buffer[] = [];

@@ -70,19 +70,14 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create user profile
+    // Create user profile using safe function that bypasses RLS
     const { error: profileError } = await adminSupabase
-      .from('profiles')
-      .insert({
-        user_id: authUser.user.id,
-        email,
-        first_name,
-        last_name,
-        role,
-        facility_id: facility_id || null,
-        phone: phone || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      .rpc('safe_create_profile', {
+        target_user_id: authUser.user.id,
+        user_email: email,
+        user_full_name: `${first_name} ${last_name}`,
+        user_role: role,
+        user_is_admin: false
       });
 
     if (profileError) {
@@ -92,6 +87,19 @@ export async function POST(req: NextRequest) {
         ok: false, 
         error: `Failed to create user profile: ${profileError.message}` 
       }, { status: 400 });
+    }
+
+    // Update facility_id separately if provided (using service role to bypass RLS)
+    if (facility_id) {
+      const { error: facilityUpdateError } = await adminSupabase
+        .from('profiles')
+        .update({ facility_id: facility_id })
+        .eq('user_id', authUser.user.id);
+
+      if (facilityUpdateError) {
+        console.warn('Failed to set facility_id:', facilityUpdateError);
+        // Don't fail the whole operation, just log the warning
+      }
     }
 
     return NextResponse.json({ 

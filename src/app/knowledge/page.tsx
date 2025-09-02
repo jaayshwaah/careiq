@@ -114,19 +114,29 @@ const KnowledgeManagement = () => {
   };
 
   const loadStats = async () => {
-    // Mock stats - replace with actual API call
-    setStats({
-      totalDocuments: 47,
-      totalChunks: 312,
-      categories: {
-        'CMS Regulation': 12,
-        'State Regulation': 8,
-        'Facility Policy': 15,
-        'SOP': 7,
-        'Training Material': 5
-      },
-      recentUploads: 3
-    });
+    try {
+      const response = await fetch('/api/knowledge/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      } else {
+        // Fallback to empty state
+        setStats({
+          totalDocuments: 0,
+          totalChunks: 0,
+          categories: {},
+          recentUploads: 0
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load stats:', error);
+      setStats({
+        totalDocuments: 0,
+        totalChunks: 0,
+        categories: {},
+        recentUploads: 0
+      });
+    }
   };
 
   const handleFileSelect = (event) => {

@@ -61,39 +61,22 @@ const IntegratedNavigation = () => {
   };
 
   const loadNotifications = async () => {
-    // Mock notifications - would come from API
-    const mockNotifications = [
-      {
-        id: 1,
-        type: 'survey',
-        title: 'Survey Window Opening',
-        message: 'Your facility survey window opens in 30 days',
-        priority: 'high',
-        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        read: false
-      },
-      {
-        id: 2,
-        type: 'training',
-        title: 'Training Due',
-        message: 'Annual infection control training due for 3 staff members',
-        priority: 'medium',
-        created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        read: false
-      },
-      {
-        id: 3,
-        type: 'compliance',
-        title: 'Policy Review',
-        message: 'Medication administration policy needs review',
-        priority: 'low',
-        created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-        read: true
+    try {
+      const response = await fetch('/api/notifications');
+      if (response.ok) {
+        const notifications = await response.json();
+        setNotifications(notifications);
+        setUnreadCount(notifications.filter(n => !n.read).length);
+      } else {
+        // Fallback to empty state
+        setNotifications([]);
+        setUnreadCount(0);
       }
-    ];
-    
-    setNotifications(mockNotifications);
-    setUnreadCount(mockNotifications.filter(n => !n.read).length);
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+      setNotifications([]);
+      setUnreadCount(0);
+    }
   };
 
   const loadSurveyReadiness = async () => {

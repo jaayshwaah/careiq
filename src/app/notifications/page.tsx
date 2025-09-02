@@ -19,63 +19,7 @@ interface Notification {
 
 export default function SmartNotifications() {
   const { isAuthenticated } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'survey',
-      title: 'State Survey Window Opening',
-      description: 'Your facility is within the 90-day survey window. Start preparation checklist.',
-      priority: 'high',
-      dueDate: '2024-02-15',
-      isRead: false,
-      createdAt: '2024-01-15T09:00:00Z',
-      actionRequired: true
-    },
-    {
-      id: '2',
-      type: 'training',
-      title: 'CNA Training Expires Soon',
-      description: '23 staff members have training certifications expiring in the next 30 days.',
-      priority: 'high',
-      dueDate: '2024-02-10',
-      isRead: false,
-      createdAt: '2024-01-14T14:30:00Z',
-      actionRequired: true
-    },
-    {
-      id: '3',
-      type: 'policy',
-      title: 'Annual Policy Review Due',
-      description: 'Infection Control Policy requires annual review and approval.',
-      priority: 'medium',
-      dueDate: '2024-02-20',
-      isRead: true,
-      createdAt: '2024-01-13T11:15:00Z',
-      actionRequired: true
-    },
-    {
-      id: '4',
-      type: 'incident',
-      title: 'Follow-up Required',
-      description: 'Incident #2024-001 requires 72-hour follow-up documentation.',
-      priority: 'high',
-      dueDate: '2024-01-18',
-      isRead: false,
-      createdAt: '2024-01-15T16:45:00Z',
-      actionRequired: true
-    },
-    {
-      id: '5',
-      type: 'deadline',
-      title: 'MDS Submission Deadline',
-      description: 'MDS assessments for 15 residents due for submission.',
-      priority: 'medium',
-      dueDate: '2024-01-20',
-      isRead: true,
-      createdAt: '2024-01-12T08:20:00Z',
-      actionRequired: false
-    }
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const [filter, setFilter] = useState<'all' | 'unread' | 'action-required'>('all');
   const [searchTerm, setSearchTerm] = useState('');

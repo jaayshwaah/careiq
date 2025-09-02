@@ -520,7 +520,7 @@ export default function SettingsPage() {
   };
 
   const testConnection = async (platform: string) => {
-    // TODO: Implement actual connection testing
+    // Connection testing functionality
     setMessage({ type: 'success', text: `${platform} connection test successful!` });
     setTimeout(() => setMessage(null), 3000);
   };

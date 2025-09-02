@@ -5,11 +5,14 @@ export async function GET() {
   try {
     console.log("Testing PDF generation...");
     
-    // Create PDF using PDFKit
+    // Create PDF using PDFKit with no default font to avoid Helvetica
     const doc = new PDFDocument({
       size: 'A4',
       margins: { top: 50, bottom: 50, left: 50, right: 50 }
     });
+    
+    // Explicitly set font to built-in font
+    doc.font('Times-Roman');
 
     // Collect PDF data
     const chunks: Buffer[] = [];

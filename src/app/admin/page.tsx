@@ -70,18 +70,16 @@ export default function AdminDashboard() {
     }
   }
 
-  const mockStats: SystemStats = {
-    totalUsers: 147,
-    totalChats: 1243,
-    totalMessages: 8567,
-    knowledgeBaseEntries: 2341,
-    activeUsers24h: 23,
-    errorRate: 0.8,
-    avgResponseTime: 1.2,
-    storageUsed: "2.3 GB"
+  const displayStats = stats || {
+    totalUsers: 0,
+    totalChats: 0,
+    totalMessages: 0,
+    knowledgeBaseEntries: 0,
+    activeUsers24h: 0,
+    errorRate: 0,
+    avgResponseTime: 0,
+    storageUsed: "0 B"
   };
-
-  const displayStats = stats || mockStats;
 
   if (loading) {
     return (
@@ -104,28 +102,26 @@ export default function AdminDashboard() {
           title="Total Users"
           value={displayStats.totalUsers.toLocaleString()}
           icon={Users}
-          trend="+12% this month"
-          trendUp={true}
+          trend={displayStats.totalUsers > 0 ? "User accounts created" : "No users yet"}
         />
         <MetricCard
           title="Total Chats"
           value={displayStats.totalChats.toLocaleString()}
           icon={MessageSquare}
-          trend="+8% this week"
-          trendUp={true}
+          trend={displayStats.totalChats > 0 ? "Conversations started" : "No conversations yet"}
         />
         <MetricCard
           title="Knowledge Base"
           value={displayStats.knowledgeBaseEntries.toLocaleString()}
           subtitle="entries"
           icon={Database}
-          trend="Updated daily"
+          trend={displayStats.knowledgeBaseEntries > 0 ? "Entries available" : "Knowledge base empty"}
         />
         <MetricCard
           title="Active Users (24h)"
           value={displayStats.activeUsers24h.toString()}
           icon={TrendingUp}
-          trend="Peak: 11am-2pm"
+          trend={displayStats.activeUsers24h > 0 ? "Recent activity" : "No recent activity"}
         />
       </div>
 
@@ -293,26 +289,9 @@ export default function AdminDashboard() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Recent Activity</h2>
         <div className="space-y-3">
-          <ActivityItem
-            type="info"
-            message="Knowledge base updated with 15 new CMS regulations"
-            timestamp="2 hours ago"
-          />
-          <ActivityItem
-            type="warning"
-            message="High API usage detected - 95% of daily limit"
-            timestamp="4 hours ago"
-          />
-          <ActivityItem
-            type="success"
-            message="System backup completed successfully"
-            timestamp="6 hours ago"
-          />
-          <ActivityItem
-            type="info"
-            message="New user registration: admin@example.com"
-            timestamp="8 hours ago"
-          />
+          <div className="text-center py-8">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">No recent activity to display</p>
+          </div>
         </div>
       </div>
     </div>

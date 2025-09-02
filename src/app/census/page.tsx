@@ -250,7 +250,7 @@ export default function CensusPage() {
                       <input
                         type="number"
                         min="1"
-                        placeholder="120"
+                        placeholder="Enter total beds"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -261,7 +261,7 @@ export default function CensusPage() {
                       <input
                         type="number"
                         min="0"
-                        placeholder="95"
+                        placeholder="Enter occupied beds"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -272,7 +272,7 @@ export default function CensusPage() {
                       <input
                         type="number"
                         min="0"
-                        placeholder="25"
+                        placeholder="Auto-calculated"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         readOnly
                       />
@@ -287,7 +287,7 @@ export default function CensusPage() {
                       <input
                         type="number"
                         min="0"
-                        placeholder="3"
+                        placeholder="0"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -298,7 +298,7 @@ export default function CensusPage() {
                       <input
                         type="number"
                         min="0"
-                        placeholder="1"
+                        placeholder="0"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -314,7 +314,7 @@ export default function CensusPage() {
                         <input
                           type="number"
                           min="0"
-                          placeholder="45"
+                          placeholder="0"
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>
@@ -325,7 +325,7 @@ export default function CensusPage() {
                         <input
                           type="number"
                           min="0"
-                          placeholder="35"
+                          placeholder="0"
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>
@@ -336,7 +336,7 @@ export default function CensusPage() {
                         <input
                           type="number"
                           min="0"
-                          placeholder="10"
+                          placeholder="0"
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>
@@ -347,7 +347,7 @@ export default function CensusPage() {
                         <input
                           type="number"
                           min="0"
-                          placeholder="5"
+                          placeholder="0"
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>

@@ -49,79 +49,41 @@ export default function FacilityDashboard() {
   const [metrics, setMetrics] = useState<MetricCard[]>([
     {
       title: 'Compliance Score',
-      value: '92%',
-      change: '+2.1%',
-      trend: 'up',
+      value: '—',
+      change: 'No data yet',
+      trend: 'stable',
       icon: CheckCircle,
-      color: 'text-green-600'
+      color: 'text-gray-500'
     },
     {
       title: 'Active Staff',
-      value: 156,
-      change: '+8',
-      trend: 'up', 
+      value: '—',
+      change: 'No data yet',
+      trend: 'stable', 
       icon: Users,
-      color: 'text-blue-600'
+      color: 'text-gray-500'
     },
     {
       title: 'Pending Training',
-      value: 23,
-      change: '-5',
-      trend: 'down',
+      value: '—',
+      change: 'No data yet',
+      trend: 'stable',
       icon: Clock,
-      color: 'text-orange-600'
+      color: 'text-gray-500'
     },
     {
       title: 'Open Incidents',
-      value: 3,
-      change: '+1',
-      trend: 'up',
+      value: '—',
+      change: 'No data yet',
+      trend: 'stable',
       icon: AlertTriangle,
-      color: 'text-red-600'
+      color: 'text-gray-500'
     }
   ]);
 
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([
-    {
-      id: '1',
-      type: 'chat',
-      title: 'Policy Review Chat',
-      description: 'Discussed infection control updates with CareIQ',
-      timestamp: '2 hours ago',
-      user: 'Sarah Johnson'
-    },
-    {
-      id: '2', 
-      type: 'training',
-      title: 'CNA Training Completed',
-      description: '15 staff members completed mandatory training',
-      timestamp: '4 hours ago',
-      user: 'Training Department'
-    },
-    {
-      id: '3',
-      type: 'policy',
-      title: 'Emergency Procedures Updated',
-      description: 'Policy v2.1 approved and distributed',
-      timestamp: '1 day ago',
-      user: 'Admin Team'
-    },
-    {
-      id: '4',
-      type: 'incident',
-      title: 'Fall Prevention Review',
-      description: 'Incident investigation completed, recommendations implemented',
-      timestamp: '2 days ago',
-      user: 'Quality Assurance'
-    }
-  ]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
-  const [upcomingDeadlines] = useState([
-    { title: 'State Survey Window Opens', date: '2024-02-15', type: 'survey', priority: 'high' },
-    { title: 'Fire Safety Training Due', date: '2024-02-10', type: 'training', priority: 'medium' },
-    { title: 'MDS Coordinator Certification', date: '2024-02-20', type: 'certification', priority: 'high' },
-    { title: 'Policy Review: Medication Management', date: '2024-02-12', type: 'policy', priority: 'medium' }
-  ]);
+  const [upcomingDeadlines] = useState([]);
 
   // Load current PPD data
   const loadCurrentPPD = async () => {

@@ -490,7 +490,7 @@ export default function AdminUsersPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="user@facility.com"
+                  placeholder="Enter email address"
                 />
                 <p className="text-xs text-gray-500 mt-1">Creates profile for existing user</p>
               </div>
@@ -529,7 +529,7 @@ export default function AdminUsersPage() {
                   value={formData.facility_name}
                   onChange={(e) => setFormData({...formData, facility_name: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Sunset Manor Nursing Home"
+                  placeholder="Enter facility name"
                 />
               </div>
 
@@ -628,7 +628,7 @@ export default function AdminUsersPage() {
                   value={formData.facility_name}
                   onChange={(e) => setFormData({...formData, facility_name: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Sunset Manor Nursing Home"
+                  placeholder="Enter facility name"
                 />
               </div>
 
