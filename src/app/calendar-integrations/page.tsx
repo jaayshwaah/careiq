@@ -91,11 +91,7 @@ export default function CalendarIntegrationsPage() {
 
   const loadIntegrations = async () => {
     try {
-      const response = await fetch('/api/calendar/integrations', {
-        headers: {
-          'Authorization': `Bearer ${user?.access_token}`
-        }
-      });
+      const response = await fetch('/api/calendar/integrations');
       const data = await response.json();
       
       if (data.ok) {
@@ -108,11 +104,7 @@ export default function CalendarIntegrationsPage() {
 
   const loadCalendarTypes = async () => {
     try {
-      const response = await fetch('/api/calendar/types', {
-        headers: {
-          'Authorization': `Bearer ${user?.access_token}`
-        }
-      });
+      const response = await fetch('/api/calendar/types');
       const data = await response.json();
       
       if (data.ok) {
@@ -129,11 +121,7 @@ export default function CalendarIntegrationsPage() {
     setConnectingProvider(provider);
     try {
       // Get OAuth URL
-      const response = await fetch(`/api/calendar/${provider}/auth`, {
-        headers: {
-          'Authorization': `Bearer ${user?.access_token}`
-        }
-      });
+      const response = await fetch(`/api/calendar/${provider}/auth`);
       const data = await response.json();
       
       if (data.ok) {
@@ -156,7 +144,6 @@ export default function CalendarIntegrationsPage() {
       const response = await fetch(`/api/calendar/${integration.provider}/sync`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${user?.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -185,7 +172,6 @@ export default function CalendarIntegrationsPage() {
       const response = await fetch(`/api/calendar/integrations`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${user?.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -209,10 +195,7 @@ export default function CalendarIntegrationsPage() {
 
     try {
       const response = await fetch(`/api/calendar/integrations?id=${integration.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${user?.access_token}`
-        }
+        method: 'DELETE'
       });
       
       if (response.ok) {
@@ -228,7 +211,6 @@ export default function CalendarIntegrationsPage() {
       const response = await fetch('/api/calendar/types', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${user?.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData)
