@@ -266,86 +266,88 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
       `}
     >
-      <div className="sticky top-0 h-screen p-3 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 p-2">
-          <button
-            onClick={onToggle}
-            className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <PanelsTopLeft size={18} />
-          </button>
+      <div className="h-screen flex flex-col">
+        {/* Header - Sticky at Top */}
+        <div className="shrink-0 p-3">
+          <div className="flex items-center justify-between mb-4 p-2">
+            <button
+              onClick={onToggle}
+              className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              <PanelsTopLeft size={18} />
+            </button>
 
-          {!collapsed && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                {/* CareIQ Logo */}
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-sm">
-                  <span className="text-white font-bold text-sm">CIQ</span>
+            {!collapsed && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  {/* CareIQ Logo */}
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-sm">
+                    <span className="text-white font-bold text-sm">CIQ</span>
+                  </div>
+                  <h1 className="text-lg font-semibold">CareIQ</h1>
                 </div>
-                <h1 className="text-lg font-semibold">CareIQ</h1>
               </div>
+            )}
+          </div>
+
+          {/* New Chat Button */}
+          <div className="mb-4">
+            <button
+              onClick={createNewChat}
+              disabled={!isAuthenticated}
+              className={`
+                w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300
+                text-white disabled:text-gray-500 transition-colors
+                ${collapsed ? "justify-center" : "justify-start"}
+              `}
+              title="New chat"
+            >
+              <Plus size={16} />
+              {!collapsed && <span className="text-sm font-medium">New Chat</span>}
+            </button>
+          </div>
+
+          {/* Search Bar */}
+          {!collapsed && (
+            <div className="mb-4">
+              {showSearch ? (
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <Search size={16} className="text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search chats..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex-1 bg-transparent text-sm outline-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      setShowSearch(false);
+                      setSearchQuery('');
+                    }}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                  >
+                    <X size={14} className="text-gray-400" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowSearch(true)}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <Search size={16} />
+                  <span>Search chats...</span>
+                </button>
+              )}
             </div>
           )}
         </div>
 
-        {/* New Chat Button */}
-        <div className="mb-4">
-          <button
-            onClick={createNewChat}
-            disabled={!isAuthenticated}
-            className={`
-              w-full flex items-center gap-3 px-3 py-2 rounded-lg
-              bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300
-              text-white disabled:text-gray-500 transition-colors
-              ${collapsed ? "justify-center" : "justify-start"}
-            `}
-            title="New chat"
-          >
-            <Plus size={16} />
-            {!collapsed && <span className="text-sm font-medium">New Chat</span>}
-          </button>
-        </div>
-
-        {/* Search Bar */}
-        {!collapsed && (
-          <div className="mb-4">
-            {showSearch ? (
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <Search size={16} className="text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search chats..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 bg-transparent text-sm outline-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                  autoFocus
-                />
-                <button
-                  onClick={() => {
-                    setShowSearch(false);
-                    setSearchQuery('');
-                  }}
-                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                >
-                  <X size={14} className="text-gray-400" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowSearch(true)}
-                className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <Search size={16} />
-                <span>Search chats...</span>
-              </button>
-            )}
-          </div>
-        )}
-
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-hidden flex flex-col px-3">
           {/* Chat List - Scrollable */}
           <div className="flex-1 overflow-y-auto">
           {!collapsed && (
@@ -440,259 +442,261 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           )}
         </div>
 
-        {/* Footer Navigation */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-          {!collapsed ? (
-            <div className="space-y-2">
-              {/* Admin Access */}
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors text-blue-600 dark:text-blue-400 font-medium"
-                  title="Admin Dashboard"
-                >
-                  <Shield size={14} />
-                  <span>Admin Dashboard</span>
-                </Link>
-              )}
-              
-              {/* Tools Section */}
-              <div>
-                <button
-                  onClick={() => setShowTools(!showTools)}
-                  className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors font-medium text-gray-700 dark:text-gray-300"
-                >
-                  <div className="flex items-center gap-2">
-                    <Wrench size={14} />
-                    <span>Tools</span>
-                  </div>
-                  {showTools ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                </button>
-                
-                {showTools && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    <Link
-                      href="/cms-guidance"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/cms-guidance' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <BookOpen size={12} />
-                      <span>CMS Guidance</span>
-                    </Link>
-                    <Link
-                      href="/ppd-calculator"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/ppd-calculator' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <Calculator size={12} />
-                      <span>PPD Calculator</span>
-                    </Link>
-                    <Link
-                      href="/daily-rounds"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/daily-rounds' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <FileText size={12} />
-                      <span>Daily Rounds</span>
-                    </Link>
-                    <Link
-                      href="/survey-prep"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/survey-prep' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <BarChart3 size={12} />
-                      <span>Survey Prep</span>
-                    </Link>
-                    <Link
-                      href="/mock-survey-training"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/mock-survey-training' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <Users size={12} />
-                      <span>Survey Training</span>
-                    </Link>
-                    <Link
-                      href="/census-dashboard"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/census-dashboard' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <BarChart3 size={12} />
-                      <span>Census Analytics</span>
-                    </Link>
-                    <Link
-                      href="/incident-reports"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/incident-reports' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <AlertTriangle size={12} />
-                      <span>Incident Reports</span>
-                    </Link>
-                    <Link
-                      href="/ehr-integrations"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/ehr-integrations' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <Database size={12} />
-                      <span>EHR Integrations</span>
-                    </Link>
-                    <Link
-                      href="/care-plan-assistant"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/care-plan-assistant' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <Heart size={12} />
-                      <span>Care Plans</span>
-                    </Link>
-                    <Link
-                      href="/pbj-corrector"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/pbj-corrector' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <Calculator size={12} />
-                      <span>PBJ Corrector</span>
-                    </Link>
-                    <Link
-                      href="/task-management"
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                        pathname === '/task-management' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      <CheckCircle size={12} />
-                      <span>Task Management</span>
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Quick Links */}
-              <div className="grid grid-cols-2 gap-2">
-                <Link
-                  href="/calendar-integrations"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors"
-                >
-                  <CalendarDays size={14} />
-                  <span>Calendar</span>
-                </Link>
-                <Link
-                  href="/settings"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors"
-                >
-                  <Settings size={14} />
-                  <span>Settings</span>
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              {/* Admin button for collapsed sidebar */}
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors text-blue-600 dark:text-blue-400"
-                  title="Admin Dashboard"
-                >
-                  <Shield size={16} />
-                </Link>
-              )}
-              
-              {/* Tools for collapsed sidebar */}
-              <Link
-                href="/cms-guidance"
-                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                title="CMS Guidance"
-              >
-                <BookOpen size={16} />
-              </Link>
-              <Link
-                href="/ppd-calculator"
-                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                title="PPD Calculator"
-              >
-                <Calculator size={16} />
-              </Link>
-              <Link
-                href="/daily-rounds"
-                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                title="Daily Rounds"
-              >
-                <FileText size={16} />
-              </Link>
-              <Link
-                href="/incident-reports"
-                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                title="Incident Reports"
-              >
-                <AlertTriangle size={16} />
-              </Link>
-              
-              <Link
-                href="/calendar-integrations"
-                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                title="Calendar"
-              >
-                <CalendarDays size={16} />
-              </Link>
-              <Link
-                href="/settings"
-                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                title="Settings"
-              >
-                <Settings size={16} />
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* User Section - Sticky at Bottom */}
-        {isAuthenticated && (
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+        {/* Footer Navigation - Sticky at Bottom */}
+        <div className="shrink-0 p-3">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mb-3">
             {!collapsed ? (
-              <div className="flex items-center gap-3 px-3 py-2">
-                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                  <User size={16} className="text-blue-600 dark:text-blue-400" />
+              <div className="space-y-2">
+                {/* Admin Access */}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors text-blue-600 dark:text-blue-400 font-medium"
+                    title="Admin Dashboard"
+                  >
+                    <Shield size={14} />
+                    <span>Admin Dashboard</span>
+                  </Link>
+                )}
+                
+                {/* Tools Section */}
+                <div>
+                  <button
+                    onClick={() => setShowTools(!showTools)}
+                    className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Wrench size={14} />
+                      <span>Tools</span>
+                    </div>
+                    {showTools ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </button>
+                  
+                  {showTools && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      <Link
+                        href="/cms-guidance"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/cms-guidance' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <BookOpen size={12} />
+                        <span>CMS Guidance</span>
+                      </Link>
+                      <Link
+                        href="/ppd-calculator"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/ppd-calculator' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <Calculator size={12} />
+                        <span>PPD Calculator</span>
+                      </Link>
+                      <Link
+                        href="/daily-rounds"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/daily-rounds' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <FileText size={12} />
+                        <span>Daily Rounds</span>
+                      </Link>
+                      <Link
+                        href="/survey-prep"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/survey-prep' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <BarChart3 size={12} />
+                        <span>Survey Prep</span>
+                      </Link>
+                      <Link
+                        href="/mock-survey-training"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/mock-survey-training' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <Users size={12} />
+                        <span>Survey Training</span>
+                      </Link>
+                      <Link
+                        href="/census-dashboard"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/census-dashboard' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <BarChart3 size={12} />
+                        <span>Census Analytics</span>
+                      </Link>
+                      <Link
+                        href="/incident-reports"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/incident-reports' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <AlertTriangle size={12} />
+                        <span>Incident Reports</span>
+                      </Link>
+                      <Link
+                        href="/ehr-integrations"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/ehr-integrations' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <Database size={12} />
+                        <span>EHR Integrations</span>
+                      </Link>
+                      <Link
+                        href="/care-plan-assistant"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/care-plan-assistant' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <Heart size={12} />
+                        <span>Care Plans</span>
+                      </Link>
+                      <Link
+                        href="/pbj-corrector"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/pbj-corrector' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <Calculator size={12} />
+                        <span>PBJ Corrector</span>
+                      </Link>
+                      <Link
+                        href="/task-management"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
+                          pathname === '/task-management' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <CheckCircle size={12} />
+                        <span>Task Management</span>
+                      </Link>
+                    </div>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                    {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {user?.email}
-                  </div>
+
+                {/* Quick Links */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href="/calendar-integrations"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors"
+                  >
+                    <CalendarDays size={14} />
+                    <span>Calendar</span>
+                  </Link>
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors"
+                  >
+                    <Settings size={14} />
+                    <span>Settings</span>
+                  </Link>
                 </div>
-                <button
-                  onClick={handleSignOut}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500 transition-colors"
-                  title="Sign out"
-                >
-                  <LogOut size={16} />
-                </button>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                  <User size={16} className="text-blue-600 dark:text-blue-400" />
-                </div>
-                <button
-                  onClick={handleSignOut}
-                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
-                  title="Sign out"
+                {/* Admin button for collapsed sidebar */}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors text-blue-600 dark:text-blue-400"
+                    title="Admin Dashboard"
+                  >
+                    <Shield size={16} />
+                  </Link>
+                )}
+                
+                {/* Tools for collapsed sidebar */}
+                <Link
+                  href="/cms-guidance"
+                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                  title="CMS Guidance"
                 >
-                  <LogOut size={16} />
-                </button>
+                  <BookOpen size={16} />
+                </Link>
+                <Link
+                  href="/ppd-calculator"
+                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                  title="PPD Calculator"
+                >
+                  <Calculator size={16} />
+                </Link>
+                <Link
+                  href="/daily-rounds"
+                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                  title="Daily Rounds"
+                >
+                  <FileText size={16} />
+                </Link>
+                <Link
+                  href="/incident-reports"
+                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                  title="Incident Reports"
+                >
+                  <AlertTriangle size={16} />
+                </Link>
+                
+                <Link
+                  href="/calendar-integrations"
+                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                  title="Calendar"
+                >
+                  <CalendarDays size={16} />
+                </Link>
+                <Link
+                  href="/settings"
+                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                  title="Settings"
+                >
+                  <Settings size={16} />
+                </Link>
               </div>
             )}
           </div>
-        )}
+
+          {/* User Section - Sticky at Bottom */}
+          {isAuthenticated && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+              {!collapsed ? (
+                <div className="flex items-center gap-3 px-3 py-2">
+                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                    <User size={16} className="text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {user?.email}
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500 transition-colors"
+                    title="Sign out"
+                  >
+                    <LogOut size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                    <User size={16} className="text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
+                    title="Sign out"
+                  >
+                    <LogOut size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );
