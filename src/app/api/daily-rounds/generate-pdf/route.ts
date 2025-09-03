@@ -287,32 +287,6 @@ Return a JSON response with:
             margin-right: 6px;
         }
         
-        .item-badges {
-            display: flex;
-            gap: 6px;
-            flex-shrink: 0;
-        }
-        
-        .compliance-badge {
-            background: #dc2626;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 8px;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-        }
-        
-        .priority-badge {
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 8px;
-            font-weight: bold;
-        }
-        
-        .priority-high { background: #fecaca; color: #7f1d1d; }
-        .priority-medium { background: #fef3c7; color: #92400e; }
-        .priority-low { background: #d1fae5; color: #065f46; }
         
         .item-notes {
             background: #f1f5f9;
@@ -458,10 +432,6 @@ Return a JSON response with:
                         <div class="item-text">
                             <span class="item-number">${index + 1}.</span>
                             ${item.task}
-                        </div>
-                        <div class="item-badges">
-                            ${item.compliance_related ? '<span class="compliance-badge">COMPLIANCE</span>' : ''}
-                            <span class="priority-badge priority-${item.priority || 'medium'}">${(item.priority || 'medium').toUpperCase()}</span>
                         </div>
                     </div>
                     <div class="item-notes">
