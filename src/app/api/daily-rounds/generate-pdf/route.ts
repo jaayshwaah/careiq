@@ -62,14 +62,14 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { roundData, format = 'single-page', includeDate = false, customDate = null } = body;
+    const { roundData, includeDate = false, customDate = null } = body;
 
     if (!roundData || !roundData.items) {
       return NextResponse.json({ ok: false, error: "Invalid round data" }, { status: 400 });
     }
 
-    // Generate optimized PDF layout using AI
-    const provider = providerFromEnv();
+    // Skip AI generation for faster single-page layout
+    // const provider = providerFromEnv();
     const aiPrompt = `Create a professional, single-page PDF layout for this daily round checklist. Focus on:
 1. Compact, readable formatting that fits everything on one page
 2. Professional healthcare facility appearance
@@ -101,38 +101,12 @@ Return a JSON response with:
   ]
 }`;
 
-    const aiResponse = await provider.complete([{ role: "user", content: aiPrompt }], {
-      max_tokens: 2000
-    });
+    // const aiResponse = await provider.complete([{ role: "user", content: aiPrompt }], {
+    //   max_tokens: 2000
+    // });
 
-    let pdfLayout;
-    try {
-      // Try to parse AI response as JSON
-      const cleanedResponse = aiResponse.replace(/```json\n?|\n?```/g, '');
-      pdfLayout = JSON.parse(cleanedResponse);
-    } catch (parseError) {
-      // Fallback to default layout if AI response isn't parseable
-      console.warn('Failed to parse AI layout, using default:', parseError);
-      pdfLayout = {
-        layout: "default",
-        sections: [
-          {
-            type: "header",
-            content: `DAILY ROUND CHECKLIST\n${roundData.title}\nGenerated: ${new Date().toLocaleDateString()}\nUnit: ${roundData.unit} | Shift: ${roundData.shift}`
-          },
-          {
-            type: "items",
-            content: roundData.items.map((item: RoundItem, index: number) => 
-              `${index + 1}. ☐ ${item.task}\n   ${item.category}${item.compliance_related ? ' | ⚠️ COMPLIANCE' : ''}`
-            ).join('\n\n')
-          },
-          {
-            type: "footer",
-            content: "Staff Signature: _____________________ Date: __________\n\nNotes/Issues Identified:\n_________________________________________________\n_________________________________________________"
-          }
-        ]
-      };
-    }
+    // Skip AI layout parsing - use direct generation
+    console.log("Using optimized single-page layout...");
 
     // Create PDF using simple HTML approach to avoid font loading issues
     const dateText = includeDate 
@@ -157,8 +131,8 @@ Return a JSON response with:
         }
         body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
-            font-size: 11px; 
-            line-height: 1.4; 
+            font-size: ${Math.max(8, Math.min(10, 200 / itemCount))}px; 
+            line-height: 1.2; 
             margin: 0; 
             padding: 0;
             color: #333;
@@ -169,12 +143,12 @@ Return a JSON response with:
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 15px 20px;
+            padding: 8px 12px;
             background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
             color: white;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 12px;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
         }
         
         .facility-info {
@@ -182,53 +156,53 @@ Return a JSON response with:
         }
         
         .facility-name {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: bold;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             text-shadow: 0 1px 2px rgba(0,0,0,0.2);
         }
         
         .facility-subtitle {
-            font-size: 12px;
+            font-size: 9px;
             opacity: 0.9;
         }
         
         .logo-space {
-            width: 80px;
-            height: 60px;
+            width: 50px;
+            height: 35px;
             background: rgba(255,255,255,0.1);
-            border: 2px dashed rgba(255,255,255,0.3);
-            border-radius: 6px;
+            border: 1px dashed rgba(255,255,255,0.3);
+            border-radius: 3px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 9px;
+            font-size: 7px;
             color: rgba(255,255,255,0.7);
             text-align: center;
-            line-height: 1.2;
+            line-height: 1.1;
         }
         
         /* Round Details */
         .round-details {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 10px;
         }
         
         .round-title {
-            font-size: 16px;
+            font-size: 12px;
             font-weight: bold;
             color: #1e293b;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         
         .round-meta {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            font-size: 10px;
+            gap: 8px;
+            font-size: 8px;
         }
         
         .round-meta-item {
@@ -249,28 +223,28 @@ Return a JSON response with:
         
         /* Checklist Items */
         .checklist {
-            margin-bottom: 25px;
+            margin-bottom: 10px;
         }
         
         .checklist-item {
             display: flex;
             align-items: flex-start;
-            padding: 12px;
-            margin-bottom: 8px;
+            padding: 6px 8px;
+            margin-bottom: 3px;
             background: white;
             border: 1px solid #e2e8f0;
-            border-radius: 6px;
+            border-radius: 3px;
             break-inside: avoid;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
         
         .item-checkbox {
-            width: 16px;
-            height: 16px;
-            border: 2px solid #64748b;
-            border-radius: 3px;
-            margin-right: 12px;
-            margin-top: 2px;
+            width: 12px;
+            height: 12px;
+            border: 1px solid #64748b;
+            border-radius: 2px;
+            margin-right: 6px;
+            margin-top: 1px;
             flex-shrink: 0;
             position: relative;
         }
@@ -296,15 +270,15 @@ Return a JSON response with:
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         
         .item-text {
             font-weight: 500;
             color: #1e293b;
-            line-height: 1.3;
+            line-height: 1.2;
             flex: 1;
-            margin-right: 10px;
+            margin-right: 8px;
         }
         
         .item-number {
@@ -343,31 +317,31 @@ Return a JSON response with:
         .item-notes {
             background: #f1f5f9;
             border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            padding: 8px;
-            margin-top: 8px;
-            min-height: 20px;
+            border-radius: 2px;
+            padding: 4px;
+            margin-top: 4px;
+            min-height: 12px;
             position: relative;
         }
         
         .notes-label {
             position: absolute;
-            top: -6px;
-            left: 8px;
+            top: -4px;
+            left: 4px;
             background: white;
-            padding: 0 4px;
-            font-size: 8px;
+            padding: 0 2px;
+            font-size: 6px;
             color: #64748b;
             font-weight: 500;
         }
         
         .notes-lines {
-            height: 20px;
+            height: 12px;
             background-image: repeating-linear-gradient(
                 transparent,
-                transparent 9px,
-                #cbd5e1 9px,
-                #cbd5e1 10px
+                transparent 6px,
+                #cbd5e1 6px,
+                #cbd5e1 7px
             );
         }
         
@@ -375,25 +349,25 @@ Return a JSON response with:
         .signature-section {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 25px;
+            border-radius: 4px;
+            padding: 8px;
+            margin-top: 10px;
         }
         
         .signature-title {
-            font-size: 14px;
+            font-size: 10px;
             font-weight: bold;
             color: #1e293b;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #3b82f6;
-            padding-bottom: 5px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #3b82f6;
+            padding-bottom: 2px;
         }
         
         .signature-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 8px;
         }
         
         .signature-field {
@@ -404,29 +378,29 @@ Return a JSON response with:
         .field-label {
             font-weight: 600;
             color: #475569;
-            margin-bottom: 5px;
-            font-size: 10px;
+            margin-bottom: 2px;
+            font-size: 7px;
         }
         
         .field-line {
             border-bottom: 1px solid #64748b;
-            height: 25px;
+            height: 15px;
             position: relative;
         }
         
         .general-notes {
-            margin-top: 15px;
+            margin-top: 6px;
         }
         
         .general-notes-area {
             border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            height: 60px;
+            border-radius: 2px;
+            height: 30px;
             background-image: repeating-linear-gradient(
                 transparent,
-                transparent 14px,
-                #e2e8f0 14px,
-                #e2e8f0 15px
+                transparent 8px,
+                #e2e8f0 8px,
+                #e2e8f0 9px
             );
         }
         
@@ -547,10 +521,9 @@ Return a JSON response with:
           '--hide-scrollbars',
           '--disable-web-security',
         ],
-        defaultViewport: chromium.defaultViewport,
+        defaultViewport: chromium.defaultViewport || { width: 1280, height: 720 },
         executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
-        ignoreHTTPSErrors: true,
+        headless: chromium.headless || true,
       });
 
       console.log("Browser launched successfully");
@@ -592,7 +565,7 @@ Return a JSON response with:
         throw pdfError;
       }
 
-    } catch (puppeteerError) {
+    } catch (puppeteerError: any) {
       console.warn('Puppeteer failed, falling back to HTML:', puppeteerError.message);
       
       // Fallback to HTML for development or when Puppeteer fails
