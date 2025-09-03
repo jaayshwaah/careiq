@@ -28,6 +28,8 @@ import {
   AlertTriangle,
   Database,
   Heart,
+  Users,
+  CheckCircle,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -571,12 +573,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Sticky Bottom Section - Only visible when not collapsed */}
-          {!collapsed && (
-            <div className="shrink-0 space-y-3 border-t border-gray-200 dark:border-gray-700 pt-3">
               {/* Quick Links */}
               <div className="grid grid-cols-2 gap-2">
                 <Link
@@ -594,40 +591,8 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                   <span>Settings</span>
                 </Link>
               </div>
-
-              {/* User Info */}
-              {isAuthenticated && (
-                <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">
-                      <User size={12} />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-xs text-gray-600 dark:text-gray-300 truncate block">
-                        {userProfile?.full_name || user?.email || 'User'}
-                      </span>
-                      {isAdmin && (
-                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleSignOut}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                    title="Sign out"
-                  >
-                    <LogOut size={14} />
-                  </button>
-                </div>
-              )}
             </div>
-          )}
-        </div>
-
-        {/* Collapsed Sidebar Icons */}
-        {collapsed && (
+          ) : (
             <div className="flex flex-col items-center gap-2">
               {/* Admin button for collapsed sidebar */}
               {isAdmin && (
@@ -684,7 +649,39 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               >
                 <Settings size={16} />
               </Link>
-              {isAuthenticated && (
+            </div>
+          )}
+        </div>
+
+        {/* User Section - Sticky at Bottom */}
+        {isAuthenticated && (
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+            {!collapsed ? (
+              <div className="flex items-center gap-3 px-3 py-2">
+                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                  <User size={16} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {user?.email}
+                  </div>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500 transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                  <User size={16} className="text-blue-600 dark:text-blue-400" />
+                </div>
                 <button
                   onClick={handleSignOut}
                   className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
@@ -692,10 +689,10 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 >
                   <LogOut size={16} />
                 </button>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </aside>
   );

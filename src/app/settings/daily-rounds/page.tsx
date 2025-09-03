@@ -74,6 +74,10 @@ export default function DailyRoundsSettingsPage() {
     setMessage(null);
 
     try {
+      // First, try to add the columns if they don't exist (workaround for missing schema)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Try the update with better error handling
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -84,13 +88,26 @@ export default function DailyRoundsSettingsPage() {
         .eq('user_id', user?.id);
 
       if (error) {
-        throw error;
+        console.error('Database error:', error);
+        
+        if (error.message.includes('column') && error.message.includes('does not exist')) {
+          setMessage({ 
+            type: 'error', 
+            text: 'Database schema not updated. Please run the SQL migration script first. Contact support if needed.' 
+          });
+        } else {
+          setMessage({ 
+            type: 'error', 
+            text: `Failed to save settings: ${error.message}` 
+          });
+        }
+        return;
       }
 
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
     } catch (error: any) {
       console.error('Error saving settings:', error);
-      setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
+      setMessage({ type: 'error', text: `Failed to save settings: ${error.message || 'Unknown error'}` });
     } finally {
       setSaving(false);
     }
