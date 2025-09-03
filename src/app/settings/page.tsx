@@ -56,6 +56,7 @@ export default function SettingsPage() {
 
   // Zen Mode state
   const [isZenMode, setIsZenMode] = useState(false);
+  const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale' | 'pause'>('inhale');
 
   // Facility logo state
   const [facilityLogoFile, setFacilityLogoFile] = useState<File | null>(null);
@@ -546,6 +547,44 @@ export default function SettingsPage() {
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
+  }, [isZenMode]);
+
+  // Breathing cycle timer - 4-7-8 technique (scientifically proven for stress reduction)
+  useEffect(() => {
+    if (!isZenMode) return;
+
+    let timer: NodeJS.Timeout;
+    
+    const breathingCycle = () => {
+      setBreathingPhase('inhale');
+      
+      // Inhale for 4 seconds
+      timer = setTimeout(() => {
+        setBreathingPhase('hold');
+        
+        // Hold for 7 seconds
+        timer = setTimeout(() => {
+          setBreathingPhase('exhale');
+          
+          // Exhale for 8 seconds
+          timer = setTimeout(() => {
+            setBreathingPhase('pause');
+            
+            // Brief pause for 1 second before next cycle
+            timer = setTimeout(() => {
+              breathingCycle(); // Start next cycle
+            }, 1000);
+          }, 8000);
+        }, 7000);
+      }, 4000);
+    };
+
+    // Start the breathing cycle
+    breathingCycle();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [isZenMode]);
 
   const themeOptions: { value: Theme; label: string; icon: React.ReactNode; description: string }[] = [
@@ -1513,9 +1552,45 @@ export default function SettingsPage() {
               {/* Breathing Animation */}
               <div className="relative">
                 <div className="w-32 h-32 mx-auto rounded-full border-2 border-white/30 flex items-center justify-center">
-                  <div className="w-20 h-20 rounded-full bg-white/20 animate-pulse"></div>
+                  <div 
+                    className={`rounded-full bg-white/20 transition-all ease-in-out ${
+                      breathingPhase === 'inhale' ? 'w-28 h-28 duration-[4000ms]' :
+                      breathingPhase === 'hold' ? 'w-28 h-28 duration-[7000ms]' :
+                      breathingPhase === 'exhale' ? 'w-16 h-16 duration-[8000ms]' :
+                      'w-20 h-20 duration-1000'
+                    }`}
+                  ></div>
                 </div>
-                <p className="mt-4 text-lg opacity-80">Breathe in... Breathe out...</p>
+                <div className="mt-6 h-12 flex items-center justify-center">
+                  <p className={`text-xl font-light transition-opacity duration-500 ${
+                    breathingPhase === 'inhale' ? 'opacity-100' :
+                    breathingPhase === 'hold' ? 'opacity-90' :
+                    breathingPhase === 'exhale' ? 'opacity-100' :
+                    'opacity-60'
+                  }`}>
+                    {breathingPhase === 'inhale' && 'Breathe in slowly through your nose...'}
+                    {breathingPhase === 'hold' && 'Hold your breath...'}
+                    {breathingPhase === 'exhale' && 'Exhale slowly through your mouth...'}
+                    {breathingPhase === 'pause' && 'Rest...'}
+                  </p>
+                </div>
+                
+                {/* Breathing count visualization */}
+                <div className="mt-4 flex justify-center space-x-1">
+                  {[...Array(8)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-all duration-1000 ${
+                        (breathingPhase === 'inhale' && i < 4) ||
+                        (breathingPhase === 'hold' && i < 7) ||
+                        (breathingPhase === 'exhale' && i < 8) ||
+                        (breathingPhase === 'pause' && i === 8)
+                          ? 'bg-white/80 scale-125'
+                          : 'bg-white/30'
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
