@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 
 const SurveyPreparation = () => {
-  const [activeTab, setActiveTab] = useState('checklist');
+  const [activeTab, setActiveTab] = useState('overview');
   const [selectedSurveyType, setSelectedSurveyType] = useState('Standard');
   const [facilityType, setFacilityType] = useState('SNF');
   const [surveyDate, setSurveyDate] = useState('');
