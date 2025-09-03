@@ -30,6 +30,7 @@ import {
   Heart,
   Users,
   CheckCircle,
+  GripVertical,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -56,6 +57,21 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [showTools, setShowTools] = useState(false);
+  const [menuItems, setMenuItems] = useState([
+    { id: 'cms-guidance', label: 'CMS Guidance', icon: BookOpen, path: '/cms-guidance' },
+    { id: 'ppd-calculator', label: 'PPD Calculator', icon: Calculator, path: '/ppd-calculator' },
+    { id: 'daily-rounds', label: 'Daily Rounds', icon: FileText, path: '/daily-rounds' },
+    { id: 'survey-prep', label: 'Survey Prep', icon: BarChart3, path: '/survey-prep' },
+    { id: 'survey-training', label: 'Survey Training', icon: Users, path: '/mock-survey-training' },
+    { id: 'census-dashboard', label: 'Census Analytics', icon: BarChart3, path: '/census-dashboard' },
+    { id: 'incident-reports', label: 'Incident Reports', icon: AlertTriangle, path: '/incident-reports' },
+    { id: 'ehr-integrations', label: 'EHR Integrations', icon: Database, path: '/ehr-integrations' },
+    { id: 'care-plans', label: 'Care Plans', icon: Heart, path: '/care-plan-assistant' },
+    { id: 'pbj-corrector', label: 'PBJ Corrector', icon: Calculator, path: '/pbj-corrector' },
+    { id: 'task-management', label: 'Task Management', icon: CheckCircle, path: '/task-management' }
+  ]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const supabase = getBrowserSupabase();
 
   // Filter chats based on search query
@@ -349,7 +365,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-hidden flex flex-col px-3">
           {/* Chat List - Scrollable */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
           {!collapsed && (
             <div className="mb-3 flex items-center justify-between px-2">
               <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -473,106 +489,56 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                   </button>
                   
                   {showTools && (
-                    <div className="ml-4 mt-1 space-y-1">
-                      <Link
-                        href="/cms-guidance"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/cms-guidance' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <BookOpen size={12} />
-                        <span>CMS Guidance</span>
-                      </Link>
-                      <Link
-                        href="/ppd-calculator"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/ppd-calculator' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <Calculator size={12} />
-                        <span>PPD Calculator</span>
-                      </Link>
-                      <Link
-                        href="/daily-rounds"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/daily-rounds' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <FileText size={12} />
-                        <span>Daily Rounds</span>
-                      </Link>
-                      <Link
-                        href="/survey-prep"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/survey-prep' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <BarChart3 size={12} />
-                        <span>Survey Prep</span>
-                      </Link>
-                      <Link
-                        href="/mock-survey-training"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/mock-survey-training' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <Users size={12} />
-                        <span>Survey Training</span>
-                      </Link>
-                      <Link
-                        href="/census-dashboard"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/census-dashboard' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <BarChart3 size={12} />
-                        <span>Census Analytics</span>
-                      </Link>
-                      <Link
-                        href="/incident-reports"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/incident-reports' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <AlertTriangle size={12} />
-                        <span>Incident Reports</span>
-                      </Link>
-                      <Link
-                        href="/ehr-integrations"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/ehr-integrations' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <Database size={12} />
-                        <span>EHR Integrations</span>
-                      </Link>
-                      <Link
-                        href="/care-plan-assistant"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/care-plan-assistant' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <Heart size={12} />
-                        <span>Care Plans</span>
-                      </Link>
-                      <Link
-                        href="/pbj-corrector"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/pbj-corrector' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <Calculator size={12} />
-                        <span>PBJ Corrector</span>
-                      </Link>
-                      <Link
-                        href="/task-management"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors ${
-                          pathname === '/task-management' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        <CheckCircle size={12} />
-                        <span>Task Management</span>
-                      </Link>
+                    <div className="ml-4 mt-1 max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                      <div className="space-y-1">
+                        {menuItems.map((item, index) => (
+                          <div
+                            key={item.id}
+                            draggable
+                            onDragStart={(e) => {
+                              setIsDragging(true);
+                              setDraggedItem(item.id);
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
+                            onDragEnd={() => {
+                              setIsDragging(false);
+                              setDraggedItem(null);
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (draggedItem && draggedItem !== item.id) {
+                                const draggedIndex = menuItems.findIndex(m => m.id === draggedItem);
+                                const targetIndex = index;
+                                const newItems = [...menuItems];
+                                const [draggedItemData] = newItems.splice(draggedIndex, 1);
+                                newItems.splice(targetIndex, 0, draggedItemData);
+                                setMenuItems(newItems);
+                              }
+                            }}
+                            className={`group flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors cursor-pointer ${
+                              isDragging && draggedItem === item.id ? 'opacity-50' : ''
+                            }`}
+                          >
+                            <GripVertical 
+                              size={12} 
+                              className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" 
+                            />
+                            <Link
+                              href={item.path}
+                              className={`flex items-center gap-2 flex-1 ${
+                                pathname === item.path ? 'text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                              }`}
+                            >
+                              <item.icon size={12} />
+                              <span>{item.label}</span>
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

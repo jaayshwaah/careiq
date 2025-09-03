@@ -185,14 +185,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // Skip profiles query to avoid recursion - use default profile
-    const profile = {
-      facility_name: 'Default Facility',
-      facility_state: 'Unknown',
-      role: 'user',
-      full_name: user.email?.split('@')[0] || 'User',
-      facility_id: null
-    };
+    // Get user profile with error handling to avoid recursion
+    let profile;
+    try {
+      const { data: profileData } = await supa
+        .from("profiles")
+        .select("facility_name, facility_state, role, full_name, facility_id")
+        .eq("user_id", user.id)
+        .single();
+      
+      profile = profileData || {
+        facility_name: 'Default Facility',
+        facility_state: 'Unknown',
+        role: 'user',
+        full_name: user.email?.split('@')[0] || 'User',
+        facility_id: null
+      };
+    } catch (error) {
+      console.log("Profiles query failed, using defaults:", error);
+      profile = {
+        facility_name: 'Default Facility',
+        facility_state: 'Unknown',
+        role: 'user',
+        full_name: user.email?.split('@')[0] || 'User',
+        facility_id: null
+      };
+    }
 
     const body = await req.json();
     const { 
@@ -309,31 +327,103 @@ export async function POST(req: NextRequest) {
 
     console.log(`Final round items count: ${roundItems.length}`);
 
-    // Ensure we have at least some items - add fallback if empty
-    if (roundItems.length === 0) {
-      console.log("No items found, adding fallback items");
-      roundItems = [
+    // Ensure we have 8-12 items minimum
+    if (roundItems.length < 8) {
+      console.log(`Only ${roundItems.length} items found, adding more items to reach minimum of 8`);
+      
+      const additionalItems = [
         {
-          id: 'fallback-1',
-          category: 'Basic Rounds',
-          task: 'Complete visual safety check of unit',
+          id: 'min-1',
+          category: 'Safety & Environment',
+          task: 'Check call bells within reach from bed and wheelchair positions',
           frequency: 'daily',
-          priority: 'high',
           compliance_related: true,
-          estimated_minutes: 15,
-          notes: 'Fallback task - ensure basic safety compliance'
+          notes: 'F-tag F323 - Accessibility requirement'
         },
         {
-          id: 'fallback-2',
-          category: 'Basic Rounds',
-          task: 'Review shift report and priorities',
+          id: 'min-2', 
+          category: 'Infection Control',
+          task: 'Observe staff removing gloves before leaving resident rooms',
           frequency: 'daily',
-          priority: 'high',
-          compliance_related: false,
-          estimated_minutes: 10,
-          notes: 'Fallback task - basic shift preparation'
+          compliance_related: true,
+          notes: 'F-tag F441 - Hand hygiene compliance'
+        },
+        {
+          id: 'min-3',
+          category: 'Medication Safety',
+          task: 'Check medication carts locked when nurse steps away',
+          frequency: 'daily',
+          compliance_related: true,
+          notes: 'F-tag F428 - Medication security'
+        },
+        {
+          id: 'min-4',
+          category: 'Resident Rights',
+          task: 'Verify room doors/curtains closed during personal care',
+          frequency: 'daily',
+          compliance_related: true,
+          notes: 'F-tag F573 - Privacy and dignity'
+        },
+        {
+          id: 'min-5',
+          category: 'Emergency Preparedness',
+          task: 'Check no personal items blocking fire exits or egress paths',
+          frequency: 'daily',
+          compliance_related: true,
+          notes: 'F-tag F454 - Life safety code'
+        },
+        {
+          id: 'min-6',
+          category: 'Documentation',
+          task: 'Verify incident reports filed within 24 hours with proper follow-up',
+          frequency: 'daily',
+          compliance_related: true,
+          notes: 'F-tag F636 - Quality assurance'
+        },
+        {
+          id: 'min-7',
+          category: 'Staff Competency',
+          task: 'Observe CNAs performing delegated nursing tasks correctly',
+          frequency: 'daily',
+          compliance_related: true,
+          notes: 'F-tag F405 - Delegation requirements'
+        },
+        {
+          id: 'min-8',
+          category: 'Quality Measures',
+          task: 'Check residents positioned with dignity and proper alignment',
+          frequency: 'daily',
+          compliance_related: true,
+          notes: 'F-tag F550 - Resident dignity'
+        },
+        {
+          id: 'min-9',
+          category: 'Environmental Safety',
+          task: 'Inspect for loose handrails, broken furniture, or trip hazards',
+          frequency: 'daily',
+          compliance_related: true,
+          notes: 'F-tag F323 - Environmental hazards'
+        },
+        {
+          id: 'min-10',
+          category: 'Immediate Jeopardy Prevention',
+          task: 'Ensure no residents left unattended on toilets >15 minutes',
+          frequency: 'daily',
+          compliance_related: true,
+          notes: 'Immediate jeopardy risk prevention'
         }
       ];
+      
+      // Add items until we reach at least 8
+      while (roundItems.length < 8 && additionalItems.length > 0) {
+        roundItems.push(additionalItems.shift()!);
+      }
+    }
+    
+    // Cap at 12 items maximum for manageable rounds
+    if (roundItems.length > 12) {
+      console.log(`Too many items (${roundItems.length}), limiting to 12`);
+      roundItems = roundItems.slice(0, 12);
     }
 
     // Create daily round record
@@ -357,11 +447,53 @@ export async function POST(req: NextRequest) {
     
     console.log("Attempting to save daily round:", JSON.stringify(recordToInsert, null, 2));
     
-    // Skip database save to avoid recursion - just return the generated data
-    const savedRound = {
-      id: `temp_${Date.now()}`,
-      created_at: new Date().toISOString()
-    };
+    // Save to database - using service role to bypass RLS
+    let savedRound;
+    try {
+      const { data, error: saveError } = await supa
+        .from("knowledge_base")
+        .insert({
+          facility_id: profile?.facility_id || null,
+          facility_name: profile?.facility_name || 'Default Facility',
+          state: profile?.facility_state || 'Unknown',
+          category: 'Facility Policy',
+          title: recordToInsert.title,
+          content: JSON.stringify(recordToInsert),
+          source_url: null,
+          last_updated: new Date().toISOString(),
+          embedding: null, // No embedding needed for daily rounds
+          metadata: {
+            ...recordToInsert.metadata,
+            content_type: 'daily_round_template',
+            unit: recordToInsert.unit,
+            shift: recordToInsert.shift,
+            created_by: user.id,
+            facility_id: profile?.facility_id,
+            user_id: user.id,
+            template_type: recordToInsert.metadata.template_type
+          }
+        })
+        .select()
+        .single();
+
+      if (saveError) {
+        console.error("Failed to save daily round:", saveError);
+        // Don't fail the request, just use a temporary ID
+        savedRound = {
+          id: `temp_${Date.now()}`,
+          created_at: new Date().toISOString()
+        };
+      } else {
+        savedRound = data;
+      }
+    } catch (error) {
+      console.error("Database save error:", error);
+      // Fallback to temporary ID if save fails
+      savedRound = {
+        id: `temp_${Date.now()}`,
+        created_at: new Date().toISOString()
+      };
+    }
 
     return NextResponse.json({
       ok: true,
