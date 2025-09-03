@@ -24,7 +24,9 @@ import {
   Eye,
   Plus,
   Settings,
-  BarChart3
+  BarChart3,
+  Play,
+  Timer
 } from 'lucide-react';
 
 const SurveyPreparation = () => {
@@ -613,6 +615,102 @@ const SurveyPreparation = () => {
                   total + section.items.filter(item => !checkedItems.has(item.id)).length, 0
                 )} hours of work remaining
               </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mock Survey Training */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Mock Survey Q&A Training</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300">Practice survey scenarios and test your knowledge with interactive questions</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-right">
+              <div className="text-xs text-gray-500 dark:text-gray-400">Last Score</div>
+              <div className="text-lg font-bold text-green-600 dark:text-green-400">85%</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <MessageSquare className="h-8 w-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+            <div className="font-semibold text-blue-900 dark:text-blue-100">200+</div>
+            <div className="text-xs text-blue-600 dark:text-blue-400">Practice Questions</div>
+          </div>
+          <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+            <Target className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
+            <div className="font-semibold text-green-900 dark:text-green-100">F-Tag</div>
+            <div className="text-xs text-green-600 dark:text-green-400">Specific Scenarios</div>
+          </div>
+          <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+            <Award className="h-8 w-8 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
+            <div className="font-semibold text-purple-900 dark:text-purple-100">Real-time</div>
+            <div className="text-xs text-purple-600 dark:text-purple-400">Feedback & Tips</div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-blue-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-gray-100">Quick Practice Session</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Answer 10 random questions covering common survey scenarios</p>
+                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center gap-1"><Timer className="h-3 w-3" /> ~15 minutes</span>
+                  <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> All difficulty levels</span>
+                </div>
+              </div>
+              <a
+                href="/mock-survey-training?mode=quick"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                <Play className="h-4 w-4" />
+                Start Practice
+              </a>
+            </div>
+          </div>
+
+          <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-green-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-gray-100">Full Mock Survey</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Complete 50-question mock survey with detailed explanations</p>
+                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center gap-1"><Timer className="h-3 w-3" /> ~60 minutes</span>
+                  <span className="flex items-center gap-1"><Award className="h-3 w-3" /> Comprehensive review</span>
+                </div>
+              </div>
+              <a
+                href="/mock-survey-training?mode=full"
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+              >
+                <BookOpen className="h-4 w-4" />
+                Start Survey
+              </a>
+            </div>
+          </div>
+
+          <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-orange-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-gray-100">Focus Areas</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Target specific F-tags or areas where your facility needs improvement</p>
+                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Customizable topics</span>
+                  <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Progress tracking</span>
+                </div>
+              </div>
+              <a
+                href="/mock-survey-training?mode=focus"
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
+              >
+                <Target className="h-4 w-4" />
+                Choose Focus
+              </a>
             </div>
           </div>
         </div>

@@ -282,9 +282,9 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
       `}
     >
-      <div className="h-screen flex flex-col">
-        {/* Header - Sticky at Top */}
-        <div className="shrink-0 p-3">
+      <div className="h-screen flex flex-col overflow-hidden">
+        {/* Header - Fixed at Top */}
+        <div className="flex-none p-3">
           <div className="flex items-center justify-between mb-4 p-2">
             <button
               onClick={onToggle}
@@ -362,10 +362,10 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           )}
         </div>
 
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-hidden flex flex-col px-3">
-          {/* Chat List - Scrollable */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+        {/* Middle Scrollable Content Area */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+          {/* Chat List */}
+          <div>
           {!collapsed && (
             <div className="mb-3 flex items-center justify-between px-2">
               <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -458,8 +458,8 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           )}
         </div>
 
-        {/* Footer Navigation - Sticky at Bottom */}
-        <div className="shrink-0 p-3">
+        {/* Footer Navigation - Fixed at Bottom */}
+        <div className="flex-none p-3">
           <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mb-3">
             {!collapsed ? (
               <div className="space-y-2">
@@ -489,8 +489,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                   </button>
                   
                   {showTools && (
-                    <div className="ml-4 mt-1 max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                      <div className="space-y-1">
+                    <div className="ml-4 mt-1 space-y-1">
                         {menuItems.map((item, index) => (
                           <div
                             key={item.id}
@@ -538,7 +537,6 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                             </Link>
                           </div>
                         ))}
-                      </div>
                     </div>
                   )}
                 </div>
