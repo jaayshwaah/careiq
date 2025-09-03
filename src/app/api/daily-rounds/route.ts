@@ -185,24 +185,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user profile for facility context
-    const { data: profileData } = await supa
-      .from("profiles")
-      .select("facility_name, facility_state, role, full_name, facility_id")
-      .eq("user_id", user.id)
-      .single();
-
-    let profile = profileData;
-    if (!profile) {
-      // Create a minimal profile if none exists
-      profile = {
-        facility_name: 'Default Facility',
-        facility_state: 'Unknown',
-        role: 'user',
-        full_name: user.email?.split('@')[0] || 'User',
-        facility_id: null
-      };
-    }
+    // Skip profiles query to avoid recursion - use default profile
+    const profile = {
+      facility_name: 'Default Facility',
+      facility_state: 'Unknown',
+      role: 'user',
+      full_name: user.email?.split('@')[0] || 'User',
+      facility_id: null
+    };
 
     const body = await req.json();
     const { 
