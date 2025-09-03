@@ -122,7 +122,7 @@ export default function DailyRoundsPage() {
   const [showRoundView, setShowRoundView] = useState(false);
   
   // Form state
-  const [templateType, setTemplateType] = useState('unit_manager');
+  const [templateType, setTemplateType] = useState('general_management');
   const [unit, setUnit] = useState('General');
   const [shift, setShift] = useState<'7a-3p' | '3p-11p' | '11p-7a'>('7a-3p');
   const [residentAcuity, setResidentAcuity] = useState<'low' | 'medium' | 'high'>('medium');

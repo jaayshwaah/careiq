@@ -125,30 +125,51 @@ const defaultRoundTemplates = {
   ],
   'general_management': [
     {
-      category: 'Operations Overview',
+      category: 'Surveyor-Critical Visual Inspections (F-Tag 323)',
       items: [
-        { task: 'Review daily census and occupancy', frequency: 'daily', compliance_related: true},
-        { task: 'Check overall facility safety status', frequency: 'daily', compliance_related: true},
-        { task: 'Review staffing adequacy across departments', frequency: 'daily', compliance_related: true},
-        { task: 'Monitor facility-wide compliance issues', frequency: 'daily', compliance_related: true}
+        { task: 'Walk common areas checking for residents left unattended in wheelchairs >30 minutes', frequency: 'daily', compliance_related: true},
+        { task: 'Verify no personal items (walkers, wheelchairs, laundry carts) blocking fire exits', frequency: 'daily', compliance_related: true},
+        { task: 'Check dining room for residents properly positioned and not slouching during meals', frequency: 'daily', compliance_related: true},
+        { task: 'Observe hallways for spills, debris, or wheelchair/walker obstacles', frequency: 'daily', compliance_related: true},
+        { task: 'Verify call bells within resident reach from bed, wheelchair, and bathroom positions', frequency: 'daily', compliance_related: true}
       ]
     },
     {
-      category: 'Quality & Safety',
+      category: 'Staff Behavior & Dignity Observations (F-Tag 570-578)',
       items: [
-        { task: 'Check incident report summary', frequency: 'daily', compliance_related: true},
-        { task: 'Review infection control status', frequency: 'daily', compliance_related: true},
-        { task: 'Monitor resident satisfaction concerns', frequency: 'daily', compliance_related: true},
-        { task: 'Assess overall care quality indicators', frequency: 'daily', compliance_related: true}
+        { task: 'Listen for staff discussing resident information in public areas (elevators, hallways, dining)', frequency: 'daily', compliance_related: true},
+        { task: 'Check room doors/privacy curtains closed during personal care activities', frequency: 'daily', compliance_related: true},
+        { task: 'Observe staff speaking respectfully to residents (no baby talk or commanding tone)', frequency: 'daily', compliance_related: true},
+        { task: 'Verify residents dressed appropriately with no inappropriate exposure during transport', frequency: 'daily', compliance_related: true},
+        { task: 'Check for staff wearing resident clothing/personal items (common citation)', frequency: 'daily', compliance_related: true}
       ]
     },
     {
-      category: 'Administrative Tasks',
+      category: 'Immediate Jeopardy Prevention Checks',
       items: [
-        { task: 'Review department communications', frequency: 'daily', compliance_related: false},
-        { task: 'Address urgent facility issues', frequency: 'daily', compliance_related: false},
-        { task: 'Check regulatory updates and notices', frequency: 'daily', compliance_related: true},
-        { task: 'Plan and prioritize upcoming tasks', frequency: 'daily', compliance_related: false}
+        { task: 'Verify medication carts locked when nurses step away (>10 feet rule)', frequency: 'daily', compliance_related: true},
+        { task: 'Check residents with elopement risk have functioning door alarms/monitoring', frequency: 'daily', compliance_related: true},
+        { task: 'Ensure no residents left unattended on toilets or in bathrooms >15 minutes', frequency: 'daily', compliance_related: true},
+        { task: 'Verify mechanical lifts have current monthly inspection stickers and working emergency stops', frequency: 'daily', compliance_related: true},
+        { task: 'Check oxygen tanks properly secured upright and away from heat sources', frequency: 'daily', compliance_related: true}
+      ]
+    },
+    {
+      category: 'Documentation Red Flags (F-Tag 636-685)',
+      items: [
+        { task: 'Spot-check that incident reports filed within 24 hours of occurrence', frequency: 'daily', compliance_related: true},
+        { task: 'Verify physician orders signed and dated within 24 hours of entry', frequency: 'daily', compliance_related: true},
+        { task: 'Check care plans match current resident conditions (weight, mobility, diet)', frequency: 'daily', compliance_related: true},
+        { task: 'Ensure restraint assessments current for residents with bed rails >15 inches', frequency: 'daily', compliance_related: true}
+      ]
+    },
+    {
+      category: 'Infection Control Observable Violations (F-Tag 880)',
+      items: [
+        { task: 'Watch staff remove gloves before leaving resident rooms and touching door handles', frequency: 'daily', compliance_related: true},
+        { task: 'Check isolation room doors closed with proper signage posted and visible', frequency: 'daily', compliance_related: true},
+        { task: 'Verify soiled linens bagged at point of origin, not carried through hallways', frequency: 'daily', compliance_related: true},
+        { task: 'Check sharps containers not overfilled (3/4 full maximum per OSHA)', frequency: 'daily', compliance_related: true}
       ]
     }
   ],
@@ -206,7 +227,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { 
-      template_type = 'unit_manager',
+      template_type = 'general_management',
       unit = 'General',
       shift = '7a-3p',
       custom_items = [],
