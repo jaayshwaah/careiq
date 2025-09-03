@@ -2,7 +2,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { providerFromEnv } from "@/lib/ai/providers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -57,22 +56,45 @@ Stay in character as Sarah Johnson, the state surveyor. Be conversational and as
       }
     ];
 
-    const provider = providerFromEnv();
+    // Use OpenRouter directly with GPT-4/5
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    const model = process.env.OPENROUTER_MODEL || "openai/gpt-4-turbo";
     
-    // Use the configured main chat model (GPT-5 if available, falls back to others)
-    const response = await provider.complete(messages, {
-      temperature: 0.7,
-      max_tokens: 500
-      // Uses the model configured in OPENROUTER_MODEL environment variable
+    if (!apiKey) {
+      throw new Error('OpenRouter API key not configured');
+    }
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "https://careiq-eight.vercel.app",
+        "X-Title": process.env.OPENROUTER_SITE_NAME || "CareIQ"
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.7,
+        max_tokens: 500
+      })
     });
 
-    if (!response) {
-      throw new Error('No response from AI provider');
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} - ${errorData}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices?.[0]?.message?.content;
+
+    if (!aiResponse) {
+      throw new Error('No response content from AI');
     }
 
     return NextResponse.json({
       ok: true,
-      response: response.trim()
+      response: aiResponse.trim()
     });
 
   } catch (error: any) {
