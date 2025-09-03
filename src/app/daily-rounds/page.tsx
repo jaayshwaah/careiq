@@ -157,7 +157,7 @@ export default function DailyRoundsPage() {
   ];
 
   const focusAreaOptions = [
-    'Infection Control', 'Fall Prevention', 'Medication Safety', 'Wound Care',
+    'Fresh Daily Items', 'Infection Control', 'Fall Prevention', 'Medication Safety', 'Wound Care',
     'Dementia Care', 'End-of-Life Care', 'Nutritional Support', 'Mental Health',
     'Physical Therapy', 'Emergency Preparedness', 'Family Communication'
   ];
@@ -440,7 +440,7 @@ export default function DailyRoundsPage() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Select areas that need special attention to get customized round items:
+                Select "Fresh Daily Items" for completely new AI-generated checklist each day, or choose specific focus areas:
               </p>
               <button
                 type="button"

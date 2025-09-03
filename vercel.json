@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/census-sync",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/daily-rounds-email",
+      "schedule": "0 6 * * *"
     }
   ],
   "functions": {

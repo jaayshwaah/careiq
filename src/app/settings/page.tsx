@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink, MessageSquare, Send, Palette, Upload, Image, Link as LinkIcon, Unlink, RefreshCw, Database, Globe, Server, Trash2 } from "lucide-react";
+import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink, MessageSquare, Send, Palette, Upload, Image, Link as LinkIcon, Unlink, RefreshCw, Database, Globe, Server, Trash2, Mail, Calendar, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
@@ -794,6 +795,36 @@ export default function SettingsPage() {
             <p className="text-sm text-yellow-800 dark:text-yellow-300">
               <strong>Need changes?</strong> Contact your administrator to update facility information, role, or location settings.
             </p>
+          </div>
+        </div>
+
+        {/* Daily Rounds Email Settings */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Daily Rounds Automation
+          </h2>
+          
+          <div className="space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Automated Daily Round Emails</h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                    Get fresh, AI-generated daily round checklists automatically emailed to facility administrators each morning at 6:00 AM. 
+                    Each checklist contains 12 specific surveyor-focused inspection items that vary daily.
+                  </p>
+                  <Link 
+                    href="/settings/daily-rounds"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                  >
+                    Configure Email Settings
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

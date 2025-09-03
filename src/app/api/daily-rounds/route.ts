@@ -125,51 +125,30 @@ const defaultRoundTemplates = {
   ],
   'general_management': [
     {
-      category: 'Surveyor-Critical Visual Inspections (F-Tag 323)',
+      category: 'Immediate Jeopardy Prevention (High Priority)',
+      items: [
+        { task: 'Ensure no residents left unattended on toilets or in bathrooms >15 minutes', frequency: 'daily', compliance_related: true},
+        { task: 'Verify medication carts locked when nurses step away (>10 feet rule)', frequency: 'daily', compliance_related: true},
+        { task: 'Check residents with elopement risk have functioning door alarms/monitoring', frequency: 'daily', compliance_related: true},
+        { task: 'Verify mechanical lifts have current monthly inspection stickers and working emergency stops', frequency: 'daily', compliance_related: true}
+      ]
+    },
+    {
+      category: 'Surveyor Visual Inspections (F-Tag 323 & 570)',
       items: [
         { task: 'Walk common areas checking for residents left unattended in wheelchairs >30 minutes', frequency: 'daily', compliance_related: true},
-        { task: 'Verify no personal items (walkers, wheelchairs, laundry carts) blocking fire exits', frequency: 'daily', compliance_related: true},
-        { task: 'Check dining room for residents properly positioned and not slouching during meals', frequency: 'daily', compliance_related: true},
-        { task: 'Observe hallways for spills, debris, or wheelchair/walker obstacles', frequency: 'daily', compliance_related: true},
+        { task: 'Verify no personal items blocking fire exits or egress paths', frequency: 'daily', compliance_related: true},
+        { task: 'Check room doors/privacy curtains closed during personal care activities', frequency: 'daily', compliance_related: true},
         { task: 'Verify call bells within resident reach from bed, wheelchair, and bathroom positions', frequency: 'daily', compliance_related: true}
       ]
     },
     {
-      category: 'Staff Behavior & Dignity Observations (F-Tag 570-578)',
+      category: 'Staff Behavior & Documentation (F-Tag 636 & 880)',
       items: [
-        { task: 'Listen for staff discussing resident information in public areas (elevators, hallways, dining)', frequency: 'daily', compliance_related: true},
-        { task: 'Check room doors/privacy curtains closed during personal care activities', frequency: 'daily', compliance_related: true},
-        { task: 'Observe staff speaking respectfully to residents (no baby talk or commanding tone)', frequency: 'daily', compliance_related: true},
-        { task: 'Verify residents dressed appropriately with no inappropriate exposure during transport', frequency: 'daily', compliance_related: true},
-        { task: 'Check for staff wearing resident clothing/personal items (common citation)', frequency: 'daily', compliance_related: true}
-      ]
-    },
-    {
-      category: 'Immediate Jeopardy Prevention Checks',
-      items: [
-        { task: 'Verify medication carts locked when nurses step away (>10 feet rule)', frequency: 'daily', compliance_related: true},
-        { task: 'Check residents with elopement risk have functioning door alarms/monitoring', frequency: 'daily', compliance_related: true},
-        { task: 'Ensure no residents left unattended on toilets or in bathrooms >15 minutes', frequency: 'daily', compliance_related: true},
-        { task: 'Verify mechanical lifts have current monthly inspection stickers and working emergency stops', frequency: 'daily', compliance_related: true},
-        { task: 'Check oxygen tanks properly secured upright and away from heat sources', frequency: 'daily', compliance_related: true}
-      ]
-    },
-    {
-      category: 'Documentation Red Flags (F-Tag 636-685)',
-      items: [
-        { task: 'Spot-check that incident reports filed within 24 hours of occurrence', frequency: 'daily', compliance_related: true},
-        { task: 'Verify physician orders signed and dated within 24 hours of entry', frequency: 'daily', compliance_related: true},
-        { task: 'Check care plans match current resident conditions (weight, mobility, diet)', frequency: 'daily', compliance_related: true},
-        { task: 'Ensure restraint assessments current for residents with bed rails >15 inches', frequency: 'daily', compliance_related: true}
-      ]
-    },
-    {
-      category: 'Infection Control Observable Violations (F-Tag 880)',
-      items: [
+        { task: 'Listen for staff discussing resident information in public areas (elevators, hallways)', frequency: 'daily', compliance_related: true},
         { task: 'Watch staff remove gloves before leaving resident rooms and touching door handles', frequency: 'daily', compliance_related: true},
-        { task: 'Check isolation room doors closed with proper signage posted and visible', frequency: 'daily', compliance_related: true},
-        { task: 'Verify soiled linens bagged at point of origin, not carried through hallways', frequency: 'daily', compliance_related: true},
-        { task: 'Check sharps containers not overfilled (3/4 full maximum per OSHA)', frequency: 'daily', compliance_related: true}
+        { task: 'Spot-check that incident reports filed within 24 hours of occurrence', frequency: 'daily', compliance_related: true},
+        { task: 'Check isolation room doors closed with proper signage posted and visible', frequency: 'daily', compliance_related: true}
       ]
     }
   ],
@@ -238,23 +217,65 @@ export async function POST(req: NextRequest) {
 
     let roundItems: RoundItem[] = [];
 
-    // Get base template
-    const baseTemplate = defaultRoundTemplates[template_type as keyof typeof defaultRoundTemplates];
-    console.log(`Using template type: ${template_type}, found template:`, !!baseTemplate);
-    
-    if (baseTemplate) {
-      baseTemplate.forEach((category, categoryIndex) => {
-        category.items.forEach((item, itemIndex) => {
+    // Check if user wants AI-generated base items instead of template
+    if (ai_customize && special_focus_areas.includes('Fresh Daily Items')) {
+      console.log("Generating fresh AI-based daily round items...");
+      try {
+        const aiBaseItems = await generateFreshDailyItems(
+          template_type,
+          unit,
+          shift,
+          resident_acuity,
+          profile
+        );
+        
+        aiBaseItems.forEach((item, index) => {
           roundItems.push({
-            id: `${categoryIndex}-${itemIndex}`,
-            category: category.category,
-            ...item
-          } as RoundItem);
+            id: `ai-base-${index}`,
+            category: item.category,
+            task: item.task,
+            frequency: item.frequency,
+            compliance_related: item.compliance_related,
+            notes: item.notes
+          });
         });
-      });
+        
+        console.log(`AI base items added: ${roundItems.length}`);
+      } catch (error) {
+        console.error("Fresh AI generation failed, using template fallback:", error);
+        // Fall back to template if AI fails
+        const baseTemplate = defaultRoundTemplates[template_type as keyof typeof defaultRoundTemplates];
+        if (baseTemplate) {
+          baseTemplate.forEach((category, categoryIndex) => {
+            category.items.forEach((item, itemIndex) => {
+              roundItems.push({
+                id: `${categoryIndex}-${itemIndex}`,
+                category: category.category,
+                ...item
+              } as RoundItem);
+            });
+          });
+        }
+      }
+    } else {
+      // Use standard template
+      const baseTemplate = defaultRoundTemplates[template_type as keyof typeof defaultRoundTemplates];
+      console.log(`Using template type: ${template_type}, found template:`, !!baseTemplate);
+      
+      if (baseTemplate) {
+        baseTemplate.forEach((category, categoryIndex) => {
+          category.items.forEach((item, itemIndex) => {
+            roundItems.push({
+              id: `${categoryIndex}-${itemIndex}`,
+              category: category.category,
+              ...item
+            } as RoundItem);
+          });
+        });
+      }
+      
+      console.log(`Base template items added: ${roundItems.length}`);
     }
-    
-    console.log(`Base template items added: ${roundItems.length}`);
 
     // Add custom items
     custom_items.forEach((item: any, index: number) => {
@@ -488,6 +509,91 @@ export async function GET(req: NextRequest) {
       ok: false, 
       error: error.message || "Failed to retrieve daily rounds" 
     }, { status: 500 });
+  }
+}
+
+async function generateFreshDailyItems(
+  templateType: string,
+  unit: string, 
+  shift: string,
+  residentAcuity: string,
+  profile: any
+): Promise<RoundItem[]> {
+  const currentDate = new Date().toLocaleDateString();
+  const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  
+  const systemPrompt = `You are a CMS survey expert and nursing home compliance specialist. Generate exactly 12 fresh, specific daily round inspection items that vary each day. These should be things surveyors actually observe and cite facilities for.
+
+CONTEXT (${currentDate} - ${dayOfWeek}):
+- Template: ${templateType.replace('_', ' ')}
+- Unit: ${unit} (${residentAcuity} acuity)
+- Shift: ${shift}
+- Facility: ${profile?.facility_name || 'Nursing facility'} in ${profile?.facility_state || 'Unknown state'}
+- Current Period: ${currentMonth}
+
+GENERATE EXACTLY 12 SPECIFIC ITEMS focusing on:
+
+🚨 IMMEDIATE JEOPARDY RISKS (3-4 items):
+- Unattended residents in vulnerable positions
+- Medication security violations
+- Fall/injury prevention failures
+- Emergency equipment/safety hazards
+
+👀 OBSERVABLE SURVEYOR VIOLATIONS (4-5 items):
+- Staff behavior regarding dignity/privacy
+- Infection control practice failures
+- Environmental safety hazards
+- Equipment maintenance/positioning issues
+
+📋 DOCUMENTATION & COMPLIANCE (3-4 items):
+- Care plan implementation gaps
+- Required reporting/assessment timing
+- Regulatory posting/signage requirements
+- Staff competency/delegation issues
+
+REQUIREMENTS:
+✅ Each item must be specific and observable (not "review policies")
+✅ Reference F-tags when applicable (F-323, F-880, F-689, etc.)
+✅ Vary based on current date/day of week
+✅ Include time-specific elements (shift patterns, meal times, etc.)
+✅ Be actionable for ${shift} shift priorities
+✅ Address ${residentAcuity} acuity resident needs
+
+EXAMPLES OF SPECIFIC SURVEYOR ITEMS:
+- "Walk dining room during lunch - check no residents left unattended with food in mouth"
+- "Observe nurses locking medication carts when stepping >10 feet away"
+- "Check isolation room doors closed with proper CDC signage posted and visible"
+- "Verify call bells within reach from bed, wheelchair, and toilet positions"
+- "Watch for staff discussing resident information in elevators/hallways"
+
+Return ONLY a JSON array with exactly 12 items in this format:
+[{
+  "category": "Survey Focus Area",
+  "task": "Specific, observable task with compliance context",
+  "frequency": "daily", 
+  "compliance_related": true,
+  "notes": "F-tag reference and brief compliance note"
+}]`;
+
+  const provider = providerFromEnv();
+  const aiResponse = await provider.complete([
+    { role: "system", content: systemPrompt }
+  ], {
+    temperature: 0.7, // Higher temperature for more variation
+    max_tokens: 2000
+  });
+
+  if (!aiResponse) return [];
+
+  try {
+    const aiItems = JSON.parse(aiResponse);
+    // Ensure we have exactly 12 items
+    const validItems = Array.isArray(aiItems) ? aiItems.slice(0, 12) : [];
+    return validItems.length === 12 ? validItems : [];
+  } catch (parseError) {
+    console.error("Failed to parse fresh daily items:", parseError);
+    return [];
   }
 }
 
