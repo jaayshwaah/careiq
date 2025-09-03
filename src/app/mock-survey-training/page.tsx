@@ -18,7 +18,10 @@ import {
   ClipboardList,
   BookOpen,
   Eye,
-  CheckCircle
+  CheckCircle,
+  Upload,
+  Paperclip,
+  X
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -29,6 +32,11 @@ interface Message {
   timestamp: Date;
   documentRequests?: string[];
   followUpNeeded?: boolean;
+  attachedDocument?: {
+    name: string;
+    content: string;
+    type: string;
+  };
 }
 
 interface UserInfo {
@@ -53,7 +61,10 @@ export default function MockSurveyTraining() {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
+  const [attachedDocument, setAttachedDocument] = useState<{name: string; content: string; type: string} | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -87,7 +98,55 @@ Can you tell me about your primary responsibilities in your current position?`,
     setMessages([initialMessage]);
   };
 
-  const generateSurveyorResponse = async (userMessage: string) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+
+    try {
+      const text = await extractTextFromFile(file);
+      setAttachedDocument({
+        name: file.name,
+        content: text,
+        type: file.type
+      });
+    } catch (error) {
+      console.error('Error reading file:', error);
+      alert('Error reading file. Please try again or use a different file format.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const extractTextFromFile = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        resolve(content);
+      };
+      
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      
+      if (file.type === 'text/plain' || file.type === 'text/csv' || file.name.endsWith('.txt')) {
+        reader.readAsText(file);
+      } else {
+        // For other file types, we'll just get the name and type for now
+        resolve(`[Document uploaded: ${file.name} (${file.type})]`);
+      }
+    });
+  };
+
+  const removeAttachedDocument = () => {
+    setAttachedDocument(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const generateSurveyorResponse = async (userMessage: string, document?: {name: string; content: string; type: string}) => {
     setIsLoading(true);
     
     try {
@@ -99,7 +158,8 @@ Can you tell me about your primary responsibilities in your current position?`,
         body: JSON.stringify({
           userMessage,
           userInfo,
-          conversationHistory: messages
+          conversationHistory: messages,
+          attachedDocument: document
         })
       });
 
@@ -161,22 +221,29 @@ Can you tell me about your primary responsibilities in your current position?`,
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+    if ((!inputMessage.trim() && !attachedDocument) || isLoading) return;
 
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
       sender: 'user',
-      content: inputMessage,
-      timestamp: new Date()
+      content: inputMessage || (attachedDocument ? `I've uploaded a document: ${attachedDocument.name}` : ''),
+      timestamp: new Date(),
+      attachedDocument: attachedDocument || undefined
     };
 
     setMessages(prev => [...prev, userMessage]);
     const currentMessage = inputMessage;
+    const currentDocument = attachedDocument;
+    
     setInputMessage('');
+    setAttachedDocument(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
 
     // Generate surveyor response
-    await generateSurveyorResponse(currentMessage);
+    await generateSurveyorResponse(currentMessage, currentDocument || undefined);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -410,6 +477,21 @@ Can you tell me about your primary responsibilities in your current position?`,
                   {message.content}
                 </div>
                 
+                {message.attachedDocument && (
+                  <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <span className="text-xs font-medium text-green-800 dark:text-green-200">
+                        Document Attached: {message.attachedDocument.name}
+                      </span>
+                    </div>
+                    <div className="text-xs text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40 p-2 rounded max-h-24 overflow-y-auto">
+                      {message.attachedDocument.content.slice(0, 200)}
+                      {message.attachedDocument.content.length > 200 && '...'}
+                    </div>
+                  </div>
+                )}
+                
                 {message.documentRequests && message.documentRequests.length > 0 && (
                   <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
                     <div className="flex items-center gap-2 mb-1">
@@ -454,26 +536,81 @@ Can you tell me about your primary responsibilities in your current position?`,
       {/* Input */}
       <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
         <div className="max-w-4xl mx-auto">
+          {/* Document attachment preview */}
+          {attachedDocument && (
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    {attachedDocument.name}
+                  </span>
+                  <span className="text-xs text-blue-600 dark:text-blue-400">
+                    ({attachedDocument.content.length} characters)
+                  </span>
+                </div>
+                <button
+                  onClick={removeAttachedDocument}
+                  className="p-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded transition-colors"
+                >
+                  <X className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </button>
+              </div>
+              <div className="mt-2 text-xs text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 p-2 rounded max-h-16 overflow-y-auto">
+                {attachedDocument.content.slice(0, 100)}
+                {attachedDocument.content.length > 100 && '...'}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-4">
             <div className="flex-1">
-              <textarea
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your response to the surveyor..."
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-none"
-                rows={3}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={attachedDocument ? "Add a message about your document or send as-is..." : "Type your response to the surveyor..."}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 pr-12 focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-none"
+                  rows={3}
+                  disabled={isLoading}
+                />
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".txt,.pdf,.doc,.docx,.csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    disabled={isUploading || isLoading}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading || isLoading}
+                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
+                    title="Upload document"
+                  >
+                    {isUploading ? (
+                      <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
+                    ) : (
+                      <Paperclip className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
             <button
               onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isLoading}
+              disabled={(!inputMessage.trim() && !attachedDocument) || isLoading}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
               <Send className="h-4 w-4" />
               Send
             </button>
+          </div>
+          
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            💡 Upload policies, procedures, or other documents for the surveyor to review
           </div>
         </div>
       </div>
