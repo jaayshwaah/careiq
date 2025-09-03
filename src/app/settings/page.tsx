@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink, MessageSquare, Send, Palette, Upload, Image, Link as LinkIcon, Unlink, RefreshCw, Database, Globe, Server, Trash2, Mail, Calendar, ArrowRight } from "lucide-react";
+import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink, MessageSquare, Send, Palette, Upload, Image, Link as LinkIcon, Unlink, RefreshCw, Database, Globe, Server, Trash2, Mail, Calendar, ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/AuthProvider";
@@ -53,6 +53,9 @@ export default function SettingsPage() {
     meditech: { connected: false, server: '', database: '', lastSync: null }
   });
   const [savingIntegrations, setSavingIntegrations] = useState(false);
+
+  // Zen Mode state
+  const [isZenMode, setIsZenMode] = useState(false);
 
   // Facility logo state
   const [facilityLogoFile, setFacilityLogoFile] = useState<File | null>(null);
@@ -526,6 +529,25 @@ export default function SettingsPage() {
     setTimeout(() => setMessage(null), 3000);
   };
 
+  const startZenMode = () => {
+    setIsZenMode(true);
+  };
+
+  const exitZenMode = () => {
+    setIsZenMode(false);
+  };
+
+  // Handle ESC key to exit Zen Mode
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isZenMode) {
+        exitZenMode();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isZenMode]);
+
   const themeOptions: { value: Theme; label: string; icon: React.ReactNode; description: string }[] = [
     {
       value: "light",
@@ -860,6 +882,39 @@ export default function SettingsPage() {
                   </div>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Zen Mode */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5" />
+            Zen Mode
+          </h2>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Take a peaceful break with calming visuals and sounds
+            </p>
+            
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+              <div className="flex items-start gap-3">
+                <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-green-900 dark:text-green-100 mb-1">Mindful Break</h4>
+                  <p className="text-sm text-green-800 dark:text-green-200 mb-3">
+                    Enjoy peaceful nature scenes with relaxing sounds to help reduce stress and recharge during busy shifts.
+                  </p>
+                  <button
+                    onClick={startZenMode}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Enter Zen Mode
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1416,6 +1471,69 @@ export default function SettingsPage() {
         
         </div>
       </div>
+
+      {/* Zen Mode Fullscreen Overlay */}
+      {isZenMode && (
+        <div className="fixed inset-0 z-50 bg-black">
+          {/* Exit Button */}
+          <button
+            onClick={exitZenMode}
+            className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Peaceful Video */}
+          <video
+            className="w-full h-full object-cover"
+            autoPlay
+            loop
+            muted
+            playsInline
+          >
+            <source src="https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4" type="video/mp4" />
+            {/* Fallback for browsers that don't support the video */}
+          </video>
+
+          {/* Overlay with peaceful content if video doesn't load */}
+          <div className="absolute inset-0 bg-gradient-to-br from-green-400 via-blue-500 to-purple-600 flex items-center justify-center">
+            <div className="text-center text-white">
+              <div className="mb-8">
+                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm mb-6">
+                  <Sparkles className="w-12 h-12" />
+                </div>
+                <h1 className="text-4xl font-light mb-4">Take a Deep Breath</h1>
+                <p className="text-xl opacity-90 max-w-md mx-auto">
+                  Let the peaceful sounds and visuals help you relax and recharge
+                </p>
+              </div>
+              
+              {/* Breathing Animation */}
+              <div className="relative">
+                <div className="w-32 h-32 mx-auto rounded-full border-2 border-white/30 flex items-center justify-center">
+                  <div className="w-20 h-20 rounded-full bg-white/20 animate-pulse"></div>
+                </div>
+                <p className="mt-4 text-lg opacity-80">Breathe in... Breathe out...</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Peaceful Audio */}
+          <audio autoPlay loop>
+            <source src="https://www.soundjay.com/misc/sounds/rain-01.wav" type="audio/wav" />
+            <source src="https://www.zapsplat.com/wp-content/uploads/2015/sound-effects-one/nature_water_stream_gentle_flowing_over_rocks_distant_birds_loop.mp3" type="audio/mpeg" />
+          </audio>
+
+          {/* ESC message */}
+          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+            <p className="text-white/70 text-sm bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm">
+              Press ESC to exit Zen Mode
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
