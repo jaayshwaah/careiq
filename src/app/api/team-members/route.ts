@@ -44,26 +44,26 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Get team member details from profiles
+    // Use auth service to get team member details instead of profiles table to avoid RLS recursion
     const teamMembers: any[] = [];
     if (teamMemberIds.size > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, email, name, avatar_url, last_seen')
-        .in('id', Array.from(teamMemberIds));
-
-      if (profiles) {
-        profiles.forEach(profile => {
+      // Get all users from auth service and filter for team members
+      const { data: userList } = await supabase.auth.admin.listUsers();
+      const users = userList?.users || [];
+      
+      Array.from(teamMemberIds).forEach(memberId => {
+        const user = users.find(u => u.id === memberId);
+        if (user) {
           teamMembers.push({
-            id: profile.id,
-            email: profile.email,
-            name: profile.name,
-            avatar_url: profile.avatar_url,
-            last_seen: profile.last_seen,
+            id: user.id,
+            email: user.email,
+            name: user.email?.split('@')[0] || 'User',
+            avatar_url: null,
+            last_seen: user.last_sign_in_at || null,
             role: 'Collaborator'
           });
-        });
-      }
+        }
+      });
     }
 
     teamMembers.sort((a, b) => (b.last_seen || '').localeCompare(a.last_seen || ''));

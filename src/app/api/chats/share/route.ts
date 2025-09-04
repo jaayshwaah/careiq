@@ -66,8 +66,7 @@ export async function GET(req: NextRequest) {
           permission_level,
           shared_at,
           expires_at,
-          is_active,
-          profiles!chat_shares_shared_with_fkey(full_name, email)
+          is_active
         `)
         .eq("chat_id", chatId)
         .order("shared_at", { ascending: false });
@@ -151,21 +150,18 @@ export async function POST(req: NextRequest) {
       }, { status: 404 });
     }
 
-    // Find user to share with
-    const { data: targetUser, error: targetError } = await supa
-      .from("profiles")
-      .select("user_id, full_name, email")
-      .eq("email", shared_with_email)
-      .single();
-
-    if (targetError || !targetUser) {
+    // Use auth service to find user by email instead of profiles table to avoid RLS recursion
+    const { data: targetUser, error: targetError } = await supa.auth.admin.listUsers();
+    const foundUser = targetUser?.users?.find(u => u.email === shared_with_email);
+    
+    if (targetError || !foundUser) {
       return NextResponse.json({ 
         error: "User not found with that email address" 
       }, { status: 404 });
     }
 
     // Don't allow sharing with self
-    if (targetUser.user_id === user.id) {
+    if (foundUser.id === user.id) {
       return NextResponse.json({ 
         error: "Cannot share chat with yourself" 
       }, { status: 400 });
@@ -177,7 +173,7 @@ export async function POST(req: NextRequest) {
       .upsert({
         chat_id,
         shared_by: user.id,
-        shared_with: targetUser.user_id,
+        shared_with: foundUser.id,
         permission_level,
         expires_at,
         is_active: true,
@@ -196,8 +192,8 @@ export async function POST(req: NextRequest) {
       ok: true, 
       share: {
         ...share,
-        shared_with_name: targetUser.full_name,
-        shared_with_email: targetUser.email
+        shared_with_name: foundUser.email?.split('@')[0] || 'User',
+        shared_with_email: foundUser.email
       }
     });
 

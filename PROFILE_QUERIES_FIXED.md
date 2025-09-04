@@ -12,6 +12,11 @@
 ### UI Components
 6. ✅ **`/components/Sidebar.tsx`** → Main navigation sidebar
 
+### Additional API Routes
+7. ✅ **`/api/chats/share/route.ts`** → Chat sharing functionality  
+8. ✅ **`/api/chat-shares/route.ts`** → Collaborative chat sharing
+9. ✅ **`/api/team-members/route.ts`** → Team member management
+
 ## Fallback Profile Data Used Everywhere
 ```javascript
 const profile = {

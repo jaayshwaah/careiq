@@ -37,12 +37,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Chat not found or access denied' }, { status: 404 });
     }
 
-    // Find user to share with by email using profiles table
-    const { data: targetUserProfile, error: userError } = await supabase
-      .from('profiles')
-      .select('id, email')
-      .eq('email', shared_with_email)
-      .single();
+    // Use auth service to find user by email instead of profiles table to avoid RLS recursion
+    const { data: userList, error: userError } = await supabase.auth.admin.listUsers();
+    const targetUserProfile = userList?.users?.find(u => u.email === shared_with_email);
     
     if (userError || !targetUserProfile) {
       return NextResponse.json({ error: 'User not found with provided email' }, { status: 404 });
