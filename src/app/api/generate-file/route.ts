@@ -40,10 +40,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user profile for facility context (with error handling)
+    // Get user profile for facility context (using service role to bypass RLS)
     let profile = null;
     try {
-      const { data, error } = await supa
+      const serviceSupabase = supabaseService();
+      
+      const { data, error } = await serviceSupabase
         .from("profiles")
         .select("facility_name, facility_state, full_name")
         .eq("user_id", user.id)
@@ -55,7 +57,7 @@ export async function POST(req: NextRequest) {
         console.warn("Profile query failed in generate-file:", error.message);
       }
     } catch (error) {
-      console.warn("Profile query error in generate-file (possibly RLS recursion):", error);
+      console.warn("Profile query error in generate-file:", error);
       profile = null;
     }
 

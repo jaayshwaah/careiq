@@ -177,10 +177,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user profile for context (with error handling for RLS issues)
+    // Get user profile for context (using service role to bypass RLS)
     let profile = null;
     try {
-      const { data, error } = await supa
+      const { supabaseService } = await import("@/lib/supabase/server");
+      const serviceSupabase = supabaseService();
+      
+      const { data, error } = await serviceSupabase
         .from("profiles")
         .select("role, facility_id, facility_name, facility_state, full_name")
         .eq("user_id", user.id)
@@ -192,7 +195,7 @@ export async function POST(req: NextRequest) {
         console.warn("Profile query failed:", error.message);
       }
     } catch (error) {
-      console.warn("Profile query error (possibly RLS recursion):", error);
+      console.warn("Profile query error:", error);
       // Continue without profile data - the system will still work
       profile = null;
     }
