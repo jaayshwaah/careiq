@@ -40,12 +40,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user profile for facility context
-    const { data: profile } = await supa
-      .from("profiles")
-      .select("facility_name, facility_state, full_name")
-      .eq("user_id", user.id)
-      .single();
+    // Get user profile for facility context (with error handling)
+    let profile = null;
+    try {
+      const { data, error } = await supa
+        .from("profiles")
+        .select("facility_name, facility_state, full_name")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (!error) {
+        profile = data;
+      } else {
+        console.warn("Profile query failed in generate-file:", error.message);
+      }
+    } catch (error) {
+      console.warn("Profile query error in generate-file (possibly RLS recursion):", error);
+      profile = null;
+    }
 
     let fileBuffer: Buffer;
     let contentType: string;

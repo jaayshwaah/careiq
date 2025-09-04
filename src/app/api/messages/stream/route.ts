@@ -177,12 +177,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user profile for context
-    const { data: profile } = await supa
-      .from("profiles")
-      .select("role, facility_id, facility_name, facility_state, full_name")
-      .eq("user_id", user.id)
-      .single();
+    // Get user profile for context (with error handling for RLS issues)
+    let profile = null;
+    try {
+      const { data, error } = await supa
+        .from("profiles")
+        .select("role, facility_id, facility_name, facility_state, full_name")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (!error) {
+        profile = data;
+      } else {
+        console.warn("Profile query failed:", error.message);
+      }
+    } catch (error) {
+      console.warn("Profile query error (possibly RLS recursion):", error);
+      // Continue without profile data - the system will still work
+      profile = null;
+    }
 
     // Build RAG context
     let ragContext = "";
