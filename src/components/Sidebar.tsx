@@ -148,31 +148,17 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     
     const isHardcodedAdmin = adminEmails.includes(user.email);
     
-    // SECOND: Try database check
-    try {
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("user_id, role, is_admin, email, full_name")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!error && profile) {
-        setUserProfile(profile);
-        
-        // Check CareIQ admin indicators (not facility administrator)
-        const isDatabaseAdmin = 
-          profile.role === 'careiq_admin' ||  // CareIQ admin role
-          profile.email?.endsWith('@careiq.com');
-        
-        if (isDatabaseAdmin) {
-          setIsAdmin(true);
-          console.log('🛡️ Admin access granted (database):', profile.email || user.email);
-          return;
-        }
-      }
-    } catch (error) {
-      console.log('Database admin check failed:', error);
-    }
+    // Skip database check for now to avoid RLS recursion
+    // Use fallback profile data
+    const fallbackProfile = {
+      user_id: user.id,
+      role: 'user', 
+      is_admin: false,
+      email: user.email,
+      full_name: user.email?.split('@')[0] || 'User'
+    };
+    setUserProfile(fallbackProfile);
+    console.log('Using fallback profile in sidebar to avoid RLS issues');
 
     // Use hardcoded result as fallback
     setIsAdmin(isHardcodedAdmin);

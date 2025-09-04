@@ -177,28 +177,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user profile for context (using service role to bypass RLS)
-    let profile = null;
-    try {
-      const { supabaseService } = await import("@/lib/supabase/server");
-      const serviceSupabase = supabaseService();
-      
-      const { data, error } = await serviceSupabase
-        .from("profiles")
-        .select("role, facility_id, facility_name, facility_state, full_name")
-        .eq("user_id", user.id)
-        .single();
-      
-      if (!error) {
-        profile = data;
-      } else {
-        console.warn("Profile query failed:", error.message);
-      }
-    } catch (error) {
-      console.warn("Profile query error:", error);
-      // Continue without profile data - the system will still work
-      profile = null;
-    }
+    // Skip profiles table entirely to avoid RLS recursion issues
+    // Use basic fallback profile data
+    const profile = {
+      role: 'user',
+      facility_id: null,
+      facility_name: 'Healthcare Facility',
+      facility_state: null,
+      full_name: user?.email?.split('@')[0] || 'User'
+    };
+    
+    console.log('Using fallback profile data to avoid RLS issues');
 
     // Build RAG context
     let ragContext = "";
