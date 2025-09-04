@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import "../styles/chat-tables.css";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Copy, Check, Send, Pencil, Bookmark, Paperclip, Download, Settings as SettingsIcon, FileText, Users, Search, Share2, Sparkles, Brain } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -22,6 +23,14 @@ type Msg = {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  tableHtml?: string;
+  fileOffer?: {
+    fileId: string;
+    fileType: string;
+    template: string;
+    filename: string;
+    data: any;
+  };
 };
 
 function TypingIndicator() {
@@ -110,6 +119,53 @@ function MessageBubble({ message, isStreaming = false, onEdit, onBookmark, onExt
               <TypingIndicator />
             ) : null}
           </div>
+
+          {/* Table content */}
+          {message.tableHtml && !isUser && (
+            <div className="mt-4 max-w-full overflow-hidden">
+              <div 
+                className="table-content"
+                dangerouslySetInnerHTML={{ __html: message.tableHtml }}
+              />
+            </div>
+          )}
+
+          {/* File download offer */}
+          {message.fileOffer && !isUser && (
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
+                  {message.fileOffer.fileType === 'excel' ? (
+                    <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6z"/>
+                      <path d="M6 8h8v1H6V8zm0 2h8v1H6v-1zm0 2h5v1H6v-1z"/>
+                    </svg>
+                  ) : message.fileOffer.fileType === 'pdf' ? (
+                    <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H4zm6 2a1 1 0 011 1v6a1 1 0 01-2 0V5a1 1 0 011-1z"/>
+                    </svg>
+                  ) : (
+                    <FileText className="w-6 h-6 text-blue-600" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    {message.fileOffer.filename}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {message.fileOffer.fileType.toUpperCase()} • Ready for download
+                  </p>
+                </div>
+                <button
+                  onClick={() => downloadGeneratedFile(message.fileOffer!)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Download size={16} />
+                  Download
+                </button>
+              </div>
+            </div>
+          )}
           
           {/* Timestamp */}
           <div className={`text-xs text-gray-500 dark:text-gray-400 mt-2 ${
@@ -655,6 +711,8 @@ export default function Chat({ chatId }: { chatId: string }) {
 
           try {
             const obj = JSON.parse(payload);
+            
+            // Handle regular content
             const token = obj?.content;
             if (token) {
               assistantContent += token;
@@ -664,6 +722,41 @@ export default function Chat({ chatId }: { chatId: string }) {
                   ? { ...msg, content: assistantContent }
                   : msg
               ));
+            }
+
+            // Handle table generation
+            if (obj?.type === "table" && obj?.tableHtml) {
+              setMsgs(prev => prev.map(msg => 
+                msg.id === assistantId 
+                  ? { ...msg, tableHtml: obj.tableHtml }
+                  : msg
+              ));
+            }
+
+            // Handle file offers
+            if (obj?.type === "file_offer") {
+              const fileOffer = {
+                fileId: obj.fileId,
+                fileType: obj.fileType,
+                template: obj.template,
+                filename: obj.filename,
+                data: obj.data
+              };
+              
+              setMsgs(prev => prev.map(msg => 
+                msg.id === assistantId 
+                  ? { ...msg, fileOffer }
+                  : msg
+              ));
+              
+              if (obj.content) {
+                assistantContent += obj.content;
+                setMsgs(prev => prev.map(msg => 
+                  msg.id === assistantId 
+                    ? { ...msg, content: assistantContent }
+                    : msg
+                ));
+              }
             }
           } catch (err) {
             console.debug('Skipping malformed SSE frame:', err);
@@ -755,6 +848,47 @@ export default function Chat({ chatId }: { chatId: string }) {
     } else {
       // Navigate to different chat
       router.push(`/chat/${targetChatId}${messageId ? `#${messageId}` : ''}`);
+    }
+  };
+
+  // Download generated file
+  const downloadGeneratedFile = async (fileOffer: NonNullable<Msg['fileOffer']>) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/generate-file', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+        },
+        body: JSON.stringify({
+          type: fileOffer.fileType,
+          template: fileOffer.template,
+          data: fileOffer.data,
+          filename: fileOffer.filename,
+          chatId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate file');
+      }
+
+      // Create download link
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = fileOffer.filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download file. Please try again.');
     }
   };
 

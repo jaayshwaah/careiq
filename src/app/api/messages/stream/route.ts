@@ -29,16 +29,128 @@ Write responses in clean, professional prose without asterisks or markdown forma
 Use plain text with proper paragraphs and clear formatting.
 Prioritize readability and quick comprehension.
 
+FILE GENERATION CAPABILITIES:
+You can create and offer downloadable files to help users. Available functions:
+- generate_file: Create Excel spreadsheets, PDF documents, or Word files
+- create_table: Generate interactive HTML tables in the chat
+Use these when users need:
+- Checklists, forms, or templates
+- Data organization and tracking
+- Reports or documentation
+- Training matrices or schedules
+
 ALWAYS:
 - Cite specific regulation numbers (e.g., "42 CFR 483.12(a)")
 - Mention source documents when relevant
 - Include effective dates when applicable
 - Note state-specific variations when applicable
 - Stay within nursing home compliance and operations scope
+- Offer to create downloadable files when appropriate
+- Generate tables for data that needs organization
 
 When you use retrieved knowledge, cite by bracketed number [1], [2], etc.
 
 If asked "what model is this?" respond: "I am CareIQ, powered by GPT-5, specialized exclusively for nursing home compliance and operations guidance."`;
+
+// Function to handle AI function calls
+async function handleFunctionCall(functionCall: any, chatId: string, profile: any, supa: any) {
+  const { name, arguments: argsString } = functionCall.function;
+  
+  try {
+    const args = JSON.parse(argsString);
+    
+    switch (name) {
+      case "generate_file":
+        return await handleGenerateFile(args, chatId, profile);
+      case "create_table":
+        return await handleCreateTable(args);
+      default:
+        return null;
+    }
+  } catch (error) {
+    console.error("Function call handler error:", error);
+    return {
+      type: "error",
+      content: "I encountered an error while processing that request."
+    };
+  }
+}
+
+// Handle file generation function call
+async function handleGenerateFile(args: any, chatId: string, profile: any) {
+  const { type, template, data, filename } = args;
+  
+  // Generate a unique file ID for this request
+  const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  return {
+    type: "file_offer",
+    fileId,
+    fileType: type,
+    template,
+    filename: filename || `${template}-${Date.now()}.${type === 'excel' ? 'xlsx' : type}`,
+    data,
+    content: `I've prepared a ${type.toUpperCase()} file for you: "${template}". Click the download button below to get your file.`
+  };
+}
+
+// Handle table creation function call
+async function handleCreateTable(args: any) {
+  const { title, headers, rows, style = "default" } = args;
+  
+  let tableClass = "border-collapse border border-gray-300 w-full";
+  switch (style) {
+    case "striped":
+      tableClass += " table-striped";
+      break;
+    case "bordered":
+      tableClass += " border-2";
+      break;
+    case "compact":
+      tableClass += " text-sm";
+      break;
+  }
+  
+  let tableHtml = `<div class="table-container my-4">`;
+  if (title) {
+    tableHtml += `<h4 class="font-semibold text-gray-900 dark:text-white mb-2">${title}</h4>`;
+  }
+  
+  tableHtml += `<div class="overflow-x-auto"><table class="${tableClass}">`;
+  
+  // Headers
+  if (headers && headers.length > 0) {
+    tableHtml += `<thead class="bg-gray-50 dark:bg-gray-700">`;
+    tableHtml += `<tr>`;
+    for (const header of headers) {
+      tableHtml += `<th class="border border-gray-300 dark:border-gray-600 px-4 py-2 text-left font-semibold text-gray-900 dark:text-white">${header}</th>`;
+    }
+    tableHtml += `</tr></thead>`;
+  }
+  
+  // Rows
+  if (rows && rows.length > 0) {
+    tableHtml += `<tbody>`;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowClass = style === "striped" && i % 2 === 1 ? "bg-gray-50 dark:bg-gray-800" : "";
+      tableHtml += `<tr class="${rowClass}">`;
+      for (const cell of row) {
+        tableHtml += `<td class="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-900 dark:text-white">${cell || ''}</td>`;
+      }
+      tableHtml += `</tr>`;
+    }
+    tableHtml += `</tbody>`;
+  }
+  
+  tableHtml += `</table></div></div>`;
+  
+  return {
+    type: "table",
+    content: "",
+    tableHtml
+  };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -163,6 +275,76 @@ export async function POST(req: NextRequest) {
     const estimatedCostValue = estimateCost(content, OPENROUTER_MODEL);
     logRoutingDecision(chatId, OPENROUTER_MODEL, routingContext, estimatedCostValue).catch(console.warn);
 
+    // Define available tools/functions
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "generate_file",
+          description: "Generate downloadable files (Excel, PDF, Word) for nursing home compliance tasks",
+          parameters: {
+            type: "object",
+            properties: {
+              type: {
+                type: "string",
+                enum: ["excel", "pdf", "word"],
+                description: "Type of file to generate"
+              },
+              template: {
+                type: "string",
+                enum: ["survey-prep-checklist", "staff-training-matrix", "incident-report", "policy-review-tracker", "regulatory-compliance-summary", "policy-template", "custom"],
+                description: "Template to use for file generation"
+              },
+              data: {
+                type: "object",
+                description: "Data to populate the template with"
+              },
+              filename: {
+                type: "string",
+                description: "Optional custom filename"
+              }
+            },
+            required: ["type", "template", "data"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "create_table",
+          description: "Create an interactive HTML table to display in the chat",
+          parameters: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+                description: "Title for the table"
+              },
+              headers: {
+                type: "array",
+                items: { type: "string" },
+                description: "Column headers"
+              },
+              rows: {
+                type: "array",
+                items: {
+                  type: "array",
+                  items: { type: "string" }
+                },
+                description: "Table rows data"
+              },
+              style: {
+                type: "string",
+                enum: ["default", "striped", "bordered", "compact"],
+                description: "Table styling"
+              }
+            },
+            required: ["headers", "rows"]
+          }
+        }
+      }
+    ];
+
     // Prepare messages for AI
     const aiMessages = [
       { role: "system" as const, content: systemPrompt },
@@ -170,7 +352,7 @@ export async function POST(req: NextRequest) {
       { role: "user" as const, content }
     ];
 
-    // Call OpenRouter for streaming response
+    // Call OpenRouter for streaming response with function calling
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -182,6 +364,8 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: OPENROUTER_MODEL,
         messages: aiMessages,
+        tools: tools,
+        tool_choice: "auto",
         stream: true,
         temperature,
         max_tokens: maxTokens,
@@ -207,6 +391,8 @@ export async function POST(req: NextRequest) {
         const decoder = new TextDecoder();
         let buffer = "";
         let fullResponse = "";
+        let functionCalls: any[] = [];
+        let currentFunctionCall: any = null;
 
         try {
           while (true) {
@@ -227,14 +413,58 @@ export async function POST(req: NextRequest) {
 
                 try {
                   const parsed = JSON.parse(data);
-                  const content = parsed.choices?.[0]?.delta?.content || "";
+                  const delta = parsed.choices?.[0]?.delta;
+                  
+                  // Handle text content
+                  const content = delta?.content || "";
                   if (content) {
                     fullResponse += content;
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
                   }
+
+                  // Handle function calls
+                  if (delta?.tool_calls) {
+                    for (const toolCall of delta.tool_calls) {
+                      if (toolCall.index !== undefined) {
+                        if (!functionCalls[toolCall.index]) {
+                          functionCalls[toolCall.index] = {
+                            id: toolCall.id,
+                            type: toolCall.type,
+                            function: { name: toolCall.function?.name || "", arguments: "" }
+                          };
+                        }
+                        if (toolCall.function?.arguments) {
+                          functionCalls[toolCall.index].function.arguments += toolCall.function.arguments;
+                        }
+                      }
+                    }
+                  }
                 } catch (e) {
                   // Skip malformed chunks
                 }
+              }
+            }
+          }
+
+          // Process any function calls
+          for (const functionCall of functionCalls) {
+            if (functionCall && functionCall.function.name) {
+              try {
+                const result = await handleFunctionCall(functionCall, chatId, profile, supa);
+                if (result) {
+                  // Stream the function result
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(result)}\n\n`));
+                  if (result.content) {
+                    fullResponse += result.content;
+                  }
+                }
+              } catch (error) {
+                console.error("Function call error:", error);
+                const errorResult = {
+                  type: "error",
+                  content: "Sorry, I encountered an error while generating that content. Please try again."
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorResult)}\n\n`));
               }
             }
           }
