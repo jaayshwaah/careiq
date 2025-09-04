@@ -73,24 +73,10 @@ export default function AdminLayout({
       const isAdminByEmail = adminEmails.includes(session.user.email) || 
                             session.user.email?.endsWith('@careiq.com');
 
-      // Method 3: Check profiles table for admin role
-      let isAdminByProfile = false;
-      try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, is_admin")
-          .eq("user_id", session.user.id)
-          .single();
-        
-        isAdminByProfile = profile?.role === "admin" || 
-                          profile?.role === "careiq_admin" || 
-                          profile?.role?.includes("administrator") ||
-                          profile?.is_admin === true;
-      } catch (error) {
-        console.warn("Could not check profile for admin status:", error);
-        // If profile check fails but user is in admin email list, still allow access
-        isAdminByProfile = isAdminByEmail;
-      }
+      // Method 3: Skip profiles table check to avoid RLS recursion
+      // Use fallback based on email-based admin check only
+      const isAdminByProfile = isAdminByEmail;
+      console.log('Admin layout: Using fallback admin check (no profiles query) to avoid RLS recursion');
 
       const hasAdminAccess = isAdmin || isAdminByEmail || isAdminByProfile;
 

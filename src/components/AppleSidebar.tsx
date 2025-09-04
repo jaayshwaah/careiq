@@ -86,15 +86,20 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
     }
   };
 
-  // Load user profile and facility logo
+  // Load user profile and facility logo - using fallback data to avoid RLS recursion
   const loadProfile = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("user_id, role, is_admin, email, full_name, facility_name, facility_logo_url")
-        .eq("user_id", user.id)
-        .single();
+      // Use fallback profile data to avoid profiles table RLS recursion
+      const profile = {
+        user_id: user.id,
+        role: 'user',
+        is_admin: false,
+        email: user.email,
+        full_name: user.email?.split('@')[0] || 'User',
+        facility_name: 'Healthcare Facility',
+        facility_logo_url: null
+      };
       
       setUserProfile(profile);
       
