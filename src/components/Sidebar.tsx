@@ -363,9 +363,9 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         </div>
 
         {/* Middle Scrollable Content Area */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-          {/* Chat List */}
-          <div>
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+          <div className="px-3">
+            {/* Chat List */}
           {!collapsed && (
             <div className="mb-3 flex items-center justify-between px-2">
               <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -456,6 +456,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               </div>
             )
           )}
+          </div>
         </div>
 
         {/* Footer Navigation - Fixed at Bottom */}
