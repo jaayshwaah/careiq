@@ -270,8 +270,8 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     >
       <div className="h-screen flex flex-col overflow-hidden">
         {/* Header - Fixed at Top */}
-        <div className="flex-none p-3">
-          <div className="flex items-center justify-between mb-4 p-2">
+        <div className="flex-none p-3 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-4">
             <button
               onClick={onToggle}
               className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
@@ -313,7 +313,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
 
           {/* Search Bar */}
           {!collapsed && (
-            <div className="mb-4">
+            <div>
               {showSearch ? (
                 <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <Search size={16} className="text-gray-400" />
@@ -350,104 +350,100 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
 
         {/* Middle Scrollable Content Area */}
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-          <div className="px-3">
+          <div className="p-3">
             {/* Chat List */}
-          {!collapsed && (
-            <div className="mb-3 flex items-center justify-between px-2">
-              <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                {searchQuery ? 'Search Results' : 'Recent Chats'}
-              </h2>
-              {chats.length > 0 && (
-                <span className="text-xs text-gray-400">
-                  {filteredChats.length} of {chats.length}
-                </span>
-              )}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className={`
-                    animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg
-                    ${collapsed ? "h-10 w-10 mx-auto" : "h-10 w-full"}
-                  `}
-                />
-              ))}
-            </div>
-          ) : filteredChats.length > 0 ? (
-            <div className="space-y-1">
-              {groupedChats.map((group) => (
-                <div key={group.label}>
-                  {!collapsed && group.label && (
-                    <div className="text-xs text-gray-400 dark:text-gray-500 px-3 py-2 flex items-center gap-2">
-                      <Clock size={12} />
-                      {group.label}
-                    </div>
-                  )}
-                  {group.chats.map((chat) => (
-                    <Link
-                      key={chat.id}
-                      href={`/chat/${chat.id}`}
-                      className={`
-                        flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-                        hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
-                        ${pathname === `/chat/${chat.id}` 
-                          ? "bg-gray-100 dark:bg-gray-700" 
-                          : ""
-                        }
-                        ${collapsed ? "justify-center" : "justify-start"}
-                      `}
-                      title={collapsed ? chat.title : undefined}
-                    >
-                      <MessageCircle size={16} className="shrink-0" />
-                      {!collapsed && (
-                        <div className="flex-1 min-w-0">
-                          <div className="truncate">{chat.title || "Untitled"}</div>
-                          {searchQuery && (
-                            <div className="text-xs text-gray-400 truncate">
-                              {new Date(chat.updated_at || chat.created_at).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              ))}
-            </div>
-          ) : searchQuery ? (
-            !collapsed && (
-              <div className="px-3 py-8 text-center">
-                <Search size={32} className="mx-auto mb-2 text-gray-400" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No chats found for "{searchQuery}"
-                </p>
-              </div>
-            )
-          ) : (
-            !collapsed && (
-              <div className="px-3 py-8 text-center">
-                <MessageCircle size={32} className="mx-auto mb-2 text-gray-400" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No chats yet
-                </p>
-                {isAuthenticated && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Create your first chat above
-                  </p>
+            {!collapsed && (
+              <div className="mb-3 flex items-center justify-between px-2">
+                <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  {searchQuery ? 'Search Results' : 'Recent Chats'}
+                </h2>
+                {chats.length > 0 && (
+                  <span className="text-xs text-gray-400">
+                    {filteredChats.length} of {chats.length}
+                  </span>
                 )}
               </div>
-            )
-          )}
-          </div>
-        </div>
+            )}
 
-        {/* Footer Navigation - Fixed at Bottom */}
-        <div className="flex-none p-3">
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mb-3">
+            {loading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className={`
+                      animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg
+                      ${collapsed ? "h-10 w-10 mx-auto" : "h-10 w-full"}
+                    `}
+                  />
+                ))}
+              </div>
+            ) : filteredChats.length > 0 ? (
+              <div className="space-y-1 mb-6">
+                {groupedChats.map((group) => (
+                  <div key={group.label}>
+                    {!collapsed && group.label && (
+                      <div className="text-xs text-gray-400 dark:text-gray-500 px-3 py-2 flex items-center gap-2">
+                        <Clock size={12} />
+                        {group.label}
+                      </div>
+                    )}
+                    {group.chats.map((chat) => (
+                      <Link
+                        key={chat.id}
+                        href={`/chat/${chat.id}`}
+                        className={`
+                          flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+                          hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
+                          ${pathname === `/chat/${chat.id}` 
+                            ? "bg-gray-100 dark:bg-gray-700" 
+                            : ""
+                          }
+                          ${collapsed ? "justify-center" : "justify-start"}
+                        `}
+                        title={collapsed ? chat.title : undefined}
+                      >
+                        <MessageCircle size={16} className="shrink-0" />
+                        {!collapsed && (
+                          <div className="flex-1 min-w-0">
+                            <div className="truncate">{chat.title || "Untitled"}</div>
+                            {searchQuery && (
+                              <div className="text-xs text-gray-400 truncate">
+                                {new Date(chat.updated_at || chat.created_at).toLocaleDateString()}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : searchQuery ? (
+              !collapsed && (
+                <div className="px-3 py-8 text-center mb-6">
+                  <Search size={32} className="mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No chats found for "{searchQuery}"
+                  </p>
+                </div>
+              )
+            ) : (
+              !collapsed && (
+                <div className="px-3 py-8 text-center mb-6">
+                  <MessageCircle size={32} className="mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No chats yet
+                  </p>
+                  {isAuthenticated && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Create your first chat above
+                    </p>
+                  )}
+                </div>
+              )
+            )}
+
+            {/* Tools Section - Now in scrollable area */}
             {!collapsed ? (
               <div className="space-y-2">
                 {/* Admin Access */}
@@ -606,10 +602,14 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Footer - Only User Section Fixed at Bottom */}
+        <div className="flex-none p-3 border-t border-gray-200 dark:border-gray-700">
 
           {/* User Section - Sticky at Bottom */}
           {isAuthenticated && (
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+            <div>
               {!collapsed ? (
                 <div className="flex items-center gap-3 px-3 py-2">
                   <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
