@@ -314,10 +314,8 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
 
   return (
     <div className={`h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'} ${className}`}>
-      <div className="flex-1 overflow-y-auto">
-        {/* Scrollable content wrapper */}
-      {/* Header */}
-      <div className={`border-b border-gray-200/30 dark:border-gray-700/30 ${isCollapsed ? 'px-3 py-4' : 'px-6 py-5'}`}>
+      {/* Fixed Header */}
+      <div className={`flex-none border-b border-gray-200/30 dark:border-gray-700/30 ${isCollapsed ? 'px-3 py-4' : 'px-6 py-5'}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div 
@@ -388,8 +386,10 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
         </button>
       </div>
 
-      {/* Main Navigation */}
-      <div className="px-3 py-4 border-b border-gray-200/30 dark:border-gray-700/30">
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Main Navigation */}
+        <div className="px-3 py-4 border-b border-gray-200/30 dark:border-gray-700/30">
         <div className="space-y-1">
           {mainNavigationItems.map((item) => {
             const Icon = item.icon;
@@ -602,25 +602,29 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
               </div>
             </div>
           )}
-          <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-1'}`}>
-            <Link
-              href="/settings"
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              title="Settings"
-            >
-              <Settings size={16} className="text-gray-500 dark:text-gray-400" />
-            </Link>
-            <button
-              onClick={handleSignOut}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              title="Sign out"
-            >
-              <LogOut size={16} className="text-gray-500 dark:text-gray-400" />
-            </button>
-          </div>
         </div>
       </div>
-      </div> {/* End of scrollable content wrapper */}
+      </div> {/* End of scrollable content area */}
+
+      {/* Fixed Footer - User Section */}
+      <div className="flex-none border-t border-gray-200/30 dark:border-gray-700/30 p-3">
+        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-1'}`}>
+          <Link
+            href="/settings"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            title="Settings"
+          >
+            <Settings size={16} className="text-gray-500 dark:text-gray-400" />
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            title="Sign out"
+          >
+            <LogOut size={16} className="text-gray-500 dark:text-gray-400" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
