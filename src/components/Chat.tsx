@@ -106,7 +106,7 @@ function MessageBubble({ message, isStreaming = false, onEdit, onBookmark, onExt
           {/* Message content */}
           <div className={`inline-block max-w-full ${
             isUser 
-              ? 'bg-blue-600 text-white rounded-2xl rounded-br-md px-3 py-2 lg:px-4 lg:py-3' 
+              ? 'user-message-bubble text-white px-3 py-2 lg:px-4 lg:py-3' 
               : 'text-gray-900 dark:text-gray-100'
           }`}>
             {message.content ? (
@@ -1046,6 +1046,8 @@ export default function Chat({ chatId }: { chatId: string }) {
             onEdit={(id, content) => { setEditingMessageId(id); setComposerValue(content); }}
             onSaveTemplate={handleSaveTemplate}
             onExtractKnowledge={handleExtractKnowledge}
+            onStop={handleStop}
+            onDownloadFile={downloadGeneratedFile}
             onAtBottomChange={setAtBottom}
           />
         )}
@@ -1157,22 +1159,6 @@ export default function Chat({ chatId }: { chatId: string }) {
         />
       </div>
       
-      {/* Stop button when streaming */}
-      {streaming && (
-        <div className="border-t border-gray-200/50 dark:border-gray-700/50 bg-white dark:bg-gray-900 py-3">
-          <div className="max-w-4xl mx-auto px-4">
-            <div className="flex items-center justify-center">
-              <button
-                onClick={handleStop}
-                className="flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-all hover:scale-105 shadow-lg"
-              >
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                Stop generating
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Templates modal */}
       {showTemplates && (
