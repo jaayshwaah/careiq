@@ -16,6 +16,7 @@ interface PPDCalculation {
   cna_hours: number;
   total_nursing_hours: number;
   ppd: number;
+  eight_hour_shifts: number;
   created_at: string;
   user_id: string;
 }
@@ -173,9 +174,11 @@ export default function PPDCalculatorPage() {
   const calculatePPD = (staffingData: StaffingData) => {
     const totalNursingHours = staffingData.rn_hours + staffingData.lpn_hours + staffingData.cna_hours;
     const ppd = staffingData.census > 0 ? totalNursingHours / staffingData.census : 0;
+    const eightHourShifts = Math.round((totalNursingHours / 8) * 100) / 100; // Round to 2 decimal places
     return {
       total_nursing_hours: totalNursingHours,
-      ppd: Math.round(ppd * 100) / 100 // Round to 2 decimal places
+      ppd: Math.round(ppd * 100) / 100, // Round to 2 decimal places
+      eight_hour_shifts: eightHourShifts
     };
   };
 
