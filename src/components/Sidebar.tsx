@@ -31,6 +31,7 @@ import {
   Users,
   CheckCircle,
   GripVertical,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -350,7 +351,108 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           )}
         </div>
 
-        {/* Middle Scrollable Content Area */}
+        {/* Fixed Navigation Section */}
+        {!collapsed && (
+          <div className="flex-none p-3 border-b border-gray-200 dark:border-gray-700">
+            {/* Admin Access */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors text-blue-600 dark:text-blue-400 font-medium mb-3"
+                title="Admin Dashboard"
+              >
+                <Shield size={14} />
+                <span>Admin Dashboard</span>
+              </Link>
+            )}
+            
+            {/* Tools Section */}
+            <div>
+              <button
+                onClick={() => setShowTools(!showTools)}
+                className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors font-medium text-gray-700 dark:text-gray-300"
+              >
+                <div className="flex items-center gap-2">
+                  <Wrench size={14} />
+                  <span>Tools</span>
+                </div>
+                {showTools ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+              
+              {showTools && (
+                <div className="ml-4 mt-1 space-y-1">
+                    {menuItems.map((item, index) => (
+                      <div
+                        key={item.id}
+                        draggable
+                        onDragStart={(e) => {
+                          setIsDragging(true);
+                          setDraggedItem(item.id);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragEnd={() => {
+                          setIsDragging(false);
+                          setDraggedItem(null);
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggedItem && draggedItem !== item.id) {
+                            const draggedIndex = menuItems.findIndex(m => m.id === draggedItem);
+                            const targetIndex = index;
+                            const newItems = [...menuItems];
+                            const [draggedItemData] = newItems.splice(draggedIndex, 1);
+                            newItems.splice(targetIndex, 0, draggedItemData);
+                            setMenuItems(newItems);
+                          }
+                        }}
+                        className={`group flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors cursor-pointer ${
+                          isDragging && draggedItem === item.id ? 'opacity-50' : ''
+                        }`}
+                      >
+                        <GripVertical 
+                          size={12} 
+                          className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" 
+                        />
+                        <Link
+                          href={item.path}
+                          className={`flex items-center gap-2 flex-1 ${
+                            pathname === item.path ? 'text-blue-600' : 'text-gray-600 dark:text-gray-400'
+                          }`}
+                        >
+                          <item.icon size={12} />
+                          <span>{item.label}</span>
+                        </Link>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Links */}
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <Link
+                href="/calendar-integrations"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors"
+              >
+                <CalendarDays size={14} />
+                <span>Calendar</span>
+              </Link>
+              <Link
+                href="/settings"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors"
+              >
+                <Settings size={14} />
+                <span>Settings</span>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Scrollable Content Area - Only Chats */}
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
           <div className="p-3">
             {/* Chat List */}
@@ -380,7 +482,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 ))}
               </div>
             ) : filteredChats.length > 0 ? (
-              <div className="space-y-1 mb-6">
+              <div className="space-y-1">
                 {groupedChats.map((group) => (
                   <div key={group.label}>
                     {!collapsed && group.label && (
@@ -422,7 +524,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               </div>
             ) : searchQuery ? (
               !collapsed && (
-                <div className="px-3 py-8 text-center mb-6">
+                <div className="px-3 py-8 text-center">
                   <Search size={32} className="mx-auto mb-2 text-gray-400" />
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     No chats found for "{searchQuery}"
@@ -431,7 +533,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               )
             ) : (
               !collapsed && (
-                <div className="px-3 py-8 text-center mb-6">
+                <div className="px-3 py-8 text-center">
                   <MessageCircle size={32} className="mx-auto mb-2 text-gray-400" />
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     No chats yet
@@ -444,167 +546,71 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 </div>
               )
             )}
-
-            {/* Tools Section - Now in scrollable area */}
-            {!collapsed ? (
-              <div className="space-y-2">
-                {/* Admin Access */}
-                {isAdmin && (
-                  <Link
-                    href="/admin"
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors text-blue-600 dark:text-blue-400 font-medium"
-                    title="Admin Dashboard"
-                  >
-                    <Shield size={14} />
-                    <span>Admin Dashboard</span>
-                  </Link>
-                )}
-                
-                {/* Tools Section */}
-                <div>
-                  <button
-                    onClick={() => setShowTools(!showTools)}
-                    className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Wrench size={14} />
-                      <span>Tools</span>
-                    </div>
-                    {showTools ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                  </button>
-                  
-                  {showTools && (
-                    <div className="ml-4 mt-1 space-y-1">
-                        {menuItems.map((item, index) => (
-                          <div
-                            key={item.id}
-                            draggable
-                            onDragStart={(e) => {
-                              setIsDragging(true);
-                              setDraggedItem(item.id);
-                              e.dataTransfer.effectAllowed = 'move';
-                            }}
-                            onDragEnd={() => {
-                              setIsDragging(false);
-                              setDraggedItem(null);
-                            }}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              e.dataTransfer.dropEffect = 'move';
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              if (draggedItem && draggedItem !== item.id) {
-                                const draggedIndex = menuItems.findIndex(m => m.id === draggedItem);
-                                const targetIndex = index;
-                                const newItems = [...menuItems];
-                                const [draggedItemData] = newItems.splice(draggedIndex, 1);
-                                newItems.splice(targetIndex, 0, draggedItemData);
-                                setMenuItems(newItems);
-                              }
-                            }}
-                            className={`group flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors cursor-pointer ${
-                              isDragging && draggedItem === item.id ? 'opacity-50' : ''
-                            }`}
-                          >
-                            <GripVertical 
-                              size={12} 
-                              className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" 
-                            />
-                            <Link
-                              href={item.path}
-                              className={`flex items-center gap-2 flex-1 ${
-                                pathname === item.path ? 'text-blue-600' : 'text-gray-600 dark:text-gray-400'
-                              }`}
-                            >
-                              <item.icon size={12} />
-                              <span>{item.label}</span>
-                            </Link>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Quick Links */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Link
-                    href="/calendar-integrations"
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors"
-                  >
-                    <CalendarDays size={14} />
-                    <span>Calendar</span>
-                  </Link>
-                  <Link
-                    href="/settings"
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition-colors"
-                  >
-                    <Settings size={14} />
-                    <span>Settings</span>
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                {/* Admin button for collapsed sidebar */}
-                {isAdmin && (
-                  <Link
-                    href="/admin"
-                    className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors text-blue-600 dark:text-blue-400"
-                    title="Admin Dashboard"
-                  >
-                    <Shield size={16} />
-                  </Link>
-                )}
-                
-                {/* Tools for collapsed sidebar */}
-                <Link
-                  href="/cms-guidance"
-                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                  title="CMS Guidance"
-                >
-                  <BookOpen size={16} />
-                </Link>
-                <Link
-                  href="/ppd-calculator"
-                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                  title="PPD Calculator"
-                >
-                  <Calculator size={16} />
-                </Link>
-                <Link
-                  href="/daily-rounds"
-                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                  title="Daily Rounds"
-                >
-                  <FileText size={16} />
-                </Link>
-                <Link
-                  href="/incident-reports"
-                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                  title="Incident Reports"
-                >
-                  <AlertTriangle size={16} />
-                </Link>
-                
-                <Link
-                  href="/calendar-integrations"
-                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                  title="Calendar"
-                >
-                  <CalendarDays size={16} />
-                </Link>
-                <Link
-                  href="/settings"
-                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                  title="Settings"
-                >
-                  <Settings size={16} />
-                </Link>
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Collapsed Sidebar Tools */}
+        {collapsed && (
+          <div className="flex-none p-3 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col items-center gap-2">
+              {/* Admin button for collapsed sidebar */}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors text-blue-600 dark:text-blue-400"
+                  title="Admin Dashboard"
+                >
+                  <Shield size={16} />
+                </Link>
+              )}
+              
+              {/* Tools for collapsed sidebar */}
+              <Link
+                href="/cms-guidance"
+                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                title="CMS Guidance"
+              >
+                <BookOpen size={16} />
+              </Link>
+              <Link
+                href="/ppd-calculator"
+                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                title="PPD Calculator"
+              >
+                <Calculator size={16} />
+              </Link>
+              <Link
+                href="/daily-rounds"
+                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                title="Daily Rounds"
+              >
+                <FileText size={16} />
+              </Link>
+              <Link
+                href="/incident-reports"
+                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                title="Incident Reports"
+              >
+                <AlertTriangle size={16} />
+              </Link>
+              
+              <Link
+                href="/calendar-integrations"
+                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                title="Calendar"
+              >
+                <CalendarDays size={16} />
+              </Link>
+              <Link
+                href="/settings"
+                className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                title="Settings"
+              >
+                <Settings size={16} />
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Footer - Only User Section Fixed at Bottom */}
         <div className="flex-none p-3 border-t border-gray-200 dark:border-gray-700">
