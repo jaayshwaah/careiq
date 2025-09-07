@@ -55,6 +55,7 @@ const toolsNavigationItems = [
   { href: "/daily-rounds", label: "Daily Rounds", icon: CheckSquare },
   { href: "/task-management", label: "Task Management", icon: ListTodo },
   { href: "/survey-prep", label: "Survey Prep", icon: Shield },
+  { href: "/pbj-corrector-ai", label: "PBJ Corrector AI", icon: FileSpreadsheet },
   { href: "/calendar-integrations", label: "Calendar", icon: Calendar },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen, adminOnly: true },
 ];
@@ -386,10 +387,8 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
         </button>
       </div>
 
-      {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Main Navigation */}
-        <div className="px-3 py-4 border-b border-gray-200/30 dark:border-gray-700/30">
+      {/* Fixed Main Navigation */}
+      <div className="flex-none px-3 py-4 border-b border-gray-200/30 dark:border-gray-700/30">
         <div className="space-y-1">
           {mainNavigationItems.map((item) => {
             const Icon = item.icon;
@@ -414,85 +413,88 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
         </div>
       </div>
 
-      {/* Tools Section */}
-      <div className="px-3 py-4 border-b border-gray-200/30 dark:border-gray-700/30">
-        {!isCollapsed && (
-          <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-2">
-            Tools
-          </div>
-        )}
-        <div className="space-y-1">
-          {toolsNavigationItems.map((item) => {
-            // Hide admin-only items for non-admin users
-            if (item.adminOnly && !userProfile?.role?.includes('administrator')) {
-              return null;
-            }
-            
-            const Icon = item.icon;
-            const isActive = isCurrentPath(item.href);
-            
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-                  isActive
-                    ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                }`}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <Icon size={18} className={isActive ? "text-green-600 dark:text-green-400" : ""} />
-                {!isCollapsed && item.label}
-              </Link>
-            );
-          })}
-          
-          {/* CareIQ Admin Button - Only for CareIQ team and specific authorized users */}
-          {(userProfile?.email?.endsWith('@careiq.com') || 
-            userProfile?.email === 'jking@pioneervalleyhealth.com' ||
-            user?.email === 'jking@pioneervalleyhealth.com' ||
-            user?.email?.endsWith('@careiq.com') ||
-            userProfile?.role === 'careiq_admin') && (
-            <Link
-              href="/admin"
-              className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 border-t border-gray-200/30 dark:border-gray-700/30 mt-2 pt-4 ${
-                isCurrentPath('/admin')
-                  ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-              }`}
-              title={isCollapsed ? "CareIQ Admin" : undefined}
-            >
-              <Wrench size={18} className={isCurrentPath('/admin') ? "text-purple-600 dark:text-purple-400" : ""} />
-              {!isCollapsed && "CareIQ Admin"}
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* Chat History */}
-      <div className="flex flex-col">
-        {!isCollapsed && (
-          <div className="px-3 py-3">
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search chats..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-gray-800/50 border-0 rounded-lg text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-              />
+      {/* Scrollable Content Area - Tools and Chats */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-3">
+          {/* Tools Section */}
+          <div className="mb-6">
+            {!isCollapsed && (
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-2">
+                Tools
+              </div>
+            )}
+            <div className="space-y-1">
+              {toolsNavigationItems.map((item) => {
+                // Hide admin-only items for non-admin users
+                if (item.adminOnly && !userProfile?.role?.includes('administrator')) {
+                  return null;
+                }
+                
+                const Icon = item.icon;
+                const isActive = isCurrentPath(item.href);
+                
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 ${
+                      isActive
+                        ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                    }`}
+                    title={isCollapsed ? item.label : undefined}
+                  >
+                    <Icon size={18} className={isActive ? "text-green-600 dark:text-green-400" : ""} />
+                    {!isCollapsed && item.label}
+                  </Link>
+                );
+              })}
+              
+              {/* CareIQ Admin Button - Only for CareIQ team and specific authorized users */}
+              {(userProfile?.email?.endsWith('@careiq.com') || 
+                userProfile?.email === 'jking@pioneervalleyhealth.com' ||
+                user?.email === 'jking@pioneervalleyhealth.com' ||
+                user?.email?.endsWith('@careiq.com') ||
+                userProfile?.role === 'careiq_admin') && (
+                <Link
+                  href="/admin"
+                  className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 border-t border-gray-200/30 dark:border-gray-700/30 mt-2 pt-4 ${
+                    isCurrentPath('/admin')
+                      ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                  }`}
+                  title={isCollapsed ? "CareIQ Admin" : undefined}
+                >
+                  <Wrench size={18} className={isCurrentPath('/admin') ? "text-purple-600 dark:text-purple-400" : ""} />
+                  {!isCollapsed && "CareIQ Admin"}
+                </Link>
+              )}
             </div>
           </div>
-        )}
 
-        <div className="px-3">
+          {/* Search */}
           {!isCollapsed && (
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-2">
-              Recent Chats
+            <div className="mb-6">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search chats..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-gray-800/50 border-0 rounded-lg text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                />
+              </div>
             </div>
           )}
+
+          {/* Chat History */}
+          <div>
+            {!isCollapsed && (
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-2">
+                Recent Chats
+              </div>
+            )}
           
           {loading ? (
             <div className="space-y-2">
@@ -602,8 +604,8 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
               </div>
             </div>
           )}
+          </div>
         </div>
-      </div>
       </div> {/* End of scrollable content area */}
 
       {/* Fixed Footer - User Section */}
