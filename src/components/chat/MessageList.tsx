@@ -3,6 +3,7 @@
 import React, { useMemo, forwardRef } from "react";
 import { Virtuoso } from "react-virtuoso";
 import ContentRenderer from "@/components/chat/ContentRenderer";
+import ChatBranching from "@/components/chat/ChatBranching";
 import { RotateCw, Bookmark, Pencil, FileText, Brain } from "lucide-react";
 
 export type Msg = {
@@ -21,6 +22,10 @@ type Props = {
   onEdit: (id: string, content: string) => void;
   onSaveTemplate?: (m: Msg) => void;
   onExtractKnowledge?: (m: Msg) => void;
+  onCreateBranch?: (messageId: string, content: string) => void;
+  onSwitchBranch?: (branchId: string) => void;
+  onDeleteBranch?: (branchId: string) => void;
+  branches?: any[];
   filter?: string;
   onAtBottomChange?: (atBottom: boolean) => void;
 };
@@ -34,6 +39,10 @@ const MessageList = forwardRef<any, Props>(function MessageList(
   onEdit,
   onSaveTemplate,
   onExtractKnowledge,
+  onCreateBranch,
+  onSwitchBranch,
+  onDeleteBranch,
+  branches = [],
   filter,
   onAtBottomChange,
 },
@@ -59,15 +68,6 @@ const MessageList = forwardRef<any, Props>(function MessageList(
         return (
           <div className="group w-full py-6 px-4">
             <div className={`max-w-3xl mx-auto flex gap-6 ${isUser ? 'justify-end' : 'justify-start'}`}>
-              {/* Avatar - only show for assistant */}
-              {!isUser && (
-                <div className="flex-shrink-0 w-8 h-8">
-                  <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">C</span>
-                  </div>
-                </div>
-              )}
-              
               {/* Content */}
               <div className={`flex-1 max-w-2xl ${isUser ? 'text-right' : 'text-left'}`}>
                 {/* Message content */}
@@ -100,6 +100,19 @@ const MessageList = forwardRef<any, Props>(function MessageList(
                   {new Date(message.created_at).toLocaleTimeString()}
                 </div>
                 
+                {/* Chat Branching */}
+                {message.role === 'assistant' && message.content && onCreateBranch && (
+                  <div className="mt-4">
+                    <ChatBranching
+                      messageId={message.id}
+                      branches={branches.filter(b => b.messageId === message.id)}
+                      onCreateBranch={onCreateBranch}
+                      onSwitchBranch={onSwitchBranch}
+                      onDeleteBranch={onDeleteBranch}
+                    />
+                  </div>
+                )}
+
                 {/* Actions */}
                 {message.role === 'assistant' && message.content && (
                   <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">

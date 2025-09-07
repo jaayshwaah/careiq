@@ -68,7 +68,8 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     { id: 'ehr-integrations', label: 'EHR Integrations', icon: Database, path: '/ehr-integrations' },
     { id: 'care-plans', label: 'Care Plans', icon: Heart, path: '/care-plan-assistant' },
     { id: 'pbj-corrector', label: 'PBJ Corrector', icon: Calculator, path: '/pbj-corrector' },
-    { id: 'task-management', label: 'Task Management', icon: CheckCircle, path: '/task-management' }
+    { id: 'task-management', label: 'Task Management', icon: CheckCircle, path: '/task-management' },
+    { id: 'feature-requests', label: 'Feature Requests', icon: MessageSquare, path: '/feature-requests' }
   ]);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
