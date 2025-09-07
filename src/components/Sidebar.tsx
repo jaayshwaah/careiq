@@ -269,9 +269,10 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         relative h-screen shrink-0 transition-all duration-300 ease-in-out
         ${collapsed ? "w-16" : "w-80"}
         bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
+        flex flex-col overflow-hidden
       `}
     >
-      <div className="h-screen flex flex-col">
+      <div className="h-full flex flex-col">
         {/* Header - Fixed at Top */}
         <div className="flex-none p-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
@@ -352,7 +353,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         </div>
 
         {/* Scrollable Content Area - Tools and Chats */}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
           <div className="p-3">
             {/* Tools Section - Now in scrollable area */}
             {!collapsed && (
