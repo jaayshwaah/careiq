@@ -49,18 +49,18 @@ body {
   transition-duration: 150ms;
 }
 
-/* Apple-esque liquid glass user message bubble - iOS 26/macOS 26 style */
+/* Apple-esque liquid glass user message bubble - iOS 26/macOS 26 style with color */
 .user-message-bubble {
   position: relative;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.98) 50%, rgba(241, 245, 249, 0.95) 100%);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 197, 253, 0.12) 30%, rgba(255, 255, 255, 0.95) 70%, rgba(248, 250, 252, 0.98) 100%);
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.08),
-    0 6px 20px rgba(0, 0, 0, 0.04),
+    0 12px 40px rgba(59, 130, 246, 0.15),
+    0 6px 20px rgba(59, 130, 246, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.02);
+    inset 0 -1px 0 rgba(59, 130, 246, 0.1);
   border-radius: 20px 20px 20px 8px;
   overflow: hidden;
   color: #1e293b;
@@ -93,10 +93,10 @@ body {
 .user-message-bubble:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 16px 50px rgba(0, 0, 0, 0.12),
-    0 8px 25px rgba(0, 0, 0, 0.06),
+    0 16px 50px rgba(59, 130, 246, 0.25),
+    0 8px 25px rgba(59, 130, 246, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+    inset 0 -1px 0 rgba(59, 130, 246, 0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

@@ -586,7 +586,13 @@ export default function Chat({ chatId }: { chatId: string }) {
     try {
       // Get auth session
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('Session check:', { 
+        hasSession: !!session, 
+        hasToken: !!session?.access_token,
+        userId: session?.user?.id 
+      });
       if (!session?.access_token) {
+        console.log('No session token, redirecting to login');
         router.push('/login');
         return;
       }
@@ -656,6 +662,12 @@ export default function Chat({ chatId }: { chatId: string }) {
       const assistantId = `assistant-${Date.now()}`;
       let assistantContent = "";
 
+      console.log('Making API call to /api/messages/stream with:', {
+        chatId,
+        content: content.trim(),
+        hasAuth: !!session.access_token
+      });
+
       const response = await fetch("/api/messages/stream", {
         method: "POST",
         headers: {
@@ -669,6 +681,12 @@ export default function Chat({ chatId }: { chatId: string }) {
         }),
         signal: controller.signal,
       });
+
+      console.log('API response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
