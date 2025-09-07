@@ -367,6 +367,7 @@ export default function Chat({ chatId }: { chatId: string }) {
   const [showTemplateSuggestions, setShowTemplateSuggestions] = useState(false);
   const [showKnowledgeExtractor, setShowKnowledgeExtractor] = useState(false);
   const [extractingMessage, setExtractingMessage] = useState<Msg | null>(null);
+  const [branches, setBranches] = useState<any[]>([]);
   const [showWorkspaces, setShowWorkspaces] = useState(false);
   const [temperature, setTemperature] = useState<number>(() => {
     try { return Number(JSON.parse(localStorage.getItem(`careiq-chat-settings-${chatId}`) || '{}').temperature ?? 0.3); } catch { return 0.3; }
@@ -910,6 +911,29 @@ export default function Chat({ chatId }: { chatId: string }) {
     }
   };
 
+  // Chat branching handlers
+  const handleCreateBranch = (messageId: string, content: string) => {
+    const newBranch = {
+      id: `branch-${Date.now()}`,
+      messageId,
+      content,
+      createdAt: new Date().toISOString(),
+      isActive: false
+    };
+    setBranches(prev => [...prev, newBranch]);
+  };
+
+  const handleSwitchBranch = (branchId: string) => {
+    setBranches(prev => prev.map(branch => ({
+      ...branch,
+      isActive: branch.id === branchId
+    })));
+  };
+
+  const handleDeleteBranch = (branchId: string) => {
+    setBranches(prev => prev.filter(branch => branch.id !== branchId));
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -1066,6 +1090,10 @@ export default function Chat({ chatId }: { chatId: string }) {
             onExtractKnowledge={handleExtractKnowledge}
             onStop={handleStop}
             onDownloadFile={downloadGeneratedFile}
+            onCreateBranch={handleCreateBranch}
+            onSwitchBranch={handleSwitchBranch}
+            onDeleteBranch={handleDeleteBranch}
+            branches={branches}
             onAtBottomChange={setAtBottom}
           />
         )}

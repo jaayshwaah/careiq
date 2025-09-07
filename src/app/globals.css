@@ -49,21 +49,29 @@ body {
   transition-duration: 150ms;
 }
 
-/* Apple-esque liquid glass user message bubble - iOS 26/macOS 26 style with color */
+/* Premium Apple liquid glass user message bubble - iOS 26/macOS 26 style */
 .user-message-bubble {
   position: relative;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 197, 253, 0.12) 30%, rgba(255, 255, 255, 0.95) 70%, rgba(248, 250, 252, 0.98) 100%);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.12) 0%, 
+    rgba(139, 92, 246, 0.08) 25%, 
+    rgba(59, 130, 246, 0.06) 50%, 
+    rgba(255, 255, 255, 0.98) 75%, 
+    rgba(248, 250, 252, 0.95) 100%
+  );
+  backdrop-filter: blur(50px);
+  -webkit-backdrop-filter: blur(50px);
+  border: 1px solid rgba(99, 102, 241, 0.15);
   box-shadow: 
-    0 12px 40px rgba(59, 130, 246, 0.15),
-    0 6px 20px rgba(59, 130, 246, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    inset 0 -1px 0 rgba(59, 130, 246, 0.1);
-  border-radius: 20px 20px 20px 8px;
+    0 16px 60px rgba(99, 102, 241, 0.12),
+    0 8px 30px rgba(99, 102, 241, 0.06),
+    0 4px 15px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(99, 102, 241, 0.08);
+  border-radius: 22px 22px 22px 10px;
   overflow: hidden;
   color: #1e293b;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .user-message-bubble::before {
@@ -72,9 +80,14 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 60%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.2) 70%, transparent 100%);
-  border-radius: 20px 20px 0 0;
+  height: 65%;
+  background: linear-gradient(180deg, 
+    rgba(255, 255, 255, 0.9) 0%, 
+    rgba(255, 255, 255, 0.4) 40%, 
+    rgba(99, 102, 241, 0.05) 70%, 
+    transparent 100%
+  );
+  border-radius: 22px 22px 0 0;
   pointer-events: none;
 }
 
@@ -84,20 +97,26 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 40%;
-  background: linear-gradient(0deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
-  border-radius: 0 0 20px 8px;
+  height: 45%;
+  background: linear-gradient(0deg, 
+    rgba(255, 255, 255, 0.4) 0%, 
+    rgba(255, 255, 255, 0.15) 30%, 
+    rgba(99, 102, 241, 0.03) 60%, 
+    transparent 100%
+  );
+  border-radius: 0 0 22px 10px;
   pointer-events: none;
 }
 
 .user-message-bubble:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px) scale(1.01);
   box-shadow: 
-    0 16px 50px rgba(59, 130, 246, 0.25),
-    0 8px 25px rgba(59, 130, 246, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    inset 0 -1px 0 rgba(59, 130, 246, 0.2);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    0 20px 70px rgba(99, 102, 241, 0.2),
+    0 10px 35px rgba(99, 102, 241, 0.12),
+    0 6px 20px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(99, 102, 241, 0.15);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Liquid glass helpers */
