@@ -810,7 +810,7 @@ export default function PPDCalculatorPage() {
               ) : (
                 <div>
                   <p className="text-lg font-medium mb-2 text-gray-900 dark:text-gray-100">Drop CSV file here or click to browse</p>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">Supports CSV files up to 10MB</p>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">Supports CSV files up to 50MB</p>
                   <input
                     type="file"
                     accept=".csv"

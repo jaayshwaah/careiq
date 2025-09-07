@@ -293,7 +293,7 @@ export default function ScheduleImportPage() {
           ) : (
             <div>
               <p className="text-lg font-medium mb-2">Drop CSV file here or click to browse</p>
-              <p className="text-gray-600 mb-4">Supports CSV files up to 10MB</p>
+              <p className="text-gray-600 mb-4">Supports CSV files up to 50MB</p>
               <input
                 type="file"
                 accept=".csv"

@@ -175,9 +175,9 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+    if (file.size > 50 * 1024 * 1024) { // 50MB limit
       return NextResponse.json({ 
-        error: "File too large. Maximum size is 10MB." 
+        error: "File too large. Maximum size is 50MB." 
       }, { status: 400 });
     }
 

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
+import UserOnboardingWorkflow from '@/components/admin/UserOnboardingWorkflow';
 
 interface User {
   user_id: string;
@@ -76,6 +77,7 @@ export default function AdminUsersPage() {
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showOnboardingWorkflow, setShowOnboardingWorkflow] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [message, setMessage] = useState<{type: 'success' | 'error'; text: string} | null>(null);
 
@@ -327,13 +329,22 @@ export default function AdminUsersPage() {
               Manage user accounts, roles, and permissions across all facilities
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
-          >
-            <Plus size={16} />
-            Add User
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowOnboardingWorkflow(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              <Plus size={16} />
+              Add User & Facility
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+            >
+              <Plus size={16} />
+              Quick Add User
+            </button>
+          </div>
         </div>
       </div>
 
@@ -680,6 +691,17 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      {/* User Onboarding Workflow */}
+      <UserOnboardingWorkflow
+        isOpen={showOnboardingWorkflow}
+        onClose={() => setShowOnboardingWorkflow(false)}
+        onComplete={(users) => {
+          setMessage({ type: 'success', text: `Successfully created ${users.length} user(s)` });
+          loadUsers();
+          setShowOnboardingWorkflow(false);
+        }}
+      />
     </div>
   );
 }

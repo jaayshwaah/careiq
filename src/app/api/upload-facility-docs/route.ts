@@ -56,6 +56,16 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`Processing ${file.name} for facility ${profile.facility_name}`);
         
+        // Validate file size
+        if (file.size > 50 * 1024 * 1024) { // 50MB limit
+          results.push({
+            filename: file.name,
+            status: 'error',
+            error: 'File too large. Maximum size is 50MB.'
+          });
+          continue;
+        }
+        
         // Extract text from file
         const buffer = Buffer.from(await file.arrayBuffer());
         let content = "";
