@@ -84,11 +84,11 @@ const MessageList = forwardRef<any, Props>(function MessageList(
                 {/* Message content */}
                 <div className={`inline-block max-w-full ${
                   isUser 
-                    ? 'user-message-bubble text-white px-4 py-3' 
+                    ? 'user-message-bubble text-slate-800 px-4 py-3' 
                     : 'text-gray-900 dark:text-gray-100'
                 }`}>
                   <div className={`whitespace-pre-wrap leading-relaxed ${
-                    isUser ? 'text-white' : 'prose prose-base max-w-none dark:prose-invert'
+                    isUser ? 'text-slate-800' : 'prose prose-base max-w-none dark:prose-invert'
                   }`}>
                     <ContentRenderer content={message.content || (isStreaming ? "" : "")} />
                     {isStreaming && !message.content && (

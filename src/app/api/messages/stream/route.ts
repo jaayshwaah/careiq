@@ -358,6 +358,9 @@ export async function POST(req: NextRequest) {
     ];
 
     // Call OpenRouter for streaming response with function calling
+    console.log("Making OpenRouter API call with model:", OPENROUTER_MODEL);
+    console.log("API Key present:", !!OPENROUTER_API_KEY);
+    
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -377,10 +380,14 @@ export async function POST(req: NextRequest) {
       }),
     });
 
+    console.log("OpenRouter response status:", response.status);
     if (!response.ok) {
       const error = await response.text();
       console.error("OpenRouter error:", response.status, error);
-      return NextResponse.json({ error: "AI service unavailable" }, { status: 503 });
+      return NextResponse.json({ 
+        error: "AI service unavailable", 
+        details: `OpenRouter API error: ${response.status} - ${error}` 
+      }, { status: 503 });
     }
 
     // Create readable stream
@@ -544,6 +551,14 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error("Stream API error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined
+    });
+    return NextResponse.json({ 
+      error: "Internal server error", 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

@@ -49,20 +49,21 @@ body {
   transition-duration: 150ms;
 }
 
-/* Apple-esque liquid glass user message bubble */
+/* Apple-esque liquid glass user message bubble - iOS 26/macOS 26 style */
 .user-message-bubble {
   position: relative;
-  background: linear-gradient(135deg, rgba(0, 122, 255, 0.9) 0%, rgba(0, 122, 255, 0.95) 50%, rgba(0, 100, 255, 0.9) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.98) 50%, rgba(241, 245, 249, 0.95) 100%);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 
-    0 8px 32px rgba(0, 122, 255, 0.3),
-    0 4px 16px rgba(0, 122, 255, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-  border-radius: 18px 18px 18px 6px;
+    0 12px 40px rgba(0, 0, 0, 0.08),
+    0 6px 20px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.02);
+  border-radius: 20px 20px 20px 8px;
   overflow: hidden;
+  color: #1e293b;
 }
 
 .user-message-bubble::before {
@@ -71,9 +72,9 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 50%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, transparent 100%);
-  border-radius: 18px 18px 0 0;
+  height: 60%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.2) 70%, transparent 100%);
+  border-radius: 20px 20px 0 0;
   pointer-events: none;
 }
 
@@ -83,20 +84,20 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 30%;
-  background: linear-gradient(0deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
-  border-radius: 0 0 18px 6px;
+  height: 40%;
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+  border-radius: 0 0 20px 8px;
   pointer-events: none;
 }
 
 .user-message-bubble:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: 
-    0 12px 40px rgba(0, 122, 255, 0.4),
-    0 6px 20px rgba(0, 122, 255, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
+    0 16px 50px rgba(0, 0, 0, 0.12),
+    0 8px 25px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Liquid glass helpers */

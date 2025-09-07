@@ -106,12 +106,12 @@ function MessageBubble({ message, isStreaming = false, onEdit, onBookmark, onExt
           {/* Message content */}
           <div className={`inline-block max-w-full ${
             isUser 
-              ? 'user-message-bubble text-white px-3 py-2 lg:px-4 lg:py-3' 
+              ? 'user-message-bubble text-slate-800 px-3 py-2 lg:px-4 lg:py-3' 
               : 'text-gray-900 dark:text-gray-100'
           }`}>
             {message.content ? (
               <div className={`whitespace-pre-wrap leading-relaxed ${
-                isUser ? 'text-white' : 'prose prose-base max-w-none dark:prose-invert'
+                isUser ? 'text-slate-800' : 'prose prose-base max-w-none dark:prose-invert'
               }`}>
                 {message.content}
               </div>
