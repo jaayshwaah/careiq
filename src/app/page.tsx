@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import { Send, FileText, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
@@ -17,13 +17,17 @@ const suggestions = [
   "Generate a mock survey question set",
   "Create incident investigation checklist",
   "What training is required for new employees?",
-  "Help me prepare for a state inspection"
+  "Help me prepare for a state inspection",
+  "Analyze care plan compliance and quality"
 ];
 
 export default function HomePage() {
   const [message, setMessage] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const supabase = getBrowserSupabase();
 
@@ -100,6 +104,63 @@ export default function HomePage() {
     requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
+  const handleCarePlanAnalysis = async (file: File) => {
+    if (isAnalyzing) return;
+    
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/care-plan-analysis', {
+        method: 'POST',
+        headers: {
+          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setAnalysisResult(result);
+        
+        // Create a new chat with the analysis results
+        const analysisMessage = `I've analyzed the care plan document "${file.name}". Here's what I found:
+
+**Resident:** ${result.analysis.residentName}
+**Diagnoses:** ${result.analysis.diagnosis.join(', ')}
+**Care Goals:** ${result.analysis.careGoals.join(', ')}
+**Key Interventions:** ${result.analysis.interventions.join(', ')}
+**Medications:** ${result.analysis.medications.join(', ')}
+**Risk Factors:** ${result.analysis.riskFactors.join(', ')}
+**Compliance Issues:** ${result.analysis.complianceIssues.length > 0 ? result.analysis.complianceIssues.join(', ') : 'None identified'}
+**Recommendations:** ${result.analysis.recommendations.join(', ')}
+
+Please provide detailed guidance on improving this care plan and ensuring CMS compliance.`;
+        
+        createNewChat(analysisMessage);
+      } else {
+        throw new Error('Failed to analyze care plan');
+      }
+    } catch (error) {
+      console.error('Care plan analysis error:', error);
+      setMessage(`I tried to analyze the care plan document but encountered an error. Please try uploading it again or ask me to help with care plan analysis in a different way.`);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleCarePlanAnalysis(file);
+    }
+  };
+
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -129,7 +190,7 @@ export default function HomePage() {
 
             {/* Suggestions Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
-              {suggestions.slice(0, 6).map((s, i) => (
+              {suggestions.slice(0, 5).map((s, i) => (
                 <button
                   key={i}
                   onClick={() => handleSuggestionClick(s)}
@@ -139,6 +200,40 @@ export default function HomePage() {
                   <div className="text-base font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{s}</div>
                 </button>
               ))}
+              
+              {/* Care Plan Analysis Button */}
+              <div className="relative">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.docx,.doc,.txt"
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={isAnalyzing || isCreating}
+                />
+                <button
+                  disabled={isAnalyzing || isCreating}
+                  className="w-full text-left rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 backdrop-blur p-4 shadow-sm hover:shadow-md transition disabled:opacity-50 group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0">
+                      {isAnalyzing ? (
+                        <div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <FileText className="w-6 h-6 text-green-600 dark:text-green-400" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-base font-medium group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+                        {isAnalyzing ? 'Analyzing Care Plan...' : 'Analyze Care Plan Document'}
+                      </div>
+                      <div className="text-sm text-green-600/70 dark:text-green-400/70 mt-1">
+                        Upload PDF or Word document
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              </div>
             </div>
 
             {/* Feature highlights */}
@@ -148,8 +243,8 @@ export default function HomePage() {
                 <div className="text-gray-700 dark:text-gray-300 text-sm">Get alerts for survey deadlines, training expirations, and compliance tasks</div>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800">
-                <div className="text-green-600 dark:text-green-400 text-sm font-medium mb-2">Facility Dashboard</div>
-                <div className="text-gray-700 dark:text-gray-300 text-sm">Monitor compliance scores, staff engagement, and upcoming deadlines</div>
+                <div className="text-green-600 dark:text-green-400 text-sm font-medium mb-2">Care Plan Analysis</div>
+                <div className="text-gray-700 dark:text-gray-300 text-sm">AI-powered analysis of care plan documents for compliance and quality improvement</div>
               </div>
               <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl p-4 border border-purple-100 dark:border-purple-800">
                 <div className="text-purple-600 dark:text-purple-400 text-sm font-medium mb-2">Survey Preparation</div>
