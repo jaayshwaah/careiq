@@ -294,7 +294,7 @@ ${i + 1}. [${c.type.toUpperCase()}] ${c.field}
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors"
             >
               <Upload className="h-5 w-5" />
-              {loading ? 'Processing...' : 'Choose XML File'}
+              {loading ? 'Processing...' : 'Choose File'}
             </button>
           </div>
         </div>
