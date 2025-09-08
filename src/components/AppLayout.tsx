@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { usePathname } from "next/navigation";
-import AppleSidebar from "@/components/AppleSidebar";
+import Sidebar from "@/components/Sidebar";
 import { Menu, X } from "lucide-react";
 
 interface AppLayoutProps {
@@ -90,8 +90,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           lg:relative fixed z-50 h-full transition-transform duration-300 flex-shrink-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
-          <AppleSidebar 
-            collapsed={sidebarCollapsed} 
+          <Sidebar 
+            collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
         </div>

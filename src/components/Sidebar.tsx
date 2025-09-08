@@ -39,7 +39,7 @@ interface Chat {
   updated_at?: string;
 }
 
-interface AppleSidebarProps {
+interface SidebarProps {
   className?: string;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -62,7 +62,7 @@ const toolsNavigationItems = [
   { href: "/knowledge", label: "Knowledge", icon: BookOpen, adminOnly: true },
 ];
 
-export default function AppleSidebar({ className = "", collapsed: externalCollapsed, onToggleCollapse }: AppleSidebarProps) {
+export default function Sidebar({ className = "", collapsed: externalCollapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, user, signOut } = useAuth();
@@ -84,7 +84,7 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
   const toggleCollapse = () => {
     if (onToggleCollapse) {
       onToggleCollapse();
-    } else {
+      } else {
       setInternalCollapsed(!internalCollapsed);
     }
   };
@@ -95,10 +95,10 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
     try {
       // Use fallback profile data to avoid profiles table RLS recursion
       const profile = {
-        user_id: user.id,
-        role: 'user',
-        is_admin: false,
-        email: user.email,
+      user_id: user.id,
+      role: 'user', 
+      is_admin: false,
+      email: user.email,
         full_name: user.email?.split('@')[0] || 'User',
         facility_name: 'Healthcare Facility',
         facility_logo_url: null
@@ -266,14 +266,14 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
   // Delete chat
   const handleDeleteChat = async (chatId: string) => {
     if (!confirm('Are you sure you want to delete this chat?')) return;
-    
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
 
       const response = await fetch(`/api/chats/${chatId}`, {
         method: 'DELETE',
-        headers: {
+        headers: { 
           'Authorization': `Bearer ${session.access_token}`,
         },
       });
@@ -319,7 +319,7 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
     <div className={`h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'} ${className}`}>
       {/* Fixed Header */}
       <div className={`flex-none border-b border-gray-200/30 dark:border-gray-700/30 ${isCollapsed ? 'px-3 py-4' : 'px-6 py-5'}`}>
-        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div 
               className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
@@ -344,7 +344,7 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
                       : 'CIQ'}
                 </span>
               )}
-            </div>
+                  </div>
             {!isCollapsed && (
               <span className="font-semibold text-gray-900 dark:text-white text-lg">
                 {facilityName || brandingSettings?.company_name || 'CareIQ'}
@@ -358,11 +358,11 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
           >
             {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
-        </div>
-        
-        {/* New Chat Button */}
-        <button
-          onClick={createNewChat}
+          </div>
+
+          {/* New Chat Button */}
+            <button
+              onClick={createNewChat}
           className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-center gap-2'} px-4 py-2.5 text-white rounded-lg font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm`}
           style={{
             backgroundColor: brandingSettings?.primary_color || '#3b82f6',
@@ -386,8 +386,8 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
         >
           <Plus size={18} />
           {!isCollapsed && "New Chat"}
-        </button>
-      </div>
+            </button>
+          </div>
 
       {/* Fixed Main Navigation */}
       <div className="flex-none px-3 py-4 border-b border-gray-200/30 dark:border-gray-700/30">
@@ -497,14 +497,14 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
                 Recent Chats
               </div>
             )}
-          
-          {loading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
+
+            {loading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
                 <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : filteredChats.length > 0 ? (
+                ))}
+              </div>
+            ) : filteredChats.length > 0 ? (
             <div className="space-y-1">
               {filteredChats.map((chat) => {
                 const isActive = pathname === `/chat/${chat.id}`;
@@ -549,7 +549,7 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
                           onClick={() => router.push(`/chat/${chat.id}`)}
                         >
                           {chat.title || "Untitled chat"}
-                        </div>
+                          </div>
                       )}
                     </div>}
                     {!isEditing && !isCollapsed && (
@@ -574,19 +574,19 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
                         >
                           <Trash2 size={12} />
                         </button>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+                </div>
                 );
               })}
-            </div>
-          ) : (
+              </div>
+            ) : (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
               No chats yet
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
       {/* Fixed Footer - User Section */}
       <div className="flex-none border-t border-gray-200/30 dark:border-gray-700/30 p-3">
@@ -595,16 +595,16 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center">
                 <User size={16} className="text-white" />
-              </div>
+                  </div>
               <div className="min-w-0">
                 <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   {userProfile?.role || 'Member'}
                 </div>
               </div>
-            </div>
+                  </div>
           )}
           <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-1'}`}>
             <Link
@@ -614,14 +614,14 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
             >
               <Settings size={16} className="text-gray-500 dark:text-gray-400" />
             </Link>
-            <button
-              onClick={handleSignOut}
+                  <button
+                    onClick={handleSignOut}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              title="Sign out"
-            >
+                    title="Sign out"
+                  >
               <LogOut size={16} className="text-gray-500 dark:text-gray-400" />
-            </button>
-          </div>
+                  </button>
+                </div>
         </div>
       </div>
     </div>
