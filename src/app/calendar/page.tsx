@@ -144,25 +144,30 @@ export default function ComplianceCalendarPage() {
     
     // Save to database for dashboard countdown
     try {
-      await supabase
+      const { error } = await supabase
         .from('survey_windows')
         .upsert({
           user_id: user.id,
           facility_state: facilityState,
           last_survey_date: lastSurveyDate,
-          window_start: windowStart.toISOString(),
-          window_end: windowEnd.toISOString(),
+          window_start: windowStart.toISOString().split('T')[0],
+          window_end: windowEnd.toISOString().split('T')[0],
           days_until_window: daysUntilWindow,
           days_until_expiry: daysUntilExpiry,
           is_in_window: isInWindow,
           is_overdue: isOverdue,
-          state_description: stateConfig.description,
-          calculated_at: new Date().toISOString()
+          state_description: stateConfig.description
         }, {
           onConflict: 'user_id'
         });
+      
+      if (error) {
+        console.error('Error saving survey window:', error);
+      } else {
+        console.log('Survey window saved successfully');
+      }
     } catch (error) {
-      console.warn('Failed to save survey window to database:', error);
+      console.error('Failed to save survey window to database:', error);
     }
   };
 

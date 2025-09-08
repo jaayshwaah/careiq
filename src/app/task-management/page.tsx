@@ -154,9 +154,20 @@ export default function TaskManagement() {
 
   const loadTasks = async () => {
     try {
-      // TODO: Load tasks from database when task management tables are implemented
-      const tasks: Task[] = [];
-      setTasks(tasks);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/tasks', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setTasks(result.tasks || []);
+      } else {
+        console.error('Failed to load tasks');
+      }
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {

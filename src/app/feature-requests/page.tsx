@@ -85,27 +85,22 @@ export default function FeatureRequestsPage() {
 
   const loadRequests = async () => {
     try {
-      const { data, error } = await supabase
-        .from('feature_requests')
-        .select(`
-          *,
-          feature_request_votes!inner(user_id),
-          profiles!feature_requests_user_id_fkey(full_name)
-        `)
-        .order('votes', { ascending: false });
-
-      if (error) throw error;
-
-      // Process the data to include author names and voting status
-      const processedRequests = data?.map(req => ({
-        ...req,
-        author_name: req.profiles?.full_name || 'Anonymous',
-        has_voted: req.feature_request_votes?.some((vote: any) => vote.user_id === user?.id) || false
-      })) || [];
-
-      setRequests(processedRequests);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/feature-requests', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setRequests(result.feature_requests || []);
+      } else {
+        console.error('Failed to load feature requests');
+      }
     } catch (error) {
-      console.error('Failed to load feature requests:', error);
+      console.error('Error loading feature requests:', error);
     } finally {
       setLoading(false);
     }
@@ -115,31 +110,26 @@ export default function FeatureRequestsPage() {
     if (!user) return;
 
     try {
-      if (hasVoted) {
-        // Remove vote
-        const { error } = await supabase
-          .from('feature_request_votes')
-          .delete()
-          .eq('feature_request_id', requestId)
-          .eq('user_id', user.id);
-        
-        if (error) throw error;
-      } else {
-        // Add vote
-        const { error } = await supabase
-          .from('feature_request_votes')
-          .insert({
-            feature_request_id: requestId,
-            user_id: user.id
-          });
-        
-        if (error) throw error;
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/feature-requests/vote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ request_id: requestId }),
+      });
 
-      // Reload requests to update vote counts
-      await loadRequests();
+      if (response.ok) {
+        // Reload requests to update vote counts
+        await loadRequests();
+      } else {
+        const error = await response.json();
+        console.error('Failed to vote:', error);
+      }
     } catch (error) {
-      console.error('Failed to vote:', error);
+      console.error('Error voting:', error);
     }
   };
 
@@ -148,23 +138,32 @@ export default function FeatureRequestsPage() {
     if (!user || !newRequest.title || !newRequest.description) return;
 
     try {
-      const { error } = await supabase
-        .from('feature_requests')
-        .insert({
-          user_id: user.id,
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/feature-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
           title: newRequest.title,
           description: newRequest.description,
           category: newRequest.category,
           priority: newRequest.priority
-        });
+        }),
+      });
 
-      if (error) throw error;
-
-      setNewRequest({ title: '', description: '', category: 'general', priority: 'medium' });
-      setShowNewRequest(false);
-      await loadRequests();
+      if (response.ok) {
+        setNewRequest({ title: '', description: '', category: 'general', priority: 'medium' });
+        setShowNewRequest(false);
+        await loadRequests();
+      } else {
+        const error = await response.json();
+        console.error('Failed to submit request:', error);
+      }
     } catch (error) {
-      console.error('Failed to submit request:', error);
+      console.error('Error submitting request:', error);
     }
   };
 

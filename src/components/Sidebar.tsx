@@ -28,6 +28,7 @@ import {
   FileSpreadsheet,
   ListTodo,
   Package,
+  Workflow,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -48,13 +49,13 @@ interface SidebarProps {
 const mainNavigationItems = [
   { href: "/", label: "Chat", icon: MessageCircle },
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
-  { href: "/notifications", label: "Notifications", icon: Bell },
 ];
 
 const toolsNavigationItems = [
   { href: "/ppd-calculator", label: "PPD Calculator", icon: Calculator },
   { href: "/daily-rounds", label: "Daily Rounds", icon: CheckSquare },
   { href: "/task-management", label: "Task Management", icon: ListTodo },
+  { href: "/admin/workflow-designer", label: "Workflow Designer", icon: Workflow, adminOnly: true },
   { href: "/survey-prep", label: "Survey Prep", icon: Shield },
   { href: "/pbj-corrector-ai", label: "PBJ Corrector AI", icon: FileSpreadsheet },
   { href: "/supply-management", label: "Supply Management", icon: Package },
