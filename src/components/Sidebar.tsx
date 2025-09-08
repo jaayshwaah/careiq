@@ -31,6 +31,7 @@ import {
   Workflow,
   Truck,
   Building2,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -51,6 +52,7 @@ interface SidebarProps {
 const mainNavigationItems = [
   { href: "/", label: "Chat", icon: MessageCircle },
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
 const toolsNavigationItems = [

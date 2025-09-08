@@ -200,6 +200,16 @@ export async function POST(req: NextRequest) {
       // Try to match products to existing supply items
       await matchInvoiceItemsToProducts(supa, invoice.id);
 
+      // Update cost analytics
+      try {
+        await supa.rpc('update_cost_analytics_from_invoice', {
+          invoice_id_param: invoice.id
+        });
+      } catch (costError) {
+        console.error('Error updating cost analytics:', costError);
+        // Don't fail the invoice processing for this
+      }
+
     } catch (processingError) {
       console.error('Error processing invoice:', processingError);
       
