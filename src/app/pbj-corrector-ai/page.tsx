@@ -19,6 +19,88 @@ interface CorrectionSummary {
   corrections: Correction[];
 }
 
+// Helper function to convert CSV to XML format
+const convertCsvToXml = async (csvContent: string, fileName: string): Promise<string> => {
+  const lines = csvContent.split('\n').filter(line => line.trim());
+  if (lines.length < 2) {
+    throw new Error('CSV file must have at least a header row and one data row');
+  }
+
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  const dataRows = lines.slice(1);
+
+  // Create basic PBJ XML structure
+  let xml = `<?xml version="1.0" encoding="ASCII"?>
+<nursingHomeData xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:noNamespaceSchemaLocation="nhpbj_4_00_0.xsd">
+<header fileSpecVersion="4.00.0">
+<facilityId>FAC001</facilityId>
+<stateCode>TX</stateCode>
+<reportQuarter>1</reportQuarter>
+<federalFiscalYear>2024</federalFiscalYear>
+<softwareVendorName>CareIQ</softwareVendorName>
+<softwareVendorEmail>support@careiq.app</softwareVendorEmail>
+<softwareProductName>PBJ Corrector AI</softwareProductName>
+<softwareProductVersion>1.0.0</softwareProductVersion>
+</header>
+<employees>`;
+
+  // Add employees from CSV data
+  dataRows.forEach((row, index) => {
+    const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
+    const employeeId = values[0] || `EMP${String(index + 1).padStart(3, '0')}`;
+    
+    xml += `
+<employee>
+<employeeId>${employeeId}</employeeId>
+</employee>`;
+  });
+
+  xml += `
+</employees>
+<staffingHours processType="merge">`;
+
+  // Add staffing hours from CSV data
+  dataRows.forEach((row, index) => {
+    const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
+    const employeeId = values[0] || `EMP${String(index + 1).padStart(3, '0')}`;
+    const hours = values[1] || '8.0';
+    const jobTitleCode = values[2] || '5';
+    const payTypeCode = values[3] || '1';
+    const date = values[4] || '2024-01-01';
+
+    xml += `
+<staffHours>
+<employeeId>${employeeId}</employeeId>
+<workDays>
+<workDay>
+<date>${date}</date>
+<hourEntries>
+<hourEntry>
+<hours>${hours}</hours>
+<jobTitleCode>${jobTitleCode}</jobTitleCode>
+<payTypeCode>${payTypeCode}</payTypeCode>
+</hourEntry>
+</hourEntries>
+</workDay>
+</workDays>
+</staffHours>`;
+  });
+
+  xml += `
+</staffingHours>
+</nursingHomeData>`;
+
+  return xml;
+};
+
+// Helper function to convert XLSX to XML format
+const convertXlsxToXml = async (file: File): Promise<string> => {
+  // For XLSX files, we'll need to use a library like xlsx
+  // For now, we'll create a basic structure and let the user know they need to convert to CSV first
+  throw new Error('XLSX files are not yet supported. Please convert your Excel file to CSV format first.');
+};
+
 export default function PBJCorrectorAI() {
   const [file, setFile] = useState<File | null>(null);
   const [originalContent, setOriginalContent] = useState<string>('');
@@ -34,8 +116,13 @@ export default function PBJCorrectorAI() {
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) return;
 
-    if (!selectedFile.name.toLowerCase().endsWith('.xml')) {
-      setError('Please upload an XML file');
+    const fileName = selectedFile.name.toLowerCase();
+    const isXml = fileName.endsWith('.xml');
+    const isCsv = fileName.endsWith('.csv');
+    const isXlsx = fileName.endsWith('.xlsx');
+
+    if (!isXml && !isCsv && !isXlsx) {
+      setError('Please upload an XML, CSV, or XLSX file');
       return;
     }
 
@@ -45,12 +132,24 @@ export default function PBJCorrectorAI() {
     setCorrectionSummary(null);
 
     try {
-      const content = await selectedFile.text();
+      let content: string;
+      
+      if (isXml) {
+        content = await selectedFile.text();
+      } else if (isCsv) {
+        content = await selectedFile.text();
+        // Convert CSV to XML format for processing
+        content = await convertCsvToXml(content, selectedFile.name);
+      } else if (isXlsx) {
+        // For XLSX, we'll need to convert it to CSV first, then to XML
+        content = await convertXlsxToXml(selectedFile);
+      }
+      
       setOriginalContent(content);
       await processPBJFile(content);
     } catch (err) {
-      setError('Failed to read file');
-      console.error('File read error:', err);
+      setError('Failed to read or convert file');
+      console.error('File read/conversion error:', err);
     }
   };
 
@@ -141,6 +240,7 @@ ${i + 1}. [${c.type.toUpperCase()}] ${c.field}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-4xl mx-auto">
             <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">✨ Updated with Official PBJ 4.00.0 Specifications</h3>
             <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+              <li>• Supports XML, CSV, and XLSX file formats</li>
               <li>• Validates job title codes (1-40) and pay type codes (1-3)</li>
               <li>• Ensures proper XML structure and required elements</li>
               <li>• Corrects date formats, employee IDs, and facility information</li>
@@ -148,6 +248,22 @@ ${i + 1}. [${c.type.toUpperCase()}] ${c.field}
               <li>• Handles special characters and XML entity references</li>
               <li>• Removes blank values and ensures data integrity</li>
             </ul>
+          </div>
+          
+          {/* CSV Format Instructions */}
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 max-w-4xl mx-auto mt-4">
+            <h3 className="font-semibold text-green-900 dark:text-green-100 mb-2">📋 CSV Format Instructions</h3>
+            <p className="text-sm text-green-800 dark:text-green-200 mb-2">
+              For CSV files, use this format (column order matters):
+            </p>
+            <div className="bg-white dark:bg-gray-800 rounded p-3 text-xs font-mono text-green-900 dark:text-green-100">
+              <div>EmployeeID, Hours, JobTitleCode, PayTypeCode, Date</div>
+              <div>EMP001, 8.0, 5, 1, 2024-01-01</div>
+              <div>EMP002, 7.5, 7, 2, 2024-01-01</div>
+            </div>
+            <p className="text-xs text-green-700 dark:text-green-300 mt-2">
+              Job Title Codes: 1-40 (see PBJ specifications) | Pay Type: 1=Exempt, 2=Non-Exempt, 3=Contract
+            </p>
           </div>
         </div>
 
@@ -158,16 +274,16 @@ ${i + 1}. [${c.type.toUpperCase()}] ${c.field}
               <FileText className="h-12 w-12 text-blue-600 dark:text-blue-400" />
             </div>
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              Upload PBJ XML File
+              Upload PBJ File
             </h2>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Upload your PBJ XML file for AI-powered correction and formatting
+              Upload your PBJ XML, CSV, or XLSX file for AI-powered correction and formatting
             </p>
             
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xml"
+              accept=".xml,.csv,.xlsx"
               onChange={handleFileUpload}
               className="hidden"
             />

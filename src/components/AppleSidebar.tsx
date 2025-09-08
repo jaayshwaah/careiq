@@ -586,9 +586,9 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
         </div>
       </div>
 
-      {/* User Profile */}
-      <div className={`border-t border-gray-200/30 dark:border-gray-700/30 ${isCollapsed ? 'p-2' : 'p-4'}`}>
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+      {/* Fixed Footer - User Section */}
+      <div className="flex-none border-t border-gray-200/30 dark:border-gray-700/30 p-3">
+        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'justify-between'}`}>
           {!isCollapsed && (
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center">
@@ -604,27 +604,22 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
               </div>
             </div>
           )}
+          <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-1'}`}>
+            <Link
+              href="/settings"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              title="Settings"
+            >
+              <Settings size={16} className="text-gray-500 dark:text-gray-400" />
+            </Link>
+            <button
+              onClick={handleSignOut}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              title="Sign out"
+            >
+              <LogOut size={16} className="text-gray-500 dark:text-gray-400" />
+            </button>
           </div>
-        </div>
-      </div> {/* End of scrollable content area */}
-
-      {/* Fixed Footer - User Section */}
-      <div className="flex-none border-t border-gray-200/30 dark:border-gray-700/30 p-3">
-        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-1'}`}>
-          <Link
-            href="/settings"
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            title="Settings"
-          >
-            <Settings size={16} className="text-gray-500 dark:text-gray-400" />
-          </Link>
-          <button
-            onClick={handleSignOut}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            title="Sign out"
-          >
-            <LogOut size={16} className="text-gray-500 dark:text-gray-400" />
-          </button>
         </div>
       </div>
     </div>

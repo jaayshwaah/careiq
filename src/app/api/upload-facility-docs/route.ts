@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('Upload API called - starting request processing');
+    
     // Get user authentication
     const authHeader = req.headers.get("authorization") || undefined;
     const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
@@ -17,8 +19,11 @@ export async function POST(req: NextRequest) {
 
     const { data: { user }, error: userError } = await supa.auth.getUser();
     if (userError || !user) {
+      console.error('Authentication failed:', userError);
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
+    
+    console.log('User authenticated:', user.id);
 
     // Use fallback facility information to avoid RLS recursion
     const profile = {
@@ -30,10 +35,14 @@ export async function POST(req: NextRequest) {
     
     console.log('Using fallback profile data in upload-facility-docs to avoid RLS issues');
 
+    console.log('Parsing form data...');
     const form = await req.formData();
     const files = form.getAll("files") as File[];
     const documentType = form.get("documentType")?.toString() || "Policy";
     const description = form.get("description")?.toString() || "";
+
+    console.log(`Received ${files.length} files for upload`);
+    console.log('File details:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
 
     if (!files.length) {
       return NextResponse.json({ ok: false, error: "No files provided" }, { status: 400 });
@@ -153,7 +162,7 @@ export async function POST(req: NextRequest) {
             characters: content.length
           });
           
-          console.log(`Successfully uploaded ${file.name}: ${chunks.length} chunks, ${content.length} characters`);
+          console.log(`Successfully uploaded ${file.name}: ${chunkObjs.length} chunks, ${content.length} characters`);
         }
 
       } catch (error: any) {
