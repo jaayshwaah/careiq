@@ -27,6 +27,7 @@ import {
   Upload,
   FileSpreadsheet,
   ListTodo,
+  Package,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
@@ -56,6 +57,7 @@ const toolsNavigationItems = [
   { href: "/task-management", label: "Task Management", icon: ListTodo },
   { href: "/survey-prep", label: "Survey Prep", icon: Shield },
   { href: "/pbj-corrector-ai", label: "PBJ Corrector AI", icon: FileSpreadsheet },
+  { href: "/supply-management", label: "Supply Management", icon: Package },
   { href: "/calendar-integrations", label: "Calendar", icon: Calendar },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen, adminOnly: true },
 ];

@@ -339,7 +339,7 @@ export default function AdminUsersPage() {
             </button>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 rounded-lg transition-colors"
             >
               <Plus size={16} />
               Quick Add User
@@ -366,22 +366,22 @@ export default function AdminUsersPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={16} />
             <input
               type="text"
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             <option value="">All Roles</option>
             {USER_ROLES.map(role => (
@@ -392,9 +392,9 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg border overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Users ({filteredUsers.length})
           </h2>
         </div>
@@ -406,18 +406,18 @@ export default function AdminUsersPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Facility</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Facility</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredUsers.map((user) => (
-                  <tr key={user.user_id} className="hover:bg-gray-50">
+                  <tr key={user.user_id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
@@ -426,33 +426,33 @@ export default function AdminUsersPage() {
                           {user.full_name?.charAt(0) || user.email?.charAt(0) || '?'}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900 flex items-center gap-2">
+                          <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
                             {user.full_name || 'No name'}
                             {user.is_admin && <Crown className="text-purple-600" size={14} />}
                             {user.role?.includes('Administrator') && <Shield className="text-blue-600" size={14} />}
                           </div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         user.is_admin 
-                          ? 'bg-purple-100 text-purple-800' 
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' 
                           : user.role?.includes('Administrator')
-                          ? 'bg-blue-100 text-blue-800'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                           : user.role?.includes('CareIQ')
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                       }`}>
                         {user.role || 'No role'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{user.facility_name || 'No facility'}</div>
-                      <div className="text-xs text-gray-500">{user.facility_state}</div>
+                      <div className="text-sm text-gray-900 dark:text-white">{user.facility_name || 'No facility'}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{user.facility_state}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                       {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
                     </td>
                     <td className="px-6 py-4">
@@ -479,7 +479,7 @@ export default function AdminUsersPage() {
             </table>
             
             {filteredUsers.length === 0 && !loading && (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                 No users found matching your search criteria.
               </div>
             )}
@@ -490,41 +490,41 @@ export default function AdminUsersPage() {
       {/* Create User Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-semibold mb-4">Create New User Profile</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Create New User Profile</h2>
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Email *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Email *</label>
                 <input
                   type="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="Enter email address"
                 />
-                <p className="text-xs text-gray-500 mt-1">Creates profile for existing user</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Creates profile for existing user</p>
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-1">Full Name *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Full Name *</label>
                 <input
                   type="text"
                   required
                   value={formData.full_name}
                   onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="John Smith"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Role *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Role *</label>
                 <select
                   required
                   value={formData.role}
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select Role</option>
                   {USER_ROLES.map(role => (
@@ -534,22 +534,22 @@ export default function AdminUsersPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Facility Name</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Facility Name</label>
                 <input
                   type="text"
                   value={formData.facility_name}
                   onChange={(e) => setFormData({...formData, facility_name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="Enter facility name"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">State</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">State</label>
                 <select
                   value={formData.facility_state}
                   onChange={(e) => setFormData({...formData, facility_state: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select State</option>
                   {US_STATES.map(state => (
@@ -568,7 +568,7 @@ export default function AdminUsersPage() {
                   />
                   <div>
                     <div className="font-medium">Super Admin</div>
-                    <div className="text-xs text-gray-500">Full system access, can manage all users</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Full system access, can manage all users</div>
                   </div>
                 </label>
               </div>
@@ -577,7 +577,7 @@ export default function AdminUsersPage() {
                 <button
                   type="button"
                   onClick={() => {setShowCreateModal(false); resetForm();}}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800"
                 >
                   Cancel
                 </button>
@@ -596,35 +596,35 @@ export default function AdminUsersPage() {
       {/* Edit User Modal */}
       {showEditModal && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Edit User Permissions</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Edit User Permissions</h2>
             <form onSubmit={handleUpdateUser} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Email</label>
                 <input
                   type="email"
                   value={formData.email}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-1">Full Name</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Full Name</label>
                 <input
                   type="text"
                   value={formData.full_name}
                   onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Role</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Role</label>
                 <select
                   value={formData.role}
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   {USER_ROLES.map(role => (
                     <option key={role} value={role}>{role}</option>
@@ -633,22 +633,22 @@ export default function AdminUsersPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Facility Name</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Facility Name</label>
                 <input
                   type="text"
                   value={formData.facility_name}
                   onChange={(e) => setFormData({...formData, facility_name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="Enter facility name"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">State</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">State</label>
                 <select
                   value={formData.facility_state}
                   onChange={(e) => setFormData({...formData, facility_state: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select State</option>
                   {US_STATES.map(state => (
@@ -667,7 +667,7 @@ export default function AdminUsersPage() {
                   />
                   <div>
                     <div className="font-medium">Super Admin</div>
-                    <div className="text-xs text-gray-500">Full system access, can manage all users</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Full system access, can manage all users</div>
                   </div>
                 </label>
               </div>
@@ -676,7 +676,7 @@ export default function AdminUsersPage() {
                 <button
                   type="button"
                   onClick={() => {setShowEditModal(false); setSelectedUser(null); resetForm();}}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800"
                 >
                   Cancel
                 </button>

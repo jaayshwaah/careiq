@@ -465,7 +465,7 @@ async function searchFacility(facilityName: string, state: string) {
 
 async function analyzeFacility(facilityData: any) {
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-  const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-5-chat"; // 🚀 GPT-5 is now available!
+  const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o";
 
   if (!OPENROUTER_API_KEY) {
     throw new Error("AI service not configured");
@@ -527,14 +527,20 @@ ${facilityData.strengths.map((s: string) => `- ${s}`).join('\n') || '- Review fa
 - Add 1 star if Quality Measures is 5 stars, subtract 1 if it's 1 star
 - If Health Inspections is 1 star, Overall can only be upgraded by 1 star maximum
 
-Please provide specific, actionable recommendations formatted as JSON:
-1. priorityAreas: Focus on the component ratings that most impact overall score
-2. starRatingStrategies: Specific tactics to improve each component rating
-3. complianceRecommendations: Health inspection and regulatory compliance actions
-4. staffTraining: Training programs to improve staffing and quality metrics
-5. qualityEnhancements: Clinical improvement strategies for the 9 quality measures
+Please provide a comprehensive analysis formatted as JSON with the following sections:
 
-Format as JSON with sections: priorityAreas, starRatingStrategies, complianceRecommendations, staffTraining, qualityEnhancements`;
+REQUIRED SECTIONS:
+1. careCompareSummary: Detailed summary of facility's Care Compare performance vs. national averages
+2. priorityAreas: Top 3-5 areas that will have biggest impact on overall star rating
+3. starRatingStrategies: Specific tactics to improve each component rating (Health, Staffing, Quality)
+4. complianceRecommendations: Health inspection and regulatory compliance actions
+5. staffTraining: Training programs to improve staffing metrics and retention
+6. qualityEnhancements: Clinical improvement strategies for the 9 quality measures
+7. performanceTrends: Analysis of facility's performance trends and benchmarking
+8. immediateActions: Top 3 actions to take within 30 days
+9. longTermGoals: Strategic goals for 6-12 month improvement plan
+
+Format as valid JSON with all sections included. Focus on specific, measurable, actionable recommendations.`;
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
