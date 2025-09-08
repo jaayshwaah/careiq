@@ -623,5 +623,6 @@ export default function AppleSidebar({ className = "", collapsed: externalCollap
         </div>
       </div>
     </div>
+    </div>
   );
 }
