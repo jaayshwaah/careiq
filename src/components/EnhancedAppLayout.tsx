@@ -73,12 +73,21 @@ const EnhancedAppLayout: React.FC<EnhancedAppLayoutProps> = ({ children }) => {
 
   return (
     <div className="h-screen bg-[var(--bg)] flex overflow-hidden">
+      {/* Skip Links for Accessibility */}
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+      <a href="#navigation" className="skip-link">
+        Skip to navigation
+      </a>
       {/* Sidebar */}
-      <EnhancedSidebar
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        className="z-[var(--z-sticky)]"
-      />
+      <nav id="navigation" aria-label="Main navigation">
+        <EnhancedSidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className="z-[var(--z-sticky)]"
+        />
+      </nav>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -86,7 +95,7 @@ const EnhancedAppLayout: React.FC<EnhancedAppLayoutProps> = ({ children }) => {
         <StatusBar />
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
+        <main id="main-content" className="flex-1 overflow-auto" role="main">
           <motion.div
             className="h-full"
             initial={{ opacity: 0 }}

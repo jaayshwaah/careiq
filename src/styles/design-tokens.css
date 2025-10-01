@@ -216,3 +216,376 @@
     --glass-border: oklch(0.6 0.02 240 / 0.8);
   }
 }
+
+/* High Contrast Class Override */
+.high-contrast {
+  --border: oklch(0.1 0.02 240);
+  --glass-border: oklch(0.1 0.02 240 / 0.9);
+  --text-primary: oklch(0.1 0.01 240);
+  --muted: oklch(0.3 0.01 240);
+}
+
+.dark.high-contrast {
+  --border: oklch(0.8 0.02 240);
+  --glass-border: oklch(0.8 0.02 240 / 0.9);
+  --text-primary: oklch(0.9 0.01 240);
+  --muted: oklch(0.7 0.01 240);
+}
+
+/* Font Size Variants */
+[data-font-size="small"] {
+  --text-xs: 0.625rem;
+  --text-sm: 0.75rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.125rem;
+  --text-2xl: 1.25rem;
+  --text-3xl: 1.5rem;
+  --text-4xl: 1.875rem;
+  --text-5xl: 2.25rem;
+  --text-6xl: 3rem;
+}
+
+[data-font-size="large"] {
+  --text-xs: 0.875rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 2.75rem;
+  --text-5xl: 3.5rem;
+  --text-6xl: 4.5rem;
+}
+
+/* Keyboard Navigation Focus Styles */
+.keyboard-navigation *:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.keyboard-navigation button:focus-visible,
+.keyboard-navigation input:focus-visible,
+.keyboard-navigation select:focus-visible,
+.keyboard-navigation textarea:focus-visible,
+.keyboard-navigation [role="button"]:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Screen Reader Only Content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip Links */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  padding: 8px;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  z-index: 1000;
+  transition: top 0.3s;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Focus Indicators for Interactive Elements */
+.interactive:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* High Contrast Focus Indicators */
+.high-contrast .interactive:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* Reduced Motion Overrides */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Touch Target Sizes */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Color Blind Safe Status Colors */
+.status-ok {
+  color: oklch(0.55 0.15 140);
+  background-color: oklch(0.55 0.15 140 / 0.1);
+}
+
+.status-warn {
+  color: oklch(0.70 0.15 60);
+  background-color: oklch(0.70 0.15 60 / 0.1);
+}
+
+.status-error {
+  color: oklch(0.55 0.15 20);
+  background-color: oklch(0.55 0.15 20 / 0.1);
+}
+
+.status-info {
+  color: oklch(0.55 0.15 250);
+  background-color: oklch(0.55 0.15 250 / 0.1);
+}
+
+/* Ensure sufficient color contrast */
+.contrast-check {
+  /* These colors meet WCAG AA standards */
+  --text-on-light: oklch(0.2 0.01 240); /* 4.5:1 contrast ratio */
+  --text-on-dark: oklch(0.9 0.01 240); /* 4.5:1 contrast ratio */
+  --border-contrast: oklch(0.3 0.01 240); /* 3:1 contrast ratio */
+}
+
+/* Responsive Design Utilities */
+.responsive-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .responsive-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-container {
+    padding: 0 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .responsive-container {
+    padding: 0 2.5rem;
+  }
+}
+
+/* Mobile-First Grid System */
+.grid-responsive {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .grid-responsive {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+  }
+}
+
+/* iPad Optimization */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .ipad-optimized {
+    /* Larger touch targets for iPad */
+    --touch-target-size: 48px;
+    
+    /* Optimized spacing */
+    --spacing-sm: 0.75rem;
+    --spacing-md: 1.25rem;
+    --spacing-lg: 2rem;
+    
+    /* Larger text for better readability */
+    --text-scale: 1.1;
+  }
+  
+  .ipad-optimized .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  .ipad-optimized .text-sm {
+    font-size: calc(var(--text-sm) * var(--text-scale, 1.1));
+  }
+  
+  .ipad-optimized .text-base {
+    font-size: calc(var(--text-base) * var(--text-scale, 1.1));
+  }
+  
+  .ipad-optimized .text-lg {
+    font-size: calc(var(--text-lg) * var(--text-scale, 1.1));
+  }
+}
+
+/* Mobile Navigation */
+.mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-fixed);
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid var(--glass-border);
+  padding: 0.5rem;
+}
+
+@media (min-width: 1024px) {
+  .mobile-nav {
+    display: none;
+  }
+}
+
+/* Tablet Layout Adjustments */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tablet-layout {
+    /* Sidebar adjustments for tablet */
+    --sidebar-width: 280px;
+    
+    /* Content padding adjustments */
+    --content-padding: 1.5rem;
+    
+    /* Grid adjustments */
+    --grid-cols: 2;
+  }
+  
+  .tablet-layout .sidebar {
+    width: var(--sidebar-width);
+  }
+  
+  .tablet-layout .main-content {
+    padding: var(--content-padding);
+  }
+  
+  .tablet-layout .grid-responsive {
+    grid-template-columns: repeat(var(--grid-cols), 1fr);
+  }
+}
+
+/* Desktop Layout */
+@media (min-width: 1024px) {
+  .desktop-layout {
+    --sidebar-width: 320px;
+    --content-padding: 2rem;
+    --grid-cols: 3;
+  }
+}
+
+/* Large Desktop Layout */
+@media (min-width: 1440px) {
+  .large-desktop-layout {
+    --sidebar-width: 360px;
+    --content-padding: 2.5rem;
+    --grid-cols: 4;
+    --max-width: 1600px;
+  }
+  
+  .large-desktop-layout .container {
+    max-width: var(--max-width);
+  }
+}
+
+/* Orientation-specific adjustments */
+@media (orientation: portrait) {
+  .portrait-layout {
+    /* Adjust for portrait orientation */
+    --header-height: 60px;
+    --content-height: calc(100vh - var(--header-height));
+  }
+}
+
+@media (orientation: landscape) {
+  .landscape-layout {
+    /* Adjust for landscape orientation */
+    --header-height: 50px;
+    --content-height: calc(100vh - var(--header-height));
+  }
+}
+
+/* Print Styles */
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+  
+  .print-visible {
+    display: block !important;
+  }
+  
+  .print-break {
+    page-break-before: always;
+  }
+  
+  .print-no-break {
+    page-break-inside: avoid;
+  }
+  
+  /* Ensure good contrast for printing */
+  * {
+    color: black !important;
+    background: white !important;
+  }
+}
+
+/* High DPI Display Support */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .high-dpi {
+    /* Optimize for high DPI displays */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Dark Mode Responsive Adjustments */
+@media (prefers-color-scheme: dark) {
+  .dark .mobile-nav {
+    background: var(--glass-bg);
+    border-top-color: var(--glass-border);
+  }
+}
+
+/* Reduced Motion Responsive */
+@media (prefers-reduced-motion: reduce) {
+  .responsive-container,
+  .grid-responsive,
+  .mobile-nav {
+    transition: none !important;
+    animation: none !important;
+  }
+}

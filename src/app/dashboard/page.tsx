@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, Users, FileText, Calendar, Bell, Calculator, Timer, Mail, Sparkles } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, Users, FileText, Calendar, Bell, Calculator, Timer, Mail, Sparkles, Activity, Shield, BarChart3, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
 import LetterEmailSuggestions from '@/components/LetterEmailSuggestions';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 interface MetricCard {
   title: string;
@@ -259,56 +263,104 @@ export default function FacilityDashboard() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Facility Dashboard</h1>
-            <div className="flex items-center gap-3">
-              <Link href="/notifications" className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <Bell size={20} />
-              </Link>
-            </div>
+    <div className="min-h-screen bg-[var(--bg)] p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <motion.div
+          className="flex items-center justify-between"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div>
+            <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+              Facility Dashboard
+            </h1>
+            <p className="text-[var(--muted)] mt-1">
+              Real-time insights and performance metrics
+            </p>
           </div>
-        </div>
-      </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<RefreshCw size={16} />}
+              onClick={() => {
+                loadCurrentPPD();
+                loadSurveyCountdown();
+                loadComplianceScore();
+                loadFacilityAnalysis();
+              }}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<Bell size={16} />}
+              onClick={() => setShowLetterSuggestions(true)}
+            >
+              Notifications
+            </Button>
+          </div>
+        </motion.div>
 
-      <div className="flex-1 min-h-0 px-6 py-6 scrollable">
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {metrics.map((metric, index) => {
-            const Icon = metric.icon;
-            return (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{metric.title}</p>
-                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">{metric.value}</p>
-                  </div>
-                  <div className={`p-3 rounded-lg bg-gray-50 dark:bg-gray-700 ${metric.color}`}>
-                    <Icon size={24} />
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center">
-                  {metric.trend === 'up' ? (
-                    <TrendingUp className="text-green-500" size={16} />
-                  ) : metric.trend === 'down' ? (
-                    <TrendingDown className="text-red-500" size={16} />
-                  ) : (
-                    <div className="w-4 h-4 bg-gray-400 rounded-full" />
-                  )}
-                  <span className={`ml-2 text-sm ${
-                    metric.trend === 'up' ? 'text-green-600' : 
-                    metric.trend === 'down' ? 'text-red-600' : 'text-gray-600'
-                  }`}>
-                    {metric.change} from last month
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Main Content */}
+        <motion.div
+          className="space-y-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          {/* Metrics Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {metrics.map((metric, index) => {
+              const Icon = metric.icon;
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <Card variant="glass" className="hover:shadow-[var(--shadow-popover)]">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <p className="text-sm font-medium text-[var(--muted)]">{metric.title}</p>
+                          <p className="text-2xl font-bold text-[var(--text-primary)]">{metric.value}</p>
+                        </div>
+                        <div 
+                          className="p-3 rounded-[var(--radius-lg)]"
+                          style={{ backgroundColor: `${metric.color}20` }}
+                        >
+                          <Icon size={24} style={{ color: metric.color }} />
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        {metric.trend === 'up' ? (
+                          <TrendingUp className="text-[var(--ok)]" size={16} />
+                        ) : metric.trend === 'down' ? (
+                          <TrendingDown className="text-[var(--err)]" size={16} />
+                        ) : (
+                          <Activity className="text-[var(--muted)]" size={16} />
+                        )}
+                        <span className={cn(
+                          "ml-2 text-sm",
+                          metric.trend === 'up' && "text-[var(--ok)]",
+                          metric.trend === 'down' && "text-[var(--err)]",
+                          metric.trend === 'stable' && "text-[var(--muted)]"
+                        )}>
+                          {metric.change} from last month
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
 
         {/* Survey Countdown & PPD Widget Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -724,13 +776,15 @@ export default function FacilityDashboard() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Letter & Email Suggestions Modal */}
-      <LetterEmailSuggestions
-        isOpen={showLetterSuggestions}
-        onClose={() => setShowLetterSuggestions(false)}
-      />
+        </motion.div>
+
+        {/* Letter & Email Suggestions Modal */}
+        <LetterEmailSuggestions
+          isOpen={showLetterSuggestions}
+          onClose={() => setShowLetterSuggestions(false)}
+        />
+      </div>
     </div>
   );
 }

@@ -7,6 +7,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/AuthProvider";
+import { AccessibilityProvider } from "@/components/AccessibilityProvider";
+import { ResponsiveProvider } from "@/components/ResponsiveProvider";
 import EnhancedAppLayout from "@/components/EnhancedAppLayout";
 
 export const metadata: Metadata = {
@@ -78,11 +80,15 @@ export default function RootLayout({
       </head>
       <body className="bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased">
         <ThemeProvider>
-          <AuthProvider>
-            <EnhancedAppLayout>
-              {children}
-            </EnhancedAppLayout>
-          </AuthProvider>
+          <ResponsiveProvider>
+            <AccessibilityProvider>
+              <AuthProvider>
+                <EnhancedAppLayout>
+                  {children}
+                </EnhancedAppLayout>
+              </AuthProvider>
+            </AccessibilityProvider>
+          </ResponsiveProvider>
         </ThemeProvider>
       </body>
     </html>

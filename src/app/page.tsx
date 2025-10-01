@@ -1,11 +1,16 @@
-// src/app/page.tsx - ChatGPT-style homepage
+// src/app/page.tsx - Enhanced CareIQ homepage with design system
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, FileText, Upload } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Send, FileText, Upload, Plus, MessageCircle, Shield, ClipboardList, BarChart3, Users, Activity, TrendingUp, CheckCircle, AlertTriangle, Clock, BookOpen, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { cn } from '@/lib/utils';
 
 const suggestions = [
   "What are the key CMS survey preparation steps?",
@@ -19,6 +24,80 @@ const suggestions = [
   "What training is required for new employees?",
   "Help me prepare for a state inspection",
   "Analyze care plan compliance and quality"
+];
+
+const quickActions = [
+  {
+    id: 'new-chat',
+    title: 'Start New Chat',
+    description: 'AI-powered conversation',
+    icon: MessageCircle,
+    href: '/chat/new',
+    color: 'var(--accent)'
+  },
+  {
+    id: 'daily-rounds',
+    title: 'Daily Rounds',
+    description: 'Digital rounding process',
+    icon: ClipboardList,
+    href: '/daily-ops',
+    color: 'var(--info)'
+  },
+  {
+    id: 'compliance',
+    title: 'Compliance Check',
+    description: 'F-Tag monitoring',
+    icon: Shield,
+    href: '/compliance',
+    color: 'var(--warn)'
+  },
+  {
+    id: 'analytics',
+    title: 'Analytics',
+    description: 'Performance metrics',
+    icon: BarChart3,
+    href: '/analytics',
+    color: 'var(--ok)'
+  }
+];
+
+const dashboardWidgets = [
+  {
+    id: 'census',
+    title: 'Current Census',
+    value: '120/150',
+    change: '+5 from yesterday',
+    trend: 'up',
+    icon: Users,
+    color: 'var(--info)'
+  },
+  {
+    id: 'ppd',
+    title: 'PPD Compliance',
+    value: '1.125',
+    change: 'Compliant',
+    trend: 'up',
+    icon: Activity,
+    color: 'var(--ok)'
+  },
+  {
+    id: 'incidents',
+    title: 'Open Incidents',
+    value: '3',
+    change: '2 resolved today',
+    trend: 'down',
+    icon: AlertTriangle,
+    color: 'var(--warn)'
+  },
+  {
+    id: 'tasks',
+    title: 'Pending Tasks',
+    value: '7',
+    change: '3 completed today',
+    trend: 'down',
+    icon: CheckCircle,
+    color: 'var(--info)'
+  }
 ];
 
 export default function HomePage() {
@@ -177,128 +256,248 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
+    <div className="min-h-screen bg-[var(--bg)] p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <motion.div
+          className="text-center"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <h1 className="text-4xl font-bold text-[var(--text-primary)] mb-2">
+            Welcome to CareIQ
+          </h1>
+          <p className="text-[var(--muted)] text-lg">
+            AI-powered nursing home operations and compliance
+          </p>
+        </motion.div>
 
-        {/* Body (scroll) */}
-        <section className="flex-1 min-h-0 scrollable">
-          <div className="mx-auto max-w-5xl px-4 py-6 md:py-10 lg:px-8">
-            {/* Hero */}
-            <div className="mb-6 md:mb-8 text-center md:text-left">
-              <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold">Start a new conversation</h1>
-              <p className="text-neutral-600 dark:text-neutral-300 mt-1 text-sm md:text-base">Ask anything, or pick a suggestion to get going.</p>
-            </div>
-
-            {/* Suggestions Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
-              {suggestions.slice(0, 5).map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSuggestionClick(s)}
-                  disabled={isCreating}
-                  className="text-left rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/60 backdrop-blur p-4 shadow-sm hover:shadow-md transition disabled:opacity-50 group"
-                >
-                  <div className="text-base font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{s}</div>
-                </button>
-              ))}
-              
-              {/* Care Plan Analysis Button */}
-              <div className="relative">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.docx,.doc,.txt"
-                  onChange={handleFileUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  disabled={isAnalyzing || isCreating}
-                />
-                <button
-                  disabled={isAnalyzing || isCreating}
-                  className="w-full text-left rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 backdrop-blur p-4 shadow-sm hover:shadow-md transition disabled:opacity-50 group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
-                      {isAnalyzing ? (
-                        <div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <FileText className="w-6 h-6 text-green-600 dark:text-green-400" />
-                      )}
+        {/* Dashboard Widgets */}
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          {dashboardWidgets.map((widget, index) => (
+            <motion.div
+              key={widget.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
+              whileHover={{ scale: 1.02 }}
+            >
+              <Card variant="glass" className="hover:shadow-[var(--shadow-popover)]">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="p-2 rounded-[var(--radius-md)]"
+                        style={{ backgroundColor: `${widget.color}20` }}
+                      >
+                        <widget.icon size={20} style={{ color: widget.color }} />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-[var(--text-primary)]">
+                          {widget.title}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-base font-medium group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
-                        {isAnalyzing ? 'Analyzing Care Plan...' : 'Analyze Care Plan Document'}
-                      </div>
-                      <div className="text-sm text-green-600/70 dark:text-green-400/70 mt-1">
-                        Upload PDF or Word document
-                      </div>
+                    {widget.trend === 'up' ? (
+                      <TrendingUp size={16} className="text-[var(--ok)]" />
+                    ) : widget.trend === 'down' ? (
+                      <TrendingUp size={16} className="text-[var(--err)] rotate-180" />
+                    ) : (
+                      <Activity size={16} className="text-[var(--muted)]" />
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-2xl font-bold text-[var(--text-primary)]">
+                      {widget.value}
+                    </div>
+                    <div className="text-sm text-[var(--muted)]">
+                      {widget.change}
                     </div>
                   </div>
-                </button>
-              </div>
-            </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
 
-            {/* Feature highlights */}
-            <div className="mt-6 md:mt-8 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
-                <div className="text-blue-600 dark:text-blue-400 text-sm font-medium mb-2">Smart Notifications</div>
-                <div className="text-gray-700 dark:text-gray-300 text-sm">Get alerts for survey deadlines, training expirations, and compliance tasks</div>
-              </div>
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800">
-                <div className="text-green-600 dark:text-green-400 text-sm font-medium mb-2">Care Plan Analysis</div>
-                <div className="text-gray-700 dark:text-gray-300 text-sm">AI-powered analysis of care plan documents for compliance and quality improvement</div>
-              </div>
-              <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl p-4 border border-purple-100 dark:border-purple-800">
-                <div className="text-purple-600 dark:text-purple-400 text-sm font-medium mb-2">Survey Preparation</div>
-                <div className="text-gray-700 dark:text-gray-300 text-sm">Mock surveys, staff quizzes, and automated compliance tracking</div>
-              </div>
-            </div>
-
+        {/* Quick Actions */}
+        <motion.div
+          className="space-y-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {quickActions.map((action, index) => (
+              <motion.div
+                key={action.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.4 + index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
+              >
+                <Card
+                  variant="glass"
+                  interactive
+                  className="h-full cursor-pointer"
+                  onClick={() => window.location.href = action.href}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="p-3 rounded-[var(--radius-md)]"
+                        style={{ backgroundColor: `${action.color}20` }}
+                      >
+                        <action.icon size={24} style={{ color: action.color }} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-[var(--text-primary)]">
+                          {action.title}
+                        </h3>
+                        <p className="text-sm text-[var(--muted)]">
+                          {action.description}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
           </div>
-        </section>
+        </motion.div>
 
-        {/* Composer (sticky bottom) */}
-        <div className="flex-shrink-0 border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-gray-900 px-4 py-4 lg:px-8">
-          <div className="mx-auto max-w-5xl">
-            <div className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg focus-within:shadow-xl transition-all focus-within:border-blue-500/50">
+        {/* AI Chat Section */}
+        <motion.div
+          className="space-y-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
+          <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+            Start a Conversation
+          </h2>
+          <Card variant="glass" className="p-6">
+            <div className="space-y-4">
+              {/* Suggestions Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {suggestions.slice(0, 6).map((suggestion, i) => (
+                  <motion.button
+                    key={i}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    disabled={isCreating}
+                    className="text-left p-3 rounded-[var(--radius-md)] bg-[var(--muted)]/30 hover:bg-[var(--muted)]/50 transition-standard disabled:opacity-50 group"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <div className="text-sm font-medium text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">
+                      {suggestion}
+                    </div>
+                  </motion.button>
+                ))}
+                
+                {/* Care Plan Analysis Button */}
+                <div className="relative">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.doc,.txt"
+                    onChange={handleFileUpload}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    disabled={isAnalyzing || isCreating}
+                  />
+                  <motion.button
+                    disabled={isAnalyzing || isCreating}
+                    className="w-full text-left p-3 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--ok)]/20 to-[var(--ok)]/10 hover:from-[var(--ok)]/30 hover:to-[var(--ok)]/20 transition-standard disabled:opacity-50 group"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0">
+                        {isAnalyzing ? (
+                          <div className="w-5 h-5 border-2 border-[var(--ok)] border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <FileText className="w-5 h-5 text-[var(--ok)]" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-[var(--ok)] group-hover:text-[var(--ok)] transition-colors">
+                          {isAnalyzing ? 'Analyzing Care Plan...' : 'Analyze Care Plan Document'}
+                        </div>
+                        <div className="text-xs text-[var(--ok)]/70 mt-1">
+                          Upload PDF or Word document
+                        </div>
+                      </div>
+                    </div>
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* AI Chat Composer */}
+        <motion.div
+          className="glass border-t border-[var(--glass-border)] p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        >
+          <div className="max-w-4xl mx-auto">
+            <div className="relative glass-card rounded-[var(--radius-xl)] shadow-[var(--shadow-glass)] focus-within:shadow-[var(--shadow-focus)] transition-standard">
               <textarea
                 ref={textareaRef}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message CareIQ..."
+                placeholder="Ask CareIQ anything about compliance, operations, or care planning..."
                 disabled={isCreating}
                 autoFocus
-                className="w-full resize-none border-0 bg-transparent px-6 py-4 pr-16 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none text-base leading-6"
+                className="w-full resize-none border-0 bg-transparent px-6 py-4 pr-16 text-[var(--text-primary)] placeholder-[var(--muted)] focus:outline-none text-base leading-6 rounded-[var(--radius-xl)]"
                 style={{ minHeight: '64px', maxHeight: '200px' }}
                 rows={1}
               />
-              <button
+              <motion.button
                 onClick={handleSend}
                 disabled={!message.trim() || isCreating}
-                className={`absolute right-3 bottom-3 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
-                  message.trim() && !isCreating
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg hover:scale-105'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
-                }`}
+                className="absolute right-3 bottom-3 w-10 h-10 rounded-[var(--radius-lg)] flex items-center justify-center transition-standard focus-ring"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  backgroundColor: message.trim() && !isCreating ? 'var(--accent)' : 'var(--muted)',
+                  color: message.trim() && !isCreating ? 'var(--accent-contrast)' : 'var(--text-primary)'
+                }}
               >
                 {isCreating ? (
                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Send size={18} />
                 )}
-              </button>
+              </motion.button>
             </div>
-            <div className="text-center mt-3 space-y-2">
-              <div className="flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-center mt-4 space-y-2">
+              <div className="flex items-center justify-center gap-4 text-xs text-[var(--muted)]">
                 <span>⌘/Ctrl+K to search</span>
                 <span>•</span>
                 <span>⌘/Ctrl+Enter to send</span>
                 <span>•</span>
                 <span>Shift+Enter for newline</span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">CareIQ can make mistakes. Verify important compliance information.</p>
+              <p className="text-xs text-[var(--muted)]">
+                CareIQ can make mistakes. Verify important compliance information.
+              </p>
             </div>
           </div>
-        </div>
+        </motion.div>
+      </div>
     </div>
   );
 }
