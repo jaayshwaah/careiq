@@ -17,7 +17,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ 
     className, 
     variant = 'primary', 
-    size = 'md', 
+    size = 'md',
     loading = false,
     leftIcon,
     rightIcon,
@@ -26,23 +26,21 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     disabled,
     ...props 
   }, ref) => {
-    const baseClasses = "inline-flex items-center justify-center font-medium transition-standard focus-ring touch-target disabled:opacity-50 disabled:pointer-events-none";
+    const baseClasses = "inline-flex items-center justify-center rounded-[var(--radius-md)] font-medium transition-standard focus-ring disabled:opacity-50 disabled:pointer-events-none";
     
     const variants = {
       primary: "bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-hover)] shadow-soft",
-      secondary: "bg-[var(--bg-elev)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--muted)]",
-      ghost: "text-[var(--text-primary)] hover:bg-[var(--muted)]",
+      secondary: "bg-[var(--muted)] text-[var(--text-primary)] hover:bg-[var(--muted)]/80",
+      ghost: "hover:bg-[var(--muted)] text-[var(--text-primary)]",
       danger: "bg-[var(--err)] text-white hover:bg-[var(--err)]/90 shadow-soft",
-      glass: "glass-card text-[var(--text-primary)] hover:bg-[var(--glass-bg)]/90"
+      glass: "glass-effect hover:bg-[var(--glass-hover)] text-[var(--text-primary)]"
     };
-
+    
     const sizes = {
-      sm: "h-8 px-3 text-sm rounded-[var(--radius-sm)]",
-      md: "h-10 px-4 text-base rounded-[var(--radius-md)]",
-      lg: "h-12 px-6 text-lg rounded-[var(--radius-lg)]"
+      sm: "h-8 px-3 text-sm",
+      md: "h-10 px-4 text-sm",
+      lg: "h-12 px-6 text-base"
     };
-
-    const widthClasses = fullWidth ? "w-full" : "";
 
     return (
       <motion.button
@@ -51,13 +49,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           baseClasses,
           variants[variant],
           sizes[size],
-          widthClasses,
+          fullWidth && "w-full",
           className
         )}
         disabled={disabled || loading}
-        whileHover={{ scale: 1.01 }}
-        whileTap={{ scale: 0.99 }}
-        transition={{ duration: 0.1 }}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ duration: 0.2 }}
         {...props}
       >
         {loading && (
@@ -65,7 +63,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0 }}
           />
         )}
         {!loading && leftIcon && (
