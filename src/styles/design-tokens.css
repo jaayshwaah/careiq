@@ -1,0 +1,218 @@
+/* CareIQ Design Tokens - Healthcare-Grade Design System */
+
+:root {
+  /* Base Surfaces - Light Theme */
+  --bg: oklch(0.98 0.01 240);
+  --bg-elev: oklch(0.96 0.02 240);
+  --card: oklch(0.99 0.005 240);
+  --muted: oklch(0.92 0.01 240);
+
+  /* Borders & Focus */
+  --border: oklch(0.88 0.02 240);
+  --focus: oklch(0.55 0.22 250);
+  --focus-ring: oklch(0.55 0.22 250 / 0.2);
+
+  /* Status Colors */
+  --ok: oklch(0.55 0.15 140);
+  --info: oklch(0.55 0.15 250);
+  --warn: oklch(0.70 0.15 60);
+  --err: oklch(0.55 0.15 20);
+
+  /* Accent & Brand */
+  --accent: oklch(0.55 0.22 250);
+  --accent-contrast: oklch(0.98 0.01 240);
+  --accent-hover: oklch(0.50 0.22 250);
+
+  /* Glass Effects - Light */
+  --glass-bg: oklch(0.99 0.005 240 / 0.8);
+  --glass-border: oklch(0.88 0.02 240 / 0.3);
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+
+  /* Text Scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+
+  /* Line Heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* Line Lengths */
+  --measure-narrow: 45ch;
+  --measure-base: 65ch;
+  --measure-wide: 75ch;
+
+  /* Radii */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+
+  /* Shadows */
+  --shadow-soft: 0 1px 3px oklch(0 0 0 / 0.1), 0 1px 2px oklch(0 0 0 / 0.06);
+  --shadow-focus: 0 0 0 3px var(--focus-ring);
+  --shadow-popover: 0 10px 15px oklch(0 0 0 / 0.1), 0 4px 6px oklch(0 0 0 / 0.05);
+  --shadow-glass: 0 8px 32px oklch(0 0 0 / 0.12);
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-med: 250ms;
+  --duration-slow: 400ms;
+
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-enter: cubic-bezier(0.2, 0, 0.13, 1.5);
+  --ease-exit: cubic-bezier(0.2, 0, 0.13, 1);
+
+  /* Z-Index Scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+}
+
+/* Dark Theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: oklch(0.08 0.01 240);
+    --bg-elev: oklch(0.12 0.02 240);
+    --card: oklch(0.10 0.005 240);
+    --muted: oklch(0.16 0.01 240);
+    --border: oklch(0.25 0.02 240);
+    --glass-bg: oklch(0.10 0.005 240 / 0.8);
+    --glass-border: oklch(0.25 0.02 240 / 0.3);
+  }
+}
+
+/* Dark theme class override */
+.dark {
+  --bg: oklch(0.08 0.01 240);
+  --bg-elev: oklch(0.12 0.02 240);
+  --card: oklch(0.10 0.005 240);
+  --muted: oklch(0.16 0.01 240);
+  --border: oklch(0.25 0.02 240);
+  --glass-bg: oklch(0.10 0.005 240 / 0.8);
+  --glass-border: oklch(0.25 0.02 240 / 0.3);
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-med: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+/* Glass Effect Utilities */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-glass);
+}
+
+.glass-modal {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-glass);
+}
+
+/* Focus Management */
+.focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Status Color Utilities */
+.status-ok {
+  color: var(--ok);
+}
+
+.status-info {
+  color: var(--info);
+}
+
+.status-warn {
+  color: var(--warn);
+}
+
+.status-error {
+  color: var(--err);
+}
+
+/* Typography Utilities */
+.text-measure-narrow {
+  max-width: var(--measure-narrow);
+}
+
+.text-measure-base {
+  max-width: var(--measure-base);
+}
+
+.text-measure-wide {
+  max-width: var(--measure-wide);
+}
+
+/* Motion Utilities */
+.transition-standard {
+  transition: all var(--duration-med) var(--ease-standard);
+}
+
+.transition-enter {
+  transition: all var(--duration-med) var(--ease-enter);
+}
+
+.transition-exit {
+  transition: all var(--duration-fast) var(--ease-exit);
+}
+
+/* Touch Target Utilities */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --border: oklch(0.2 0.02 240);
+    --glass-border: oklch(0.2 0.02 240 / 0.8);
+  }
+  
+  .dark {
+    --border: oklch(0.6 0.02 240);
+    --glass-border: oklch(0.6 0.02 240 / 0.8);
+  }
+}
