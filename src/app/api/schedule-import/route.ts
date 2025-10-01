@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
-import { openai } from "@/lib/ai/providers";
+import { providerFromEnv } from "@/lib/ai/providers";
 
 interface ShiftData {
   employee_name: string;
@@ -467,17 +467,14 @@ ${JSON.stringify(shifts, null, 2)}
 
 Please analyze this schedule for advanced compliance issues.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
+    const provider = providerFromEnv();
+    const aiResponse = await provider.complete([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ], {
       temperature: 0.1,
       max_tokens: 1500
     });
-
-    const aiResponse = response.choices[0]?.message?.content;
     if (!aiResponse) return [];
 
     try {

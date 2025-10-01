@@ -54,8 +54,12 @@ User ID: ${user.id}
     
     if (RESEND_API_KEY && FEEDBACK_EMAIL) {
       try {
-        // Using Resend (recommended)
-        const { Resend } = await import('resend');
+        // Using Resend (recommended) - dynamic import to avoid build issues
+        const resendModule = await import('resend').catch(() => null);
+        if (!resendModule) {
+          throw new Error('Resend module not available');
+        }
+        const { Resend } = resendModule;
         const resend = new Resend(RESEND_API_KEY);
         
         await resend.emails.send({

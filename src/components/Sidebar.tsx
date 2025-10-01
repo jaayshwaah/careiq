@@ -31,7 +31,6 @@ import {
   Workflow,
   Truck,
   Building2,
-  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";

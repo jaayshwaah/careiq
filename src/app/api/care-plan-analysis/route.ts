@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
 import { parseDocxToText, parsePdfToText } from "@/lib/knowledge/parse";
-import { providerFromEnv } from "@/lib/modelRouter";
+import { providerFromEnv } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

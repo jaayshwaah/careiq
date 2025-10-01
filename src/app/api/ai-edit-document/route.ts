@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
-import { openai } from "@/lib/ai/providers";
+import { providerFromEnv } from "@/lib/ai/providers";
 
 interface DocumentVersion {
   id: string;
@@ -97,17 +97,14 @@ ${original_content}
 Please provide the edited version following the JSON format specified in the system prompt.`;
 
     // Call OpenAI for document editing
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
+    const provider = providerFromEnv();
+    const aiResponse = await provider.complete([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ], {
       temperature: 0.3, // Lower temperature for more consistent editing
       max_tokens: 4000
     });
-
-    const aiResponse = response.choices[0]?.message?.content;
     if (!aiResponse) {
       return NextResponse.json({ 
         ok: false, 

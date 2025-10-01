@@ -5,7 +5,7 @@ import {
   Calendar, 
   Plus, 
   Settings, 
-  Sync, 
+  RefreshCw, 
   CheckCircle, 
   AlertCircle, 
   XCircle,
@@ -23,8 +23,8 @@ interface CalendarIntegration {
   displayName: string;
   isActive: boolean;
   syncEnabled: boolean;
-  lastSyncAt?: string;
-  lastSyncStatus: 'pending' | 'success' | 'error';
+  lastRefreshCwAt?: string;
+  lastRefreshCwStatus: 'pending' | 'success' | 'error';
   errorMessage?: string;
 }
 
@@ -80,7 +80,7 @@ export default function CalendarIntegrationsPage() {
   const [showAddCalendarType, setShowAddCalendarType] = useState(false);
   const [selectedIntegration, setSelectedIntegration] = useState<CalendarIntegration | null>(null);
   const [externalCalendars, setExternalCalendars] = useState<{[key: string]: ExternalCalendar[]}>({});
-  const [syncing, setSyncing] = useState<{[key: string]: boolean}>({});
+  const [syncing, setRefreshCwing] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     if (user) {
@@ -139,7 +139,7 @@ export default function CalendarIntegrationsPage() {
   };
 
   const syncIntegration = async (integration: CalendarIntegration) => {
-    setSyncing(prev => ({ ...prev, [integration.id]: true }));
+    setRefreshCwing(prev => ({ ...prev, [integration.id]: true }));
     try {
       const response = await fetch(`/api/calendar/${integration.provider}/sync`, {
         method: 'POST',
@@ -154,16 +154,16 @@ export default function CalendarIntegrationsPage() {
       const data = await response.json();
       
       if (data.ok) {
-        alert(`Sync completed: ${data.syncResults.eventsProcessed} events processed`);
+        alert(`RefreshCw completed: ${data.syncResults.eventsProcessed} events processed`);
         loadIntegrations();
       } else {
-        alert(`Sync failed: ${data.error}`);
+        alert(`RefreshCw failed: ${data.error}`);
       }
     } catch (error) {
-      console.error('Sync error:', error);
-      alert('Sync failed');
+      console.error('RefreshCw error:', error);
+      alert('RefreshCw failed');
     } finally {
-      setSyncing(prev => ({ ...prev, [integration.id]: false }));
+      setRefreshCwing(prev => ({ ...prev, [integration.id]: false }));
     }
   };
 
@@ -308,7 +308,7 @@ export default function CalendarIntegrationsPage() {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(integration.lastSyncStatus)}
+                      {getStatusIcon(integration.lastRefreshCwStatus)}
                       <button
                         onClick={() => toggleIntegration(integration)}
                         className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
@@ -333,10 +333,10 @@ export default function CalendarIntegrationsPage() {
                     </div>
                     
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Last Sync:</span>
+                      <span className="text-gray-600 dark:text-gray-400">Last RefreshCw:</span>
                       <span className="text-gray-900 dark:text-white">
-                        {integration.lastSyncAt 
-                          ? new Date(integration.lastSyncAt).toLocaleDateString()
+                        {integration.lastRefreshCwAt 
+                          ? new Date(integration.lastRefreshCwAt).toLocaleDateString()
                           : 'Never'
                         }
                       </span>
@@ -355,8 +355,8 @@ export default function CalendarIntegrationsPage() {
                       disabled={syncing[integration.id]}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded text-sm font-medium transition-colors disabled:opacity-50"
                     >
-                      <Sync className={`h-4 w-4 ${syncing[integration.id] ? 'animate-spin' : ''}`} />
-                      {syncing[integration.id] ? 'Syncing...' : 'Sync'}
+                      <RefreshCw className={`h-4 w-4 ${syncing[integration.id] ? 'animate-spin' : ''}`} />
+                      {syncing[integration.id] ? 'RefreshCwing...' : 'RefreshCw'}
                     </button>
                     
                     <button
@@ -442,8 +442,8 @@ export default function CalendarIntegrationsPage() {
                 )}
 
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{type.syncToExternal ? '→ Sync Out' : '⊗ No Sync Out'}</span>
-                  <span>{type.syncFromExternal ? '← Sync In' : '⊗ No Sync In'}</span>
+                  <span>{type.syncToExternal ? '→ RefreshCw Out' : '⊗ No RefreshCw Out'}</span>
+                  <span>{type.syncFromExternal ? '← RefreshCw In' : '⊗ No RefreshCw In'}</span>
                 </div>
               </div>
             ))}
@@ -567,7 +567,7 @@ function AddCalendarTypeModal({
                 className="mr-2"
               />
               <label htmlFor="syncToExternal" className="text-sm text-gray-700 dark:text-gray-300">
-                Sync events to external calendars
+                RefreshCw events to external calendars
               </label>
             </div>
             

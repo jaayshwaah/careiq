@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/components/AuthProvider';
 import { 
-  Plus, Upload, Sync, Eye, Edit, Trash2, CheckCircle, AlertTriangle, 
+  Plus, Upload, Eye, Edit, Trash2, CheckCircle, AlertTriangle, 
   Clock, Package, FileText, Settings, ExternalLink, RefreshCw,
   Search, Filter, Download, MoreHorizontal, ArrowRight, Zap
 } from 'lucide-react';
@@ -77,7 +77,7 @@ export default function SupplierManagement() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState<string | null>(null);
+  const [syncing, setRefreshCwing] = useState<string | null>(null);
   
   // Modals
   const [showSupplierModal, setShowSupplierModal] = useState(false);
@@ -143,7 +143,7 @@ export default function SupplierManagement() {
 
   const syncSupplier = async (supplierId: string) => {
     try {
-      setSyncing(supplierId);
+      setRefreshCwing(supplierId);
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch('/api/suppliers/sync', {
@@ -157,20 +157,20 @@ export default function SupplierManagement() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Sync completed:', result);
+        console.log('RefreshCw completed:', result);
         await loadSuppliers();
       } else {
         const error = await response.json();
-        console.error('Sync failed:', error);
+        console.error('RefreshCw failed:', error);
       }
     } catch (error) {
       console.error('Error syncing supplier:', error);
     } finally {
-      setSyncing(null);
+      setRefreshCwing(null);
     }
   };
 
-  const getSyncStatusColor = (status: string) => {
+  const getRefreshCwStatusColor = (status: string) => {
     switch (status) {
       case 'success': return 'text-green-600 bg-green-100 dark:bg-green-900/20 dark:text-green-400';
       case 'error': return 'text-red-600 bg-red-100 dark:bg-red-900/20 dark:text-red-400';
@@ -179,7 +179,7 @@ export default function SupplierManagement() {
     }
   };
 
-  const getSyncStatusIcon = (status: string) => {
+  const getRefreshCwStatusIcon = (status: string) => {
     switch (status) {
       case 'success': return <CheckCircle className="h-4 w-4" />;
       case 'error': return <AlertTriangle className="h-4 w-4" />;
@@ -275,7 +275,7 @@ export default function SupplierManagement() {
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
                   {suppliers.filter(s => s.sync_enabled).length}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Auto-Sync Enabled</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Auto-RefreshCw Enabled</p>
               </div>
             </div>
           </div>
@@ -379,15 +379,15 @@ export default function SupplierManagement() {
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                           {supplier.name}
                         </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSyncStatusColor(supplier.sync_status)}`}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRefreshCwStatusColor(supplier.sync_status)}`}>
                           <div className="flex items-center gap-1">
-                            {getSyncStatusIcon(supplier.sync_status)}
+                            {getRefreshCwStatusIcon(supplier.sync_status)}
                             {supplier.sync_status}
                           </div>
                         </span>
                         {supplier.sync_enabled && (
                           <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 rounded-full text-xs font-medium">
-                            Auto-Sync
+                            Auto-RefreshCw
                           </span>
                         )}
                       </div>
@@ -403,10 +403,10 @@ export default function SupplierManagement() {
                           <span className="font-medium">Phone:</span> {supplier.phone || 'N/A'}
                         </div>
                         <div>
-                          <span className="font-medium">Sync Frequency:</span> {supplier.sync_frequency}
+                          <span className="font-medium">RefreshCw Frequency:</span> {supplier.sync_frequency}
                         </div>
                         <div>
-                          <span className="font-medium">Last Sync:</span> {
+                          <span className="font-medium">Last RefreshCw:</span> {
                             supplier.last_sync_at 
                               ? new Date(supplier.last_sync_at).toLocaleDateString()
                               : 'Never'
@@ -437,9 +437,9 @@ export default function SupplierManagement() {
                         {syncing === supplier.id ? (
                           <RefreshCw className="h-4 w-4 animate-spin" />
                         ) : (
-                          <Sync className="h-4 w-4" />
+                          <RefreshCw className="h-4 w-4" />
                         )}
-                        Sync
+                        RefreshCw
                       </button>
                       
                       <button
