@@ -265,10 +265,10 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-4xl font-bold text-[var(--text-primary)] mb-2">
+          <h1 className="text-4xl font-bold text-primary mb-2">
             Welcome to CareIQ
           </h1>
-          <p className="text-[var(--muted)] text-lg">
+          <p className="text-muted text-lg">
             AI-powered nursing home operations and compliance
           </p>
         </motion.div>
@@ -299,7 +299,7 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
                         <widget.icon size={20} style={{ color: widget.color }} />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-[var(--text-primary)]">
+                        <div className="text-sm font-medium text-primary">
                           {widget.title}
                         </div>
                       </div>
@@ -313,10 +313,10 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
                     )}
                   </div>
                   <div className="space-y-1">
-                    <div className="text-2xl font-bold text-[var(--text-primary)]">
+                    <div className="text-2xl font-bold text-primary">
                       {widget.value}
                     </div>
-                    <div className="text-sm text-[var(--muted)]">
+                    <div className="text-sm text-muted">
                       {widget.change}
                     </div>
                   </div>
@@ -333,7 +333,7 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+          <h2 className="text-xl font-semibold text-primary">
             Quick Actions
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -360,10 +360,10 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
                         <action.icon size={24} style={{ color: action.color }} />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-[var(--text-primary)]">
+                        <h3 className="font-semibold text-primary">
                           {action.title}
                         </h3>
-                        <p className="text-sm text-[var(--muted)]">
+                        <p className="text-sm text-muted">
                           {action.description}
                         </p>
                       </div>
@@ -382,7 +382,7 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
         >
-          <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+          <h2 className="text-xl font-semibold text-primary">
             Start a Conversation
           </h2>
           <Card variant="glass" className="p-6">
@@ -398,7 +398,7 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                   >
-                    <div className="text-sm font-medium text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">
+                    <div className="text-sm font-medium text-primary group-hover:text-[var(--accent)] transition-colors">
                       {suggestion}
                     </div>
                   </motion.button>
@@ -461,7 +461,7 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
                 placeholder="Ask CareIQ anything about compliance, operations, or care planning..."
                 disabled={isCreating}
                 autoFocus
-                className="w-full resize-none border-0 bg-transparent px-6 py-4 pr-16 text-[var(--text-primary)] placeholder-[var(--muted)] focus:outline-none text-base leading-6 rounded-[var(--radius-xl)]"
+                className="w-full resize-none border-0 bg-transparent px-6 py-4 pr-16 text-primary placeholder-muted focus:outline-none text-base leading-6 rounded-[var(--radius-xl)]"
                 style={{ minHeight: '64px', maxHeight: '200px' }}
                 rows={1}
               />

@@ -24,6 +24,9 @@ import {
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
 import UserOnboardingWorkflow from '@/components/admin/UserOnboardingWorkflow';
+import { useErrorHandler } from '@/lib/errorHandler';
+import { useDataValidation } from '@/hooks/useDataValidation';
+import LoadingState from '@/components/LoadingState';
 
 interface User {
   user_id: string;
@@ -70,9 +73,12 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [showInactive, setShowInactive] = useState(false);
+  const { handleError } = useErrorHandler();
+  const { validate, getFieldError, hasErrors } = useDataValidation();
   
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -146,6 +152,7 @@ export default function AdminUsersPage() {
 
   const loadUsers = async () => {
     setLoading(true);
+    setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/admin/users', {
@@ -158,11 +165,14 @@ export default function AdminUsersPage() {
       if (result.ok) {
         setUsers(result.users || []);
       } else {
-        setMessage({ type: 'error', text: result.error || 'Failed to load users' });
+        const errorMessage = result.error || 'Failed to load users';
+        setError(errorMessage);
+        handleError(new Error(errorMessage), 'loadUsers');
       }
     } catch (error) {
-      console.error('Failed to load users:', error);
-      setMessage({ type: 'error', text: 'Failed to load users' });
+      const errorMessage = 'Failed to load users';
+      setError(errorMessage);
+      handleError(error as Error, 'loadUsers');
     } finally {
       setLoading(false);
     }
@@ -400,8 +410,25 @@ export default function AdminUsersPage() {
         </div>
         
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+          <LoadingState 
+            message="Loading users..." 
+            size="lg" 
+            variant="spinner"
+            className="py-12"
+          />
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="text-red-500 mb-4">
+              <UserX size={48} />
+            </div>
+            <h3 className="text-lg font-semibold text-primary mb-2">Error Loading Users</h3>
+            <p className="text-muted mb-4">{error}</p>
+            <button
+              onClick={loadUsers}
+              className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-hover)] transition-colors"
+            >
+              Try Again
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">

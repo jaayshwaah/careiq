@@ -273,10 +273,10 @@ export default function FacilityDashboard() {
           transition={{ duration: 0.5 }}
         >
           <div>
-            <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+            <h1 className="text-3xl font-bold text-primary">
               Facility Dashboard
             </h1>
-            <p className="text-[var(--muted)] mt-1">
+            <p className="text-muted mt-1">
               Real-time insights and performance metrics
             </p>
           </div>
@@ -328,8 +328,8 @@ export default function FacilityDashboard() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                          <p className="text-sm font-medium text-[var(--muted)]">{metric.title}</p>
-                          <p className="text-2xl font-bold text-[var(--text-primary)]">{metric.value}</p>
+                          <p className="text-sm font-medium text-muted">{metric.title}</p>
+                          <p className="text-2xl font-bold text-primary">{metric.value}</p>
                         </div>
                         <div 
                           className="p-3 rounded-[var(--radius-lg)]"
@@ -344,13 +344,13 @@ export default function FacilityDashboard() {
                         ) : metric.trend === 'down' ? (
                           <TrendingDown className="text-[var(--err)]" size={16} />
                         ) : (
-                          <Activity className="text-[var(--muted)]" size={16} />
+                          <Activity className="text-muted" size={16} />
                         )}
                         <span className={cn(
                           "ml-2 text-sm",
                           metric.trend === 'up' && "text-[var(--ok)]",
                           metric.trend === 'down' && "text-[var(--err)]",
-                          metric.trend === 'stable' && "text-[var(--muted)]"
+                          metric.trend === 'stable' && "text-muted"
                         )}>
                           {metric.change} from last month
                         </span>

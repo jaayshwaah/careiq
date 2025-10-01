@@ -6,6 +6,7 @@ import { useAuth } from '@/components/AuthProvider';
 import EnhancedSidebar from '@/components/EnhancedSidebar';
 import CommandPalette from '@/components/CommandPalette';
 import StatusBar from '@/components/StatusBar';
+import ContrastChecker from '@/components/ContrastChecker';
 import { cn } from '@/lib/utils';
 
 interface EnhancedAppLayoutProps {
@@ -139,6 +140,7 @@ const EnhancedAppLayout: React.FC<EnhancedAppLayoutProps> = ({ children }) => {
           </motion.div>
         )}
       </AnimatePresence>
+      <ContrastChecker />
     </div>
   );
 };

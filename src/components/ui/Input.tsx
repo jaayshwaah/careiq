@@ -28,7 +28,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
   }, ref) => {
     const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
     
-    const baseClasses = "flex h-10 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm transition-standard file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+    const baseClasses = "flex h-10 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm transition-standard file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
     
     const variants = {
       default: "bg-[var(--card)] border-[var(--border)]",
@@ -47,14 +47,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label 
             htmlFor={inputId}
-            className="text-sm font-medium text-[var(--text-primary)]"
+            className="text-sm font-medium text-primary"
           >
             {label}
           </label>
         )}
         <div className="relative">
           {leftIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">
               {leftIcon}
             </div>
           )}
@@ -74,7 +74,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {rightIcon && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted">
               {rightIcon}
             </div>
           )}
@@ -90,7 +90,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </motion.p>
         )}
         {helperText && !error && (
-          <p className="text-sm text-[var(--muted)]">
+          <p className="text-sm text-muted">
             {helperText}
           </p>
         )}
