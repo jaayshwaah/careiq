@@ -20,7 +20,7 @@ import ChatWorkspaces from "@/components/chat/ChatWorkspaces";
 type Msg = {
   id: string;
   chat_id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system" | "tool";
   content: string;
   created_at: string;
   tableHtml?: string;
@@ -44,6 +44,61 @@ function TypingIndicator() {
       <span className="text-sm text-gray-500 dark:text-gray-400">CareIQ is thinking...</span>
     </div>
   );
+}
+
+function downloadGeneratedFile(fileOffer: { fileId: string; fileType: string; template: string; filename: string; data: any }) {
+  try {
+    let blob: Blob;
+    let mimeType: string;
+    
+    if (fileOffer.fileType === 'excel') {
+      // Convert data to Excel format (simplified)
+      const csvContent = convertToCSV(fileOffer.data);
+      blob = new Blob([csvContent], { type: 'text/csv' });
+      mimeType = 'text/csv';
+    } else if (fileOffer.fileType === 'pdf') {
+      // For PDF, we'd need a PDF library like jsPDF
+      // For now, create a text file
+      const textContent = JSON.stringify(fileOffer.data, null, 2);
+      blob = new Blob([textContent], { type: 'text/plain' });
+      mimeType = 'text/plain';
+    } else {
+      // Default to JSON
+      const jsonContent = JSON.stringify(fileOffer.data, null, 2);
+      blob = new Blob([jsonContent], { type: 'application/json' });
+      mimeType = 'application/json';
+    }
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileOffer.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error downloading file:', error);
+  }
+}
+
+function convertToCSV(data: any): string {
+  if (!data || !Array.isArray(data)) return '';
+  
+  if (data.length === 0) return '';
+  
+  const headers = Object.keys(data[0]);
+  const csvRows = [headers.join(',')];
+  
+  for (const row of data) {
+    const values = headers.map(header => {
+      const value = row[header];
+      return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+    });
+    csvRows.push(values.join(','));
+  }
+  
+  return csvRows.join('\n');
 }
 
 function CopyButton({ content, className = "" }: { content: string; className?: string }) {

@@ -76,53 +76,8 @@ export default function AdminKnowledgePage() {
       }
     } catch (error) {
       console.error("Failed to load knowledge entries:", error);
-      // Mock data for development
-      setEntries([
-        {
-          id: "1",
-          title: "CMS Medication Administration Requirements",
-          category: "CMS",
-          facility_id: null,
-          state: null,
-          content: "42 CFR 483.45 - Pharmacy services. The facility must provide pharmaceutical services to meet the needs of each resident...",
-          source_url: "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-G/part-483/section-483.45",
-          last_updated: new Date().toISOString(),
-          created_at: new Date().toISOString()
-        },
-        {
-          id: "2", 
-          title: "California Infection Control Requirements",
-          category: "State",
-          facility_id: null,
-          state: "CA",
-          content: "California Health and Safety Code Section 1275.5 requires nursing facilities to implement infection control programs...",
-          source_url: null,
-          last_updated: new Date().toISOString(),
-          created_at: new Date().toISOString()
-        },
-        {
-          id: "3",
-          title: "MDS 3.0 Section A - Identification and Background Information",
-          category: "MDS Manuals",
-          facility_id: null,
-          state: null,
-          content: "Section A collects identifying information about the resident. A0050 Type of Record: determines if this is a Medicare/Medicaid (5-day) assessment or an Entry or Admission Record...",
-          source_url: "https://www.cms.gov/medicare/quality-initiatives-patient-assessment-instruments/nursinghomequalityinits/mds30-training-materials",
-          last_updated: new Date().toISOString(),
-          created_at: new Date().toISOString()
-        },
-        {
-          id: "4",
-          title: "MDS 3.0 Section K - Swallowing/Nutritional Status",
-          category: "MDS Manuals",
-          facility_id: null,
-          state: null,
-          content: "Section K addresses swallowing disorders and nutritional approaches. K0100 Swallowing disorder: identify residents who have been diagnosed with a swallowing disorder...",
-          source_url: "https://www.cms.gov/medicare/quality-initiatives-patient-assessment-instruments/nursinghomequalityinits/mds30-training-materials",
-          last_updated: new Date().toISOString(),
-          created_at: new Date().toISOString()
-        }
-      ]);
+      // Set empty array instead of mock data
+      setEntries([]);
     } finally {
       setLoading(false);
     }

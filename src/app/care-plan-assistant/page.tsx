@@ -125,66 +125,59 @@ export default function CarePlanAssistant() {
 
   const loadCarePlans = async () => {
     try {
-      // Since care plans might not exist in your schema yet, we'll create mock data
-      // In production, this would query your care_plans table
-      const mockPlans: CarePlan[] = [
-        {
-          id: '1',
-          resident_name: 'Mary Johnson',
-          resident_id: 'RES001',
-          plan_type: 'Comprehensive',
-          diagnosis: ['Diabetes Type 2', 'Hypertension', 'Dementia'],
-          care_goals: [
-            {
-              id: 'goal1',
-              goal_text: 'Maintain blood glucose between 100-180 mg/dL',
-              target_date: '2025-12-31',
-              status: 'active',
-              progress_notes: ['Initial assessment completed', 'Baseline readings established'],
-              interventions: ['BG monitoring QID', 'Diabetic diet', 'Medication compliance']
-            }
-          ],
-          medications: ['Metformin 500mg BID', 'Lisinopril 10mg daily', 'Donepezil 10mg daily'],
-          allergies: ['Penicillin', 'Shellfish'],
-          diet_restrictions: ['Diabetic diet', 'Low sodium'],
-          mobility_status: 'Ambulatory with walker',
-          cognitive_status: 'Mild cognitive impairment',
-          last_updated: '2024-12-15',
-          next_review: '2025-01-15',
-          created_by: 'Jane Smith, RN',
-          status: 'active'
-        },
-        {
-          id: '2',
-          resident_name: 'Robert Wilson',
-          resident_id: 'RES002',
-          plan_type: 'Fall Prevention',
-          diagnosis: ['Osteoporosis', 'History of falls'],
-          care_goals: [
-            {
-              id: 'goal2',
-              goal_text: 'Remain free from falls for 90 days',
-              target_date: '2025-03-31',
-              status: 'active',
-              progress_notes: ['Fall risk assessment completed - HIGH risk', 'Safety measures implemented'],
-              interventions: ['Bed alarm', 'Non-slip socks', 'Physical therapy evaluation']
-            }
-          ],
-          medications: ['Calcium 600mg BID', 'Vitamin D3 1000 IU daily'],
-          allergies: ['NKDA'],
-          diet_restrictions: ['Regular diet'],
-          mobility_status: 'Ambulatory with assistance',
-          cognitive_status: 'Alert and oriented x3',
-          last_updated: '2024-12-10',
-          next_review: '2025-01-10',
-          created_by: 'Mike Chen, RN',
-          status: 'active'
-        }
-      ];
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.error('No session found');
+        setLoading(false);
+        return;
+      }
 
-      setCarePlans(mockPlans);
+      const response = await fetch('/api/care-plans', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const plans = result.care_plans || [];
+        
+        // Transform database data to match component interface
+        const transformedPlans: CarePlan[] = plans.map((plan: any) => ({
+          id: plan.id,
+          resident_name: plan.resident_name,
+          resident_id: plan.resident_id,
+          plan_type: plan.plan_type,
+          diagnosis: plan.diagnosis || [],
+          care_goals: (plan.goals || []).map((goal: any) => ({
+            id: goal.id,
+            goal_text: goal.goal_text,
+            target_date: goal.target_date,
+            status: goal.status,
+            progress_notes: goal.progress_notes || [],
+            interventions: goal.interventions || []
+          })),
+          medications: plan.medications || [],
+          allergies: plan.allergies || [],
+          diet_restrictions: plan.diet_restrictions || [],
+          mobility_status: plan.mobility_status || '',
+          cognitive_status: plan.cognitive_status || '',
+          last_updated: plan.updated_at,
+          next_review: plan.next_review,
+          created_by: 'System', // Would need to join with profiles table
+          status: plan.status
+        }));
+        
+        setCarePlans(transformedPlans);
+      } else {
+        console.error('Failed to load care plans');
+        // Fallback to empty array instead of mock data
+        setCarePlans([]);
+      }
     } catch (error) {
       console.error('Error loading care plans:', error);
+      setCarePlans([]);
     } finally {
       setLoading(false);
     }

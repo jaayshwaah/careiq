@@ -1,157 +1,251 @@
-// src/app/api/cms-guidance/route.ts
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
+// CMS Guidance API
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
+import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
+
+export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   try {
+    const rateLimitResponse = await rateLimit(req, RATE_LIMITS.DEFAULT);
+    if (rateLimitResponse) return rateLimitResponse;
+
+    const authHeader = req.headers.get("authorization") || undefined;
+    const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    const supa = supabaseServerWithAuth(accessToken);
+
+    const { data: { user }, error: userError } = await supa.auth.getUser();
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
+    const type = searchParams.get('type') || 'regulations';
     const category = searchParams.get('category');
     const severity = searchParams.get('severity');
-    const search = searchParams.get('search');
-    const favorites = searchParams.get('favorites') === 'true';
+    const fTag = searchParams.get('f_tag');
 
-    const auth = req.headers.get("authorization") || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
-    
-    const supa = supabaseServerWithAuth(token);
+    if (type === 'regulations') {
+      let query = supa
+        .from('cms_regulations')
+        .select('*')
+        .eq('is_active', true)
+        .order('f_tag');
 
-    // For now, return mock data - in production this would come from database
-    const mockRegulations = [
-      {
-        id: "f-tag-514",
-        category: "Quality of Care",
-        title: "Nursing Services - Sufficient Staff (F-Tag 514)",
-        description: "Each resident must receive and the facility must provide the necessary care and services to attain or maintain the highest practicable physical, mental, and psychosocial well-being.",
-        severity: "critical",
-        fTag: "F-514",
-        scope: "All nursing home residents requiring nursing services",
-        lastUpdated: "2024-01-15",
-        tags: ["staffing", "nursing", "quality", "care-planning"],
-        requirements: [
-          "Provide 24-hour nursing services sufficient to meet resident needs",
-          "Ensure RN supervision at least 8 consecutive hours per day, 7 days a week",
-          "Maintain adequate staffing levels to meet residents' assessed needs",
-          "Have a charge nurse on each tour of duty"
-        ],
-        consequences: "Immediate Jeopardy potential with fines up to $21,393 per day. Can lead to termination of provider agreement.",
-        bestPractices: [
-          "Conduct regular staffing assessments based on resident acuity",
-          "Implement consistent assignment practices",
-          "Maintain comprehensive orientation programs",
-          "Use evidence-based staffing tools and metrics",
-          "Document all staffing decisions and rationales"
-        ],
-        relatedRegulations: ["F-515", "F-516", "F-725"]
-      },
-      {
-        id: "f-tag-686",
-        category: "Infection Prevention",
-        title: "Infection Prevention and Control Program (F-Tag 686)",
-        description: "The facility must establish an infection prevention and control program (IPCP) that must be designed to provide a safe, sanitary, and comfortable environment and to help prevent the development and transmission of communicable diseases and infections.",
-        severity: "critical",
-        fTag: "F-686",
-        scope: "All residents, staff, and visitors",
-        lastUpdated: "2024-02-20",
-        tags: ["infection-control", "safety", "covid", "communicable-diseases"],
-        requirements: [
-          "Designate an infection preventionist with specialized training",
-          "Establish written infection prevention and control policies",
-          "Implement surveillance, prevention, and control of infections",
-          "Provide infection prevention education to staff",
-          "Maintain isolation precautions when indicated",
-          "Report communicable diseases and infections to appropriate authorities"
-        ],
-        consequences: "Can result in Immediate Jeopardy citations with fines up to $21,393 per day. May require immediate closure of facility.",
-        bestPractices: [
-          "Implement evidence-based infection prevention protocols",
-          "Conduct regular hand hygiene audits",
-          "Maintain proper PPE inventory and training",
-          "Establish antimicrobial stewardship programs",
-          "Create robust outbreak response plans"
-        ],
-        relatedRegulations: ["F-880", "F-441", "F-607"]
+      if (category) {
+        query = query.eq('category', category);
       }
-    ];
-
-    const mockUpdates = [
-      {
-        id: "update-1",
-        title: "New CMS Staffing Requirements Take Effect",
-        summary: "CMS has implemented new minimum staffing requirements for nursing homes, including specific RN and total nursing hour minimums.",
-        date: "2024-02-15",
-        category: "Staffing",
-        impact: "high",
-        source: "CMS.gov",
-        link: "https://cms.gov/staffing-updates"
-      },
-      {
-        id: "update-2",
-        title: "Updated Infection Control Guidelines",
-        summary: "New guidance on respiratory infection prevention protocols, including updated isolation procedures.",
-        date: "2024-02-10",
-        category: "Infection Control",
-        impact: "medium",
-        source: "CDC",
-        link: "https://cdc.gov/ltc-infection-control"
+      if (severity) {
+        query = query.eq('severity', severity);
       }
-    ];
+      if (fTag) {
+        query = query.eq('f_tag', fTag);
+      }
 
-    return NextResponse.json({ 
-      ok: true, 
-      regulations: mockRegulations,
-      updates: mockUpdates 
-    });
+      const { data: regulations, error } = await query;
+
+      if (error) {
+        console.error('Error fetching CMS regulations:', error);
+        return NextResponse.json({ error: "Failed to fetch CMS regulations" }, { status: 500 });
+      }
+
+      return NextResponse.json({ regulations: regulations || [] });
+
+    } else if (type === 'updates') {
+      const { data: updates, error } = await supa
+        .from('compliance_updates')
+        .select('*')
+        .eq('is_active', true)
+        .order('effective_date', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching compliance updates:', error);
+        return NextResponse.json({ error: "Failed to fetch compliance updates" }, { status: 500 });
+      }
+
+      return NextResponse.json({ updates: updates || [] });
+
+    } else if (type === 'resources') {
+      const { data: resources, error } = await supa
+        .from('compliance_resources')
+        .select('*')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching compliance resources:', error);
+        return NextResponse.json({ error: "Failed to fetch compliance resources" }, { status: 500 });
+      }
+
+      return NextResponse.json({ resources: resources || [] });
+    }
+
+    return NextResponse.json({ error: "Invalid type parameter" }, { status: 400 });
 
   } catch (error: any) {
-    console.error('CMS Guidance API error:', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    console.error('CMS guidance API error:', error);
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { action, regulationId, userId } = body;
+    const rateLimitResponse = await rateLimit(req, RATE_LIMITS.WRITE);
+    if (rateLimitResponse) return rateLimitResponse;
 
-    const auth = req.headers.get("authorization") || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
-    
-    const supa = supabaseServerWithAuth(token);
+    const authHeader = req.headers.get("authorization") || undefined;
+    const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    const supa = supabaseServerWithAuth(accessToken);
 
-    if (action === 'toggle_favorite') {
-      // In a real implementation, you would save/remove favorites to database
-      // For now, just return success
-      return NextResponse.json({ 
-        ok: true, 
-        message: `Regulation ${regulationId} ${body.isFavorite ? 'added to' : 'removed from'} favorites` 
-      });
+    const { data: { user }, error: userError } = await supa.auth.getUser();
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (action === 'track_access') {
-      // Track regulation access for analytics
-      const { data, error } = await supa
-        .from('cms_regulation_access')
-        .insert({
-          regulation_id: regulationId,
-          user_id: userId,
-          accessed_at: new Date().toISOString()
-        });
+    const {
+      type,
+      data: requestData
+    } = await req.json();
 
-      if (error) {
-        console.error('Failed to track access:', error);
-        // Don't fail the request for tracking errors
+    if (type === 'regulation') {
+      const {
+        f_tag,
+        category,
+        title,
+        description,
+        severity,
+        scope,
+        last_updated,
+        tags = [],
+        requirements = [],
+        consequences,
+        best_practices = [],
+        related_regulations = [],
+        implementation_steps = [],
+        monitoring_requirements = [],
+        documentation_requirements = [],
+        common_deficiencies = []
+      } = requestData;
+
+      if (!f_tag || !category || !title || !description || !severity || !scope) {
+        return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
       }
 
-      return NextResponse.json({ ok: true });
+      const { data: regulation, error } = await supa
+        .from('cms_regulations')
+        .insert({
+          f_tag,
+          category,
+          title,
+          description,
+          severity,
+          scope,
+          last_updated,
+          tags,
+          requirements,
+          consequences,
+          best_practices,
+          related_regulations,
+          implementation_steps,
+          monitoring_requirements,
+          documentation_requirements,
+          common_deficiencies
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating CMS regulation:', error);
+        return NextResponse.json({ error: "Failed to create CMS regulation" }, { status: 500 });
+      }
+
+      return NextResponse.json({ regulation }, { status: 201 });
+
+    } else if (type === 'update') {
+      const {
+        title,
+        description,
+        update_type,
+        severity,
+        effective_date,
+        affected_regulations = [],
+        summary,
+        full_text,
+        source_url
+      } = requestData;
+
+      if (!title || !description || !update_type || !severity || !effective_date || !summary) {
+        return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      }
+
+      const { data: update, error } = await supa
+        .from('compliance_updates')
+        .insert({
+          title,
+          description,
+          update_type,
+          severity,
+          effective_date,
+          affected_regulations,
+          summary,
+          full_text,
+          source_url
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating compliance update:', error);
+        return NextResponse.json({ error: "Failed to create compliance update" }, { status: 500 });
+      }
+
+      return NextResponse.json({ update }, { status: 201 });
+
+    } else if (type === 'resource') {
+      const {
+        title,
+        description,
+        resource_type,
+        category,
+        file_url,
+        external_url,
+        tags = [],
+        is_public = true
+      } = requestData;
+
+      if (!title || !description || !resource_type || !category) {
+        return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      }
+
+      const { data: resource, error } = await supa
+        .from('compliance_resources')
+        .insert({
+          title,
+          description,
+          resource_type,
+          category,
+          file_url,
+          external_url,
+          tags,
+          is_public,
+          created_by: user.id
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating compliance resource:', error);
+        return NextResponse.json({ error: "Failed to create compliance resource" }, { status: 500 });
+      }
+
+      return NextResponse.json({ resource }, { status: 201 });
     }
 
-    return NextResponse.json({ ok: false, error: "Invalid action" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid type parameter" }, { status: 400 });
 
   } catch (error: any) {
-    console.error('CMS Guidance API error:', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    console.error('Create CMS guidance error:', error);
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }

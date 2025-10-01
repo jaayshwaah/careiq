@@ -64,8 +64,8 @@ interface ComplianceUpdate {
   link?: string;
 }
 
-// Mock CMS regulations data
-const cmsRegulations: ComplianceRegulation[] = [
+// CMS regulations data - now loaded from database
+const defaultCmsRegulations: ComplianceRegulation[] = [
   {
     id: "f-tag-514",
     category: "Quality of Care",
@@ -323,6 +323,10 @@ const categories = [
 
 export default function CMSGuidancePage() {
   const { user } = useAuth();
+  const [regulations, setRegulations] = useState<ComplianceRegulation[]>(defaultCmsRegulations);
+  const [updates, setUpdates] = useState<ComplianceUpdate[]>([]);
+  const [resources, setResources] = useState<ComplianceResource[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSeverity, setSelectedSeverity] = useState<string>("all");
@@ -331,9 +335,47 @@ export default function CMSGuidancePage() {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
+  // Load data from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        
+        // Load regulations
+        const regulationsResponse = await fetch('/api/cms-guidance?type=regulations');
+        if (regulationsResponse.ok) {
+          const regulationsData = await regulationsResponse.json();
+          if (regulationsData.regulations && regulationsData.regulations.length > 0) {
+            setRegulations(regulationsData.regulations);
+          }
+        }
+        
+        // Load updates
+        const updatesResponse = await fetch('/api/cms-guidance?type=updates');
+        if (updatesResponse.ok) {
+          const updatesData = await updatesResponse.json();
+          setUpdates(updatesData.updates || []);
+        }
+        
+        // Load resources
+        const resourcesResponse = await fetch('/api/cms-guidance?type=resources');
+        if (resourcesResponse.ok) {
+          const resourcesData = await resourcesResponse.json();
+          setResources(resourcesData.resources || []);
+        }
+      } catch (error) {
+        console.error('Error loading CMS guidance data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
+
   // Filter regulations based on search and filters
   const filteredRegulations = useMemo(() => {
-    return cmsRegulations.filter(regulation => {
+    return regulations.filter(regulation => {
       const matchesCategory = selectedCategory === "all" || regulation.category === selectedCategory;
       const matchesSeverity = selectedSeverity === "all" || regulation.severity === selectedSeverity;
       const matchesSearch = searchQuery === "" || 

@@ -43,14 +43,37 @@ export async function GET(req: NextRequest) {
         .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
     ]);
 
-    // Calculate error rate (mock for now - would need actual error tracking)
-    const errorRate = 0.02; // 2% error rate
+    // Calculate error rate from actual error logs
+    const { count: errorCount } = await supa
+      .from('error_logs')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
     
-    // Calculate average response time (mock for now - would need actual timing data)
-    const avgResponseTime = 1.2; // 1.2 seconds
+    const errorRate = totalRequests > 0 ? (errorCount || 0) / totalRequests : 0;
     
-    // Calculate storage used (mock for now - would need actual storage calculation)
-    const storageUsed = "2.4 GB";
+    // Calculate average response time from performance metrics
+    const { data: responseTimeData } = await supa
+      .from('performance_metrics')
+      .select('metric_value')
+      .eq('metric_name', 'api_response_time')
+      .gte('recorded_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .order('recorded_at', { ascending: false })
+      .limit(100);
+    
+    const avgResponseTime = responseTimeData && responseTimeData.length > 0 
+      ? responseTimeData.reduce((sum, r) => sum + r.metric_value, 0) / responseTimeData.length 
+      : 0;
+    
+    // Calculate storage used from actual data
+    const { data: storageData } = await supa
+      .from('performance_metrics')
+      .select('metric_value')
+      .eq('metric_name', 'storage_used')
+      .order('recorded_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    const storageUsed = storageData ? `${(storageData.metric_value / 1024 / 1024 / 1024).toFixed(1)} GB` : "0 GB";
 
     const stats = {
       totalUsers: usersResult.count || 0,
