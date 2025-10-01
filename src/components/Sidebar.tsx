@@ -421,7 +421,7 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
       </div>
 
       {/* Scrollable Content Area - Tools and Chats */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <div className="p-3">
           {/* Tools Section */}
           <div className="mb-6">
@@ -594,7 +594,7 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
         </div>
 
       {/* Fixed Footer - User Section */}
-      <div className="flex-none border-t border-gray-200/30 dark:border-gray-700/30 p-3">
+      <div className="flex-none border-t border-gray-200/30 dark:border-gray-700/30 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl">
         <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'justify-between'}`}>
           {!isCollapsed && (
             <div className="flex items-center gap-3 min-w-0">
