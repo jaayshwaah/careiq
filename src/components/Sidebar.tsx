@@ -324,10 +324,10 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
     <div className={`h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'} ${className}`}>
       {/* Fixed Header */}
       <div className={`flex-none border-b border-gray-200/30 dark:border-gray-700/30 ${isCollapsed ? 'px-3 py-4' : 'px-6 py-5'}`}>
-          <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-3 items-center">
             <div 
-              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
+              className="flex justify-center items-center w-8 h-8 rounded-lg shadow-sm"
               style={{
                 background: brandingSettings?.primary_color 
                   ? `linear-gradient(to bottom right, ${brandingSettings.primary_color}, ${brandingSettings.primary_color}CC)`
@@ -338,10 +338,10 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
                 <img 
                   src={facilityLogo || brandingSettings.logo_url} 
                   alt={facilityName ? `${facilityName} logo` : "Company logo"} 
-                  className="w-full h-full object-contain rounded-lg"
+                  className="object-contain w-full h-full rounded-lg"
                 />
               ) : (
-                <span className="text-white font-semibold text-sm">
+                <span className="text-sm font-semibold text-white">
                   {facilityName 
                     ? facilityName.charAt(0).toUpperCase() 
                     : brandingSettings?.company_name 
@@ -351,14 +351,14 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
               )}
                   </div>
             {!isCollapsed && (
-              <span className="font-semibold text-gray-900 dark:text-white text-lg">
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">
                 {facilityName || brandingSettings?.company_name || 'CareIQ'}
               </span>
             )}
           </div>
           <button
             onClick={toggleCollapse}
-            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-1 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
@@ -368,7 +368,7 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
           {/* New Chat Button */}
             <button
               onClick={createNewChat}
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-center gap-2'} px-4 py-2.5 text-white rounded-lg font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm`}
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-2 justify-center'} px-4 py-2.5 text-white rounded-lg font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm`}
           style={{
             backgroundColor: brandingSettings?.primary_color || '#3b82f6',
             ':hover': {
@@ -421,12 +421,12 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
       </div>
 
       {/* Scrollable Content Area - Tools and Chats */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="overflow-y-auto flex-1 min-h-0">
         <div className="p-3">
           {/* Tools Section */}
           <div className="mb-6">
             {!isCollapsed && (
-              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-2">
+              <div className="px-2 mb-3 text-xs font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">
                 Tools
               </div>
             )}
@@ -483,13 +483,13 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
           {!isCollapsed && (
             <div className="mb-6">
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <Search size={16} className="absolute left-3 top-1/2 text-gray-400 transform -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search chats..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-gray-800/50 border-0 rounded-lg text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="py-2 pr-3 pl-9 w-full text-sm placeholder-gray-500 bg-gray-100 rounded-lg border-0 dark:bg-gray-800/50 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
               </div>
             </div>
@@ -498,7 +498,7 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
           {/* Chat History */}
           <div>
             {!isCollapsed && (
-              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-2">
+              <div className="px-2 mb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">
                 Recent Chats
               </div>
             )}
@@ -506,7 +506,7 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
             {loading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+                <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse dark:bg-gray-800" />
                 ))}
               </div>
             ) : filteredChats.length > 0 ? (
@@ -541,7 +541,7 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
                             if (e.key === 'Enter') handleSaveTitle();
                             if (e.key === 'Escape') handleCancelEdit();
                           }}
-                          className="text-sm font-medium bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full"
+                          className="px-2 py-1 w-full text-sm font-medium bg-white rounded border border-gray-300 dark:bg-gray-700 dark:border-gray-600"
                           autoFocus
                         />
                       ) : (
@@ -558,7 +558,7 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
                       )}
                     </div>}
                     {!isEditing && !isCollapsed && (
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                      <div className="flex gap-1 items-center opacity-0 transition-opacity group-hover:opacity-100">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -586,7 +586,7 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
               })}
               </div>
             ) : (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
+            <div className="py-8 text-sm text-center text-gray-500 dark:text-gray-400">
               No chats yet
               </div>
             )}
@@ -594,18 +594,18 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
         </div>
 
       {/* Fixed Footer - User Section */}
-      <div className="flex-none border-t border-gray-200/30 dark:border-gray-700/30 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl">
+      <div className="flex-none p-3 border-t backdrop-blur-xl border-gray-200/30 dark:border-gray-700/30 bg-white/95 dark:bg-gray-900/95">
         <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'justify-between'}`}>
           {!isCollapsed && (
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center">
+            <div className="flex gap-3 items-center min-w-0">
+              <div className="flex justify-center items-center w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full">
                 <User size={16} className="text-white" />
                   </div>
               <div className="min-w-0">
-                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                <div className="text-sm font-medium text-gray-900 truncate dark:text-white">
                       {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <div className="text-xs text-gray-500 truncate dark:text-gray-400">
                   {userProfile?.role || 'Member'}
                 </div>
               </div>
@@ -614,14 +614,14 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
           <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-1'}`}>
             <Link
               href="/settings"
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
               title="Settings"
             >
               <Settings size={16} className="text-gray-500 dark:text-gray-400" />
             </Link>
                   <button
                     onClick={handleSignOut}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
                     title="Sign out"
                   >
               <LogOut size={16} className="text-gray-500 dark:text-gray-400" />
