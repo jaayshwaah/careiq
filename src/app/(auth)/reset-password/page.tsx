@@ -4,6 +4,8 @@
 import { useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
+export const dynamic = 'error';
+
 export default function ResetPasswordPage() {
   const supabase = getBrowserSupabase();
   const [email, setEmail] = useState("");

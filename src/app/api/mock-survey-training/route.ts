@@ -1,6 +1,6 @@
 // src/app/api/mock-survey-training/route.ts
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const revalidate = 3600; // Cache for 1 hour (static data)
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";

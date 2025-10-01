@@ -4,6 +4,7 @@ import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
 
 export const runtime = "nodejs";
+export const revalidate = 1800; // Cache for 30 minutes (semi-static data)
 
 export async function GET(req: NextRequest) {
   try {

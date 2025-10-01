@@ -4,7 +4,7 @@ import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"; // Needs to be dynamic due to request.headers usage
 
 interface PerformanceMetrics {
   database: {

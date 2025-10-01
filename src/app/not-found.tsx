@@ -1,6 +1,9 @@
 // src/app/not-found.tsx
 // Fixed version without ThemeProvider dependency
 
+export const dynamic = 'error';
+export const revalidate = false;
+
 export default function NotFound() {
   return (
     <html lang="en">

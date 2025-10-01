@@ -1,5 +1,8 @@
 "use client";
 
+export const dynamic = 'error';
+export const revalidate = false;
+
 export default function GlobalError({
   error,
   reset,

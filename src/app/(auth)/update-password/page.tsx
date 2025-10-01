@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
+export const dynamic = 'error';
+
 export default function UpdatePasswordPage() {
   const supabase = getBrowserSupabase();
   const router = useRouter();

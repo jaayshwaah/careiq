@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 
+export const dynamic = 'error';
+
 export default function RegisterPage() {
   const router = useRouter();
   const supabase = getBrowserSupabase();

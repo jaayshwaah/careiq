@@ -1,5 +1,5 @@
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // Cache for 1 minute
 
 import { NextResponse } from "next/server";
 

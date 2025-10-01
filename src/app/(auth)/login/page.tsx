@@ -6,6 +6,8 @@ import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
 
+export const dynamic = 'error';
+
 type Mode = "signin" | "signup" | "magic" | "forgot";
 
 export default function LoginPage() {
