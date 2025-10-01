@@ -78,7 +78,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="CareIQ" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased">
+      <body className="bg-[var(--bg-primary)] text-primary antialiased">
         <ThemeProvider>
           <ResponsiveProvider>
             <AccessibilityProvider>

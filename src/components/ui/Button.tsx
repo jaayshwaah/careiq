@@ -30,10 +30,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     
     const variants = {
       primary: "bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-hover)] shadow-soft",
-      secondary: "bg-[var(--muted)] text-[var(--text-primary)] hover:bg-[var(--muted)]/80",
-      ghost: "hover:bg-[var(--muted)] text-[var(--text-primary)]",
+      secondary: "bg-[var(--muted)] text-primary hover:bg-[var(--muted)]/80",
+      ghost: "hover:bg-[var(--muted)] text-primary",
       danger: "bg-[var(--err)] text-white hover:bg-[var(--err)]/90 shadow-soft",
-      glass: "glass-effect hover:bg-[var(--glass-hover)] text-[var(--text-primary)]"
+      glass: "glass-effect hover:bg-[var(--glass-hover)] text-primary"
     };
     
     const sizes = {

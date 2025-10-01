@@ -195,7 +195,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           >
             {/* Search Input */}
             <div className="flex items-center gap-3 p-4 border-b border-[var(--glass-border)]">
-              <Search size={20} className="text-[var(--muted)]" />
+              <Search size={20} className="text-muted" />
               <input
                 ref={inputRef}
                 type="text"
@@ -203,11 +203,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="flex-1 bg-transparent text-[var(--text-primary)] placeholder-[var(--muted)] focus:outline-none text-lg"
+                className="flex-1 bg-transparent text-primary placeholder-[var(--muted)] focus:outline-none text-lg"
               />
-              <div className="flex items-center gap-1 text-xs text-[var(--muted)]">
-                <kbd className="px-2 py-1 bg-[var(--muted)] rounded text-[var(--text-primary)]">⌘</kbd>
-                <kbd className="px-2 py-1 bg-[var(--muted)] rounded text-[var(--text-primary)]">K</kbd>
+              <div className="flex items-center gap-1 text-xs text-muted">
+                <kbd className="px-2 py-1 bg-[var(--muted)] rounded text-primary">⌘</kbd>
+                <kbd className="px-2 py-1 bg-[var(--muted)] rounded text-primary">K</kbd>
               </div>
             </div>
 
@@ -218,7 +218,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
             >
               {Object.entries(groupedCommands).map(([category, commands]) => (
                 <div key={category} className="mb-4 last:mb-0">
-                  <div className="px-2 py-1 text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">
+                  <div className="px-2 py-1 text-xs font-semibold text-muted uppercase tracking-wider">
                     {category}
                   </div>
                   <div className="space-y-1">
@@ -234,7 +234,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                             "w-full flex items-center gap-3 p-3 rounded-[var(--radius-md)] text-left transition-standard",
                             isSelected 
                               ? "bg-[var(--accent)] text-[var(--accent-contrast)]" 
-                              : "hover:bg-[var(--muted)] text-[var(--text-primary)]"
+                              : "hover:bg-[var(--muted)] text-primary"
                           )}
                           whileHover={{ x: 4 }}
                           transition={{ duration: 0.2 }}
@@ -242,14 +242,14 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                           <command.icon 
                             size={18} 
                             className={cn(
-                              isSelected ? "text-[var(--accent-contrast)]" : "text-[var(--muted)]"
+                              isSelected ? "text-[var(--accent-contrast)]" : "text-muted"
                             )} 
                           />
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">{command.title}</div>
                             <div className={cn(
                               "text-sm truncate",
-                              isSelected ? "text-[var(--accent-contrast)]/80" : "text-[var(--muted)]"
+                              isSelected ? "text-[var(--accent-contrast)]/80" : "text-muted"
                             )}>
                               {command.description}
                             </div>
@@ -262,7 +262,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
               ))}
               
               {filteredCommands.length === 0 && (
-                <div className="py-8 text-center text-[var(--muted)]">
+                <div className="py-8 text-center text-muted">
                   <Command size={48} className="mx-auto mb-4 opacity-50" />
                   <div className="text-lg font-medium mb-2">No commands found</div>
                   <div className="text-sm">Try a different search term</div>
@@ -271,22 +271,22 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between p-4 border-t border-[var(--glass-border)] text-xs text-[var(--muted)]">
+            <div className="flex items-center justify-between p-4 border-t border-[var(--glass-border)] text-xs text-muted">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-[var(--muted)] rounded text-[var(--text-primary)]">↑↓</kbd>
+                  <kbd className="px-1.5 py-0.5 bg-[var(--muted)] rounded text-primary">↑↓</kbd>
                   <span>Navigate</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-[var(--muted)] rounded text-[var(--text-primary)]">↵</kbd>
+                  <kbd className="px-1.5 py-0.5 bg-[var(--muted)] rounded text-primary">↵</kbd>
                   <span>Select</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-[var(--muted)] rounded text-[var(--text-primary)]">esc</kbd>
+                  <kbd className="px-1.5 py-0.5 bg-[var(--muted)] rounded text-primary">esc</kbd>
                   <span>Close</span>
                 </div>
               </div>
-              <div className="text-[var(--muted)]">
+              <div className="text-muted">
                 {filteredCommands.length} command{filteredCommands.length !== 1 ? 's' : ''}
               </div>
             </div>

@@ -80,7 +80,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     return (
       <div 
         className={cn(
-          "flex items-center justify-center bg-[var(--muted)] text-[var(--muted)]",
+          "flex items-center justify-center bg-[var(--muted)] text-muted",
           className
         )}
         style={{ width, height }}

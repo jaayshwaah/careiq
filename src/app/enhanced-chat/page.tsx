@@ -226,7 +226,7 @@ const EnhancedChatPage: React.FC = () => {
       <div className="w-80 glass border-r border-[var(--glass-border)] flex flex-col">
         <div className="p-4 border-b border-[var(--glass-border)]">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+            <h2 className="text-lg font-semibold text-primary">
               Recent Chats
             </h2>
             <Button
@@ -256,12 +256,12 @@ const EnhancedChatPage: React.FC = () => {
                 className="p-3 cursor-pointer hover:bg-[var(--muted)]/50"
               >
                 <div className="flex items-center gap-3">
-                  <MessageCircle size={16} className="text-[var(--muted)]" />
+                  <MessageCircle size={16} className="text-muted" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-[var(--text-primary)] truncate">
+                    <div className="font-medium text-primary truncate">
                       {chat.title}
                     </div>
-                    <div className="text-sm text-[var(--muted)]">
+                    <div className="text-sm text-muted">
                       {chat.lastMessage}
                     </div>
                   </div>
@@ -278,10 +278,10 @@ const EnhancedChatPage: React.FC = () => {
         <div className="glass border-b border-[var(--glass-border)] p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-semibold text-[var(--text-primary)]">
+              <h1 className="text-xl font-semibold text-primary">
                 AI Assistant
               </h1>
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-muted">
                 Ask questions, analyze documents, or get compliance guidance
               </p>
             </div>
@@ -303,10 +303,10 @@ const EnhancedChatPage: React.FC = () => {
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent-hover)] flex items-center justify-center mb-4 mx-auto">
                   <Bot size={32} className="text-white" />
                 </div>
-                <h2 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">
+                <h2 className="text-2xl font-semibold text-primary mb-2">
                   Start a conversation
                 </h2>
-                <p className="text-[var(--muted)] mb-6">
+                <p className="text-muted mb-6">
                   Ask questions, upload documents, or choose a preset prompt
                 </p>
               </div>
@@ -326,10 +326,10 @@ const EnhancedChatPage: React.FC = () => {
                         <MessageCircle size={20} className="text-[var(--accent)]" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-[var(--text-primary)] mb-1">
+                        <h3 className="font-semibold text-primary mb-1">
                           {preset.title}
                         </h3>
-                        <p className="text-sm text-[var(--muted)]">
+                        <p className="text-sm text-muted">
                           {preset.description}
                         </p>
                       </div>
@@ -367,7 +367,7 @@ const EnhancedChatPage: React.FC = () => {
                     {message.role === 'user' ? (
                       <User size={16} className="text-white" />
                     ) : (
-                      <Bot size={16} className="text-[var(--text-primary)]" />
+                      <Bot size={16} className="text-primary" />
                     )}
                   </div>
 
@@ -395,17 +395,17 @@ const EnhancedChatPage: React.FC = () => {
                                 <div className="text-sm font-medium truncate">
                                   {attachment.name}
                                 </div>
-                                <div className="text-xs text-[var(--muted)]">
+                                <div className="text-xs text-muted">
                                   {formatFileSize(attachment.size)}
                                 </div>
                               </div>
                               <div className={cn(
                                 "text-xs px-2 py-1 rounded",
                                 attachment.status === 'ready' 
-                                  ? "bg-[var(--ok)]/20 text-[var(--ok)]"
+                                  ? "bg-[var(--ok)]/20 status-ok"
                                   : attachment.status === 'uploading'
-                                  ? "bg-[var(--info)]/20 text-[var(--info)]"
-                                  : "bg-[var(--err)]/20 text-[var(--err)]"
+                                  ? "bg-[var(--info)]/20 status-info"
+                                  : "bg-[var(--err)]/20 status-error"
                               )}>
                                 {attachment.status}
                               </div>
@@ -422,7 +422,7 @@ const EnhancedChatPage: React.FC = () => {
                       {/* Citations */}
                       {message.citations && message.citations.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          <div className="text-sm font-medium text-[var(--muted)]">
+                          <div className="text-sm font-medium text-muted">
                             Sources:
                           </div>
                           {message.citations.map((citation) => (
@@ -430,17 +430,17 @@ const EnhancedChatPage: React.FC = () => {
                               key={citation.id}
                               className="flex items-center gap-2 p-2 bg-[var(--muted)]/30 rounded-[var(--radius-sm)] cursor-pointer hover:bg-[var(--muted)]/50 transition-standard"
                             >
-                              <BookOpen size={14} className="text-[var(--info)]" />
+                              <BookOpen size={14} className="status-info" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium truncate">
                                   {citation.title}
                                 </div>
-                                <div className="text-xs text-[var(--muted)]">
+                                <div className="text-xs text-muted">
                                   {citation.source}
                                   {citation.page && ` - Page ${citation.page}`}
                                 </div>
                               </div>
-                              <div className="text-xs text-[var(--info)]">
+                              <div className="text-xs status-info">
                                 {Math.round(citation.relevance * 100)}%
                               </div>
                             </div>
@@ -496,7 +496,7 @@ const EnhancedChatPage: React.FC = () => {
               className="flex gap-3"
             >
               <div className="w-8 h-8 rounded-full bg-[var(--muted)] flex items-center justify-center">
-                <Bot size={16} className="text-[var(--text-primary)]" />
+                <Bot size={16} className="text-primary" />
               </div>
               <Card variant="glass" className="p-4">
                 <div className="flex items-center gap-2">
@@ -505,7 +505,7 @@ const EnhancedChatPage: React.FC = () => {
                     <div className="w-2 h-2 bg-[var(--accent)] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
                     <div className="w-2 h-2 bg-[var(--accent)] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                   </div>
-                  <span className="text-sm text-[var(--muted)]">AI is thinking...</span>
+                  <span className="text-sm text-muted">AI is thinking...</span>
                 </div>
               </Card>
             </motion.div>
@@ -554,7 +554,7 @@ const EnhancedChatPage: React.FC = () => {
           {/* Attachments Preview */}
           {attachments.length > 0 && (
             <div className="mt-3 space-y-2">
-              <div className="text-sm font-medium text-[var(--text-primary)]">
+              <div className="text-sm font-medium text-primary">
                 Attachments:
               </div>
               <div className="flex flex-wrap gap-2">
@@ -590,7 +590,7 @@ const EnhancedChatPage: React.FC = () => {
         >
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+              <h3 className="text-lg font-semibold text-primary">
                 Context
               </h3>
               <Button
@@ -605,17 +605,17 @@ const EnhancedChatPage: React.FC = () => {
             {/* Resident Info */}
             <Card variant="glass" className="p-3">
               <div className="flex items-center gap-2 mb-2">
-                <User size={16} className="text-[var(--info)]" />
-                <span className="font-medium text-[var(--text-primary)]">Resident</span>
+                <User size={16} className="status-info" />
+                <span className="font-medium text-primary">Resident</span>
               </div>
               {context.resident ? (
                 <div className="space-y-1 text-sm">
                   <div className="font-medium">{context.resident.name}</div>
-                  <div className="text-[var(--muted)]">Room {context.resident.room}</div>
-                  <div className="text-[var(--muted)]">{context.resident.unit}</div>
+                  <div className="text-muted">Room {context.resident.room}</div>
+                  <div className="text-muted">{context.resident.unit}</div>
                 </div>
               ) : (
-                <div className="text-sm text-[var(--muted)]">
+                <div className="text-sm text-muted">
                   No resident selected
                 </div>
               )}
@@ -624,16 +624,16 @@ const EnhancedChatPage: React.FC = () => {
             {/* Facility Info */}
             <Card variant="glass" className="p-3">
               <div className="flex items-center gap-2 mb-2">
-                <Building2 size={16} className="text-[var(--info)]" />
-                <span className="font-medium text-[var(--text-primary)]">Facility</span>
+                <Building2 size={16} className="status-info" />
+                <span className="font-medium text-primary">Facility</span>
               </div>
               {context.facility ? (
                 <div className="space-y-1 text-sm">
                   <div className="font-medium">{context.facility.name}</div>
-                  <div className="text-[var(--muted)]">{context.facility.state}</div>
+                  <div className="text-muted">{context.facility.state}</div>
                 </div>
               ) : (
-                <div className="text-sm text-[var(--muted)]">
+                <div className="text-sm text-muted">
                   {userProfile?.facility_name || 'No facility selected'}
                 </div>
               )}
@@ -642,18 +642,18 @@ const EnhancedChatPage: React.FC = () => {
             {/* Policy Info */}
             <Card variant="glass" className="p-3">
               <div className="flex items-center gap-2 mb-2">
-                <Shield size={16} className="text-[var(--info)]" />
-                <span className="font-medium text-[var(--text-primary)]">Policy</span>
+                <Shield size={16} className="status-info" />
+                <span className="font-medium text-primary">Policy</span>
               </div>
               {context.policy ? (
                 <div className="space-y-1 text-sm">
                   <div className="font-medium">{context.policy.title}</div>
                   {context.policy.fTag && (
-                    <div className="text-[var(--muted)]">F-Tag: {context.policy.fTag}</div>
+                    <div className="text-muted">F-Tag: {context.policy.fTag}</div>
                   )}
                 </div>
               ) : (
-                <div className="text-sm text-[var(--muted)]">
+                <div className="text-sm text-muted">
                   No policy selected
                 </div>
               )}

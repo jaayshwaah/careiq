@@ -23,6 +23,10 @@ import {
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { motion } from 'framer-motion';
 
 interface RoundItem {
   id: string;
@@ -318,49 +322,50 @@ export default function DailyRoundsPage() {
   const renderCreateTab = () => (
     <div className="space-y-6">
       {/* Template Selection */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold mb-4">Select Round Template</h3>
+      <Card variant="glass" className="p-6">
+        <h3 className="text-lg font-semibold mb-4 text-primary">Select Round Template</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {templateOptions.map(option => (
-            <button
+            <motion.button
               key={option.value}
               onClick={() => setTemplateType(option.value)}
               className={`p-4 rounded-lg border-2 text-left transition-all ${
                 templateType === option.value
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-400'
-                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                  ? 'border-[var(--accent)] bg-[var(--accent)]/10'
+                  : 'border-[var(--border)] hover:border-[var(--accent)]/50'
               }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <h4 className="font-medium text-gray-900 dark:text-gray-100">{option.label}</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{option.description}</p>
-            </button>
+              <h4 className="font-medium text-primary">{option.label}</h4>
+              <p className="text-sm text-muted mt-1">{option.description}</p>
+            </motion.button>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* Basic Configuration */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold mb-4">Round Configuration</h3>
+      <Card variant="glass" className="p-6">
+        <h3 className="text-lg font-semibold mb-4 text-primary">Round Configuration</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unit</label>
-            <input
+            <label className="block text-sm font-medium text-primary mb-2">Unit</label>
+            <Input
               type="text"
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="e.g., ICU, Medical, Dementia"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Shift</label>
+            <label className="block text-sm font-medium text-primary mb-2">Shift</label>
             <select
               value={shift}
               onChange={(e) => setShift(e.target.value as any)}
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full p-3 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--accent)] bg-[var(--bg)] text-primary"
             >
               <option value="7a-3p">Day Shift (7a-3p)</option>
               <option value="3p-11p">Evening Shift (3p-11p)</option>
@@ -369,11 +374,11 @@ export default function DailyRoundsPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Resident Acuity</label>
+            <label className="block text-sm font-medium text-primary mb-2">Resident Acuity</label>
             <select
               value={residentAcuity}
               onChange={(e) => setResidentAcuity(e.target.value as any)}
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full p-3 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--accent)] bg-[var(--bg)] text-primary"
             >
               <option value="low">Low Acuity</option>
               <option value="medium">Medium Acuity</option>
@@ -383,8 +388,8 @@ export default function DailyRoundsPage() {
         </div>
         
         {/* Date Option */}
-        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3">PDF Options</h4>
+        <div className="mt-6 pt-6 border-t border-[var(--border)]">
+          <h4 className="text-md font-semibold text-primary mb-3">PDF Options</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center gap-3">
               <input
@@ -392,38 +397,37 @@ export default function DailyRoundsPage() {
                 id="includeDate"
                 checked={includeDate}
                 onChange={(e) => setIncludeDate(e.target.checked)}
-                className="rounded border-gray-300 dark:border-gray-600"
+                className="rounded border-[var(--border)]"
               />
-              <label htmlFor="includeDate" className="text-sm text-gray-900 dark:text-gray-100">
+              <label htmlFor="includeDate" className="text-sm text-primary">
                 Include specific date on PDF (instead of "Generated" date)
               </label>
             </div>
             {includeDate && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Date for Rounds
                 </label>
-                <input
+                <Input
                   type="date"
                   value={customDate}
                   onChange={(e) => setCustomDate(e.target.value)}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   placeholder={new Date().toLocaleDateString()}
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-muted mt-1">
                   Leave empty to use today's date ({new Date().toLocaleDateString()})
                 </p>
               </div>
             )}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* AI Customization */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+      <Card variant="glass" className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">AI Customization</h3>
+          <Sparkles className="h-5 w-5 text-[var(--accent)]" />
+          <h3 className="text-lg font-semibold text-primary">AI Customization</h3>
         </div>
         
         <label className="flex items-center gap-3 mb-4">
@@ -433,17 +437,18 @@ export default function DailyRoundsPage() {
             onChange={(e) => setAiCustomize(e.target.checked)}
             className="rounded"
           />
-          <span className="text-gray-900 dark:text-gray-100">Add AI-generated items based on special focus areas</span>
+          <span className="text-primary">Add AI-generated items based on special focus areas</span>
         </label>
         
         {aiCustomize && (
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-muted">
                 Select "Fresh Daily Items" for completely new AI-generated checklist each day, or choose specific focus areas:
               </p>
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   if (specialFocusAreas.length === focusAreaOptions.length) {
                     setSpecialFocusAreas([]);
@@ -451,10 +456,9 @@ export default function DailyRoundsPage() {
                     setSpecialFocusAreas([...focusAreaOptions]);
                   }
                 }}
-                className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
               >
                 {specialFocusAreas.length === focusAreaOptions.length ? 'Deselect All' : 'Select All'}
-              </button>
+              </Button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {focusAreaOptions.map(area => (
@@ -465,64 +469,64 @@ export default function DailyRoundsPage() {
                     onChange={() => toggleFocusArea(area)}
                     className="rounded"
                   />
-                  <span className="text-sm text-gray-900 dark:text-gray-100">{area}</span>
+                  <span className="text-sm text-primary">{area}</span>
                 </label>
               ))}
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Custom Items */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+      <Card variant="glass" className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Custom Round Items</h3>
-          <button
+          <h3 className="text-lg font-semibold text-primary">Custom Round Items</h3>
+          <Button
             onClick={addCustomItem}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             Add Custom Item
-          </button>
+          </Button>
         </div>
         
         {customItems.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+          <p className="text-muted text-center py-8">
             No custom items added. Click "Add Custom Item" to create facility-specific round items.
           </p>
         ) : (
           <div className="space-y-4">
             {customItems.map((item, index) => (
-              <div key={index} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div key={index} className="p-4 bg-[var(--muted)]/20 rounded-lg">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Task</label>
-                    <input
+                    <label className="block text-xs font-medium text-primary mb-1">Task</label>
+                    <Input
                       type="text"
                       value={item.task}
                       onChange={(e) => updateCustomItem(index, 'task', e.target.value)}
-                      className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       placeholder="Enter task description"
+                      size="sm"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Category</label>
-                    <input
+                    <label className="block text-xs font-medium text-primary mb-1">Category</label>
+                    <Input
                       type="text"
                       value={item.category}
                       onChange={(e) => updateCustomItem(index, 'category', e.target.value)}
-                      className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       placeholder="Category"
+                      size="sm"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Priority</label>
+                    <label className="block text-xs font-medium text-primary mb-1">Priority</label>
                     <select
                       value={item.priority}
                       onChange={(e) => updateCustomItem(index, 'priority', e.target.value)}
-                      className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      className="w-full p-2 text-sm border border-[var(--border)] rounded bg-[var(--bg)] text-primary"
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -531,12 +535,14 @@ export default function DailyRoundsPage() {
                   </div>
                   
                   <div className="flex items-end gap-2">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => removeCustomItem(index)}
-                      className="p-2 text-red-600 hover:text-red-800 rounded"
+                      className="text-[var(--err)] hover:text-[var(--err)] hover:bg-[var(--err)]/10"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 
@@ -548,21 +554,22 @@ export default function DailyRoundsPage() {
                       onChange={(e) => updateCustomItem(index, 'compliance_related', e.target.checked)}
                       className="rounded"
                     />
-                    <span className="text-sm text-gray-900 dark:text-gray-100">Compliance Related</span>
+                    <span className="text-sm text-primary">Compliance Related</span>
                   </label>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Generate Button */}
       <div className="flex justify-center">
-        <button
+        <Button
           onClick={generateRound}
           disabled={loading}
-          className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          size="lg"
+          className="flex items-center gap-2"
         >
           {loading ? (
             <>
@@ -575,45 +582,46 @@ export default function DailyRoundsPage() {
               Generate Daily Round
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );
 
   const renderHistoryTab = () => (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+      <Card variant="glass">
+        <div className="p-6 border-b border-[var(--border)]">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Daily Rounds</h3>
-            <button
+            <h3 className="text-lg font-semibold text-primary">Recent Daily Rounds</h3>
+            <Button
+              variant="outline"
               onClick={loadRecentRounds}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
+              className="flex items-center gap-2"
             >
               <RefreshCw className="h-4 w-4" />
               Refresh
-            </button>
+            </Button>
           </div>
         </div>
         
-        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+        <div className="divide-y divide-[var(--border)]">
           {recentRounds.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-              <CheckSquare className="h-12 w-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+            <div className="p-8 text-center text-muted">
+              <CheckSquare className="h-12 w-12 mx-auto mb-4 text-muted" />
               <p>No daily rounds generated yet.</p>
               <p className="text-sm">Create your first round to see history here.</p>
             </div>
           ) : (
             recentRounds.map((round) => (
-              <div key={round.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700">
+              <div key={round.id} className="p-6 hover:bg-[var(--muted)]/10 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <CheckSquare className="h-5 w-5 text-blue-600" />
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100">{round.title}</h4>
+                      <CheckSquare className="h-5 w-5 text-[var(--accent)]" />
+                      <h4 className="font-medium text-primary">{round.title}</h4>
                     </div>
                     
-                    <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center gap-6 text-sm text-muted">
                       <span className="flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
                         {round.unit} Unit
@@ -634,28 +642,31 @@ export default function DailyRoundsPage() {
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => {
                         setCurrentRound(round);
                         setShowRoundView(true);
                       }}
-                      className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50"
                     >
                       <Eye className="h-4 w-4" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => generatePDF(round)}
-                      className="p-2 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50"
+                      className="text-[var(--ok)] hover:text-[var(--ok)] hover:bg-[var(--ok)]/10"
                     >
                       <Download className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
             ))
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 
@@ -837,25 +848,30 @@ export default function DailyRoundsPage() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-600/90 to-green-700/90 text-white rounded-lg p-6">
+      <motion.div 
+        className="bg-gradient-to-r from-[var(--accent)]/90 to-[var(--accent)]/80 text-white rounded-lg p-6"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
           <CheckSquare className="h-6 w-6" />
           Daily Round Generator
         </h1>
-        <p className="text-green-100">
+        <p className="text-white/90">
           Generate customizable daily round checklists for unit managers and nursing staff with compliance focus.
         </p>
-      </div>
+      </motion.div>
 
       {/* Navigation Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-[var(--border)]">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('create')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'create'
-                ? 'border-green-500 text-green-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-muted hover:text-primary hover:border-[var(--accent)]/50'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -866,10 +882,10 @@ export default function DailyRoundsPage() {
           
           <button
             onClick={() => setActiveTab('history')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'history'
-                ? 'border-green-500 text-green-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-muted hover:text-primary hover:border-[var(--accent)]/50'
             }`}
           >
             <div className="flex items-center gap-2">

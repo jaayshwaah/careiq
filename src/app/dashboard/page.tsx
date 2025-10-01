@@ -340,16 +340,16 @@ export default function FacilityDashboard() {
                       </div>
                       <div className="flex items-center">
                         {metric.trend === 'up' ? (
-                          <TrendingUp className="text-[var(--ok)]" size={16} />
+                          <TrendingUp className="status-ok" size={16} />
                         ) : metric.trend === 'down' ? (
-                          <TrendingDown className="text-[var(--err)]" size={16} />
+                          <TrendingDown className="status-error" size={16} />
                         ) : (
                           <Activity className="text-muted" size={16} />
                         )}
                         <span className={cn(
                           "ml-2 text-sm",
-                          metric.trend === 'up' && "text-[var(--ok)]",
-                          metric.trend === 'down' && "text-[var(--err)]",
+                          metric.trend === 'up' && "status-ok",
+                          metric.trend === 'down' && "status-error",
                           metric.trend === 'stable' && "text-muted"
                         )}>
                           {metric.change} from last month

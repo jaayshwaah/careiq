@@ -177,34 +177,34 @@ const EnhancedDailyOpsPage: React.FC = () => {
       case 'completed':
       case 'compliant':
       case 'resolved':
-        return 'text-[var(--ok)]';
+        return 'status-ok';
       case 'in_progress':
       case 'investigating':
-        return 'text-[var(--info)]';
+        return 'status-info';
       case 'warning':
       case 'overdue':
-        return 'text-[var(--warn)]';
+        return 'status-warn';
       case 'open':
       case 'deficient':
       case 'critical':
-        return 'text-[var(--err)]';
+        return 'status-error';
       default:
-        return 'text-[var(--muted)]';
+        return 'text-muted';
     }
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'low':
-        return 'bg-[var(--ok)]/20 text-[var(--ok)]';
+        return 'bg-[var(--ok)]/20 status-ok';
       case 'medium':
-        return 'bg-[var(--warn)]/20 text-[var(--warn)]';
+        return 'bg-[var(--warn)]/20 status-warn';
       case 'high':
-        return 'bg-[var(--err)]/20 text-[var(--err)]';
+        return 'bg-[var(--err)]/20 status-error';
       case 'critical':
         return 'bg-[var(--err)] text-white';
       default:
-        return 'bg-[var(--muted)]/20 text-[var(--muted)]';
+        return 'bg-[var(--muted)]/20 text-muted';
     }
   };
 
@@ -240,10 +240,10 @@ const EnhancedDailyOpsPage: React.FC = () => {
           transition={{ duration: 0.5 }}
         >
           <div>
-            <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+            <h1 className="text-3xl font-bold text-primary">
               Daily Operations
             </h1>
-            <p className="text-[var(--muted)] mt-1">
+            <p className="text-muted mt-1">
               Manage rounds, incidents, staffing, and census
             </p>
           </div>
@@ -280,7 +280,7 @@ const EnhancedDailyOpsPage: React.FC = () => {
                 "flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] font-medium transition-standard",
                 activeTab === tab.id
                   ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-soft"
-                  : "text-[var(--text-primary)] hover:bg-[var(--muted)]"
+                  : "text-primary hover:bg-[var(--muted)]"
               )}
             >
               <tab.icon size={18} />
@@ -312,7 +312,7 @@ const EnhancedDailyOpsPage: React.FC = () => {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)]"
+            className="px-3 py-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] text-primary focus:outline-none focus:ring-2 focus:ring-[var(--focus)]"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -349,20 +349,20 @@ const EnhancedDailyOpsPage: React.FC = () => {
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <User size={16} className="text-[var(--info)]" />
+                            <User size={16} className="status-info" />
                             <span className="font-semibold">{round.residentName}</span>
                           </div>
                           <span className={cn(
                             "px-2 py-1 text-xs rounded-full font-medium",
-                            round.status === 'completed' && "bg-[var(--ok)]/20 text-[var(--ok)]",
-                            round.status === 'in_progress' && "bg-[var(--info)]/20 text-[var(--info)]",
-                            round.status === 'overdue' && "bg-[var(--warn)]/20 text-[var(--warn)]",
-                            round.status === 'pending' && "bg-[var(--muted)]/20 text-[var(--muted)]"
+                            round.status === 'completed' && "bg-[var(--ok)]/20 status-ok",
+                            round.status === 'in_progress' && "bg-[var(--info)]/20 status-info",
+                            round.status === 'overdue' && "bg-[var(--warn)]/20 status-warn",
+                            round.status === 'pending' && "bg-[var(--muted)]/20 text-muted"
                           )}>
                             {round.status.replace('_', ' ')}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-[var(--muted)]">
+                        <div className="flex items-center gap-4 text-sm text-muted">
                           <div className="flex items-center gap-1">
                             <MapPin size={14} />
                             Room {round.room}
@@ -379,15 +379,15 @@ const EnhancedDailyOpsPage: React.FC = () => {
                             <span className="font-medium">Assigned to:</span> {round.assignedTo}
                           </div>
                           {round.notes && (
-                            <div className="text-sm text-[var(--muted)]">
+                            <div className="text-sm text-muted">
                               {round.notes}
                             </div>
                           )}
                           {round.issues && round.issues.length > 0 && (
                             <div className="space-y-1">
-                              <div className="text-sm font-medium text-[var(--warn)]">Issues:</div>
+                              <div className="text-sm font-medium status-warn">Issues:</div>
                               {round.issues.map((issue, index) => (
-                                <div key={index} className="text-sm text-[var(--warn)]">
+                                <div key={index} className="text-sm status-warn">
                                   • {issue}
                                 </div>
                               ))}
@@ -421,7 +421,7 @@ const EnhancedDailyOpsPage: React.FC = () => {
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <AlertTriangle size={16} className="text-[var(--err)]" />
+                            <AlertTriangle size={16} className="status-error" />
                             <span className="font-semibold">{incident.residentName}</span>
                           </div>
                           <span className={cn(
@@ -431,7 +431,7 @@ const EnhancedDailyOpsPage: React.FC = () => {
                             {incident.severity}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-[var(--muted)]">
+                        <div className="flex items-center gap-4 text-sm text-muted">
                           <div className="flex items-center gap-1">
                             <FileText size={14} />
                             {incident.type}
@@ -453,14 +453,14 @@ const EnhancedDailyOpsPage: React.FC = () => {
                           <div className="text-sm">
                             <span className="font-medium">Reported by:</span> {incident.reportedBy}
                           </div>
-                          <div className="text-sm text-[var(--muted)]">
+                          <div className="text-sm text-muted">
                             {incident.description}
                           </div>
                           {incident.actions && incident.actions.length > 0 && (
                             <div className="space-y-1">
                               <div className="text-sm font-medium">Actions taken:</div>
                               {incident.actions.map((action, index) => (
-                                <div key={index} className="text-sm text-[var(--muted)]">
+                                <div key={index} className="text-sm text-muted">
                                   • {action}
                                 </div>
                               ))}
@@ -497,9 +497,9 @@ const EnhancedDailyOpsPage: React.FC = () => {
                           </h3>
                           <span className={cn(
                             "px-2 py-1 text-xs rounded-full font-medium",
-                            shift.compliance === 'compliant' && "bg-[var(--ok)]/20 text-[var(--ok)]",
-                            shift.compliance === 'warning' && "bg-[var(--warn)]/20 text-[var(--warn)]",
-                            shift.compliance === 'deficient' && "bg-[var(--err)]/20 text-[var(--err)]"
+                            shift.compliance === 'compliant' && "bg-[var(--ok)]/20 status-ok",
+                            shift.compliance === 'warning' && "bg-[var(--warn)]/20 status-warn",
+                            shift.compliance === 'deficient' && "bg-[var(--err)]/20 status-error"
                           )}>
                             {shift.compliance}
                           </span>
@@ -509,25 +509,25 @@ const EnhancedDailyOpsPage: React.FC = () => {
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                              <div className="font-medium text-[var(--muted)]">RN</div>
+                              <div className="font-medium text-muted">RN</div>
                               <div className="text-xl font-bold">{shift.rnCount}</div>
                             </div>
                             <div>
-                              <div className="font-medium text-[var(--muted)]">LPN</div>
+                              <div className="font-medium text-muted">LPN</div>
                               <div className="text-xl font-bold">{shift.lpnCount}</div>
                             </div>
                             <div>
-                              <div className="font-medium text-[var(--muted)]">CNA</div>
+                              <div className="font-medium text-muted">CNA</div>
                               <div className="text-xl font-bold">{shift.cnaCount}</div>
                             </div>
                             <div>
-                              <div className="font-medium text-[var(--muted)]">PPD</div>
+                              <div className="font-medium text-muted">PPD</div>
                               <div className="text-xl font-bold">{shift.ppd}</div>
                             </div>
                           </div>
                           <div className="pt-2 border-t border-[var(--border)]">
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-[var(--muted)]">Total Residents</span>
+                              <span className="text-muted">Total Residents</span>
                               <span className="font-semibold">{shift.totalResidents}</span>
                             </div>
                           </div>
@@ -551,26 +551,26 @@ const EnhancedDailyOpsPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <Card variant="glass" className="text-center">
                     <CardContent className="p-6">
-                      <div className="text-3xl font-bold text-[var(--info)] mb-2">120</div>
-                      <div className="text-sm text-[var(--muted)]">Total Beds</div>
+                      <div className="text-3xl font-bold status-info mb-2">120</div>
+                      <div className="text-sm text-muted">Total Beds</div>
                     </CardContent>
                   </Card>
                   <Card variant="glass" className="text-center">
                     <CardContent className="p-6">
-                      <div className="text-3xl font-bold text-[var(--ok)] mb-2">115</div>
-                      <div className="text-sm text-[var(--muted)]">Occupied</div>
+                      <div className="text-3xl font-bold status-ok mb-2">115</div>
+                      <div className="text-sm text-muted">Occupied</div>
                     </CardContent>
                   </Card>
                   <Card variant="glass" className="text-center">
                     <CardContent className="p-6">
-                      <div className="text-3xl font-bold text-[var(--warn)] mb-2">5</div>
-                      <div className="text-sm text-[var(--muted)]">Available</div>
+                      <div className="text-3xl font-bold status-warn mb-2">5</div>
+                      <div className="text-sm text-muted">Available</div>
                     </CardContent>
                   </Card>
                   <Card variant="glass" className="text-center">
                     <CardContent className="p-6">
                       <div className="text-3xl font-bold text-[var(--accent)] mb-2">95.8%</div>
-                      <div className="text-sm text-[var(--muted)]">Occupancy Rate</div>
+                      <div className="text-sm text-muted">Occupancy Rate</div>
                     </CardContent>
                   </Card>
                 </div>

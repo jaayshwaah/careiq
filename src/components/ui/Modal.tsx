@@ -145,12 +145,12 @@ const Modal: React.FC<ModalProps> = ({
               <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
                 <div>
                   {title && (
-                    <h2 id="modal-title" className="text-lg font-semibold text-[var(--text-primary)]">
+                    <h2 id="modal-title" className="text-lg font-semibold text-primary">
                       {title}
                     </h2>
                   )}
                   {description && (
-                    <p id="modal-description" className="mt-1 text-sm text-[var(--muted)]">
+                    <p id="modal-description" className="mt-1 text-sm text-muted">
                       {description}
                     </p>
                   )}
@@ -158,7 +158,7 @@ const Modal: React.FC<ModalProps> = ({
                 {showCloseButton && (
                   <motion.button
                     onClick={onClose}
-                    className="p-2 rounded-[var(--radius-md)] text-[var(--muted)] hover:text-[var(--text-primary)] hover:bg-[var(--muted)] transition-standard focus-ring"
+                    className="p-2 rounded-[var(--radius-md)] text-muted hover:text-primary hover:bg-[var(--muted)] transition-standard focus-ring"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     aria-label="Close modal"

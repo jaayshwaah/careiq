@@ -305,11 +305,11 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
                       </div>
                     </div>
                     {widget.trend === 'up' ? (
-                      <TrendingUp size={16} className="text-[var(--ok)]" />
+                      <TrendingUp size={16} className="status-ok" />
                     ) : widget.trend === 'down' ? (
-                      <TrendingUp size={16} className="text-[var(--err)] rotate-180" />
+                      <TrendingUp size={16} className="status-error rotate-180" />
                     ) : (
-                      <Activity size={16} className="text-[var(--muted)]" />
+                      <Activity size={16} className="text-muted" />
                     )}
                   </div>
                   <div className="space-y-1">
@@ -425,14 +425,14 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
                         {isAnalyzing ? (
                           <div className="w-5 h-5 border-2 border-[var(--ok)] border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <FileText className="w-5 h-5 text-[var(--ok)]" />
+                          <FileText className="w-5 h-5 status-ok" />
                         )}
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-[var(--ok)] group-hover:text-[var(--ok)] transition-colors">
+                        <div className="text-sm font-medium status-ok group-hover:status-ok transition-colors">
                           {isAnalyzing ? 'Analyzing Care Plan...' : 'Analyze Care Plan Document'}
                         </div>
-                        <div className="text-xs text-[var(--ok)]/70 mt-1">
+                        <div className="text-xs status-ok/70 mt-1">
                           Upload PDF or Word document
                         </div>
                       </div>
@@ -484,14 +484,14 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
               </motion.button>
             </div>
             <div className="text-center mt-4 space-y-2">
-              <div className="flex items-center justify-center gap-4 text-xs text-[var(--muted)]">
+              <div className="flex items-center justify-center gap-4 text-xs text-muted">
                 <span>⌘/Ctrl+K to search</span>
                 <span>•</span>
                 <span>⌘/Ctrl+Enter to send</span>
                 <span>•</span>
                 <span>Shift+Enter for newline</span>
               </div>
-              <p className="text-xs text-[var(--muted)]">
+              <p className="text-xs text-muted">
                 CareIQ can make mistakes. Verify important compliance information.
               </p>
             </div>

@@ -128,7 +128,7 @@ const MobileOptimizedLayout: React.FC<MobileOptimizedLayoutProps> = ({ children 
       <div className="space-y-1">
         <button
           onClick={() => toggleSection(sectionKey)}
-          className="flex items-center justify-between w-full px-3 py-2 text-left text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--muted)] rounded-[var(--radius-md)] transition-standard"
+          className="flex items-center justify-between w-full px-3 py-2 text-left text-sm font-medium text-primary hover:bg-[var(--muted)] rounded-[var(--radius-md)] transition-standard"
         >
           <span>{title}</span>
           {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -146,10 +146,10 @@ const MobileOptimizedLayout: React.FC<MobileOptimizedLayoutProps> = ({ children 
                 <a
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--muted)] rounded-[var(--radius-md)] transition-standard"
+                  className="flex items-center gap-3 px-3 py-2 text-sm text-primary hover:bg-[var(--muted)] rounded-[var(--radius-md)] transition-standard"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <item.icon size={18} className="text-[var(--muted)]" />
+                  <item.icon size={18} className="text-muted" />
                   {item.label}
                 </a>
               ))}
@@ -173,10 +173,10 @@ const MobileOptimizedLayout: React.FC<MobileOptimizedLayoutProps> = ({ children 
             <span className="text-white font-bold text-sm">CIQ</span>
           </div>
           <div>
-            <div className="text-lg font-semibold text-[var(--text-primary)]">
+            <div className="text-lg font-semibold text-primary">
               CareIQ
             </div>
-            <div className="text-xs text-[var(--muted)]">
+            <div className="text-xs text-muted">
               AI-Powered Operations
             </div>
           </div>
@@ -201,10 +201,10 @@ const MobileOptimizedLayout: React.FC<MobileOptimizedLayoutProps> = ({ children 
                 <span className="text-white font-bold text-sm">CIQ</span>
               </div>
               <div>
-                <div className="text-lg font-semibold text-[var(--text-primary)]">
+                <div className="text-lg font-semibold text-primary">
                   CareIQ
                 </div>
-                <div className="text-xs text-[var(--muted)]">
+                <div className="text-xs text-muted">
                   AI-Powered Operations
                 </div>
               </div>
@@ -261,10 +261,10 @@ const MobileOptimizedLayout: React.FC<MobileOptimizedLayoutProps> = ({ children 
                         <span className="text-white font-bold text-sm">CIQ</span>
                       </div>
                       <div>
-                        <div className="text-lg font-semibold text-[var(--text-primary)]">
+                        <div className="text-lg font-semibold text-primary">
                           CareIQ
                         </div>
-                        <div className="text-xs text-[var(--muted)]">
+                        <div className="text-xs text-muted">
                           AI-Powered Operations
                         </div>
                       </div>
@@ -313,13 +313,13 @@ const MobileOptimizedLayout: React.FC<MobileOptimizedLayoutProps> = ({ children 
                 <div className="p-4 border-t border-[var(--glass-border)] glass">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-[var(--muted)] flex items-center justify-center">
-                      <User size={16} className="text-[var(--text-primary)]" />
+                      <User size={16} className="text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-[var(--text-primary)] truncate">
+                      <div className="text-sm font-medium text-primary truncate">
                         {userProfile?.full_name || 'User'}
                       </div>
-                      <div className="text-xs text-[var(--muted)] truncate">
+                      <div className="text-xs text-muted truncate">
                         {userProfile?.role || 'Member'}
                       </div>
                     </div>
@@ -353,8 +353,8 @@ const MobileOptimizedLayout: React.FC<MobileOptimizedLayoutProps> = ({ children 
               href={item.href}
               className="flex flex-col items-center gap-1 p-2 rounded-[var(--radius-md)] hover:bg-[var(--muted)]/50 transition-standard"
             >
-              <item.icon size={20} className="text-[var(--muted)]" />
-              <span className="text-xs text-[var(--muted)]">{item.label}</span>
+              <item.icon size={20} className="text-muted" />
+              <span className="text-xs text-muted">{item.label}</span>
             </a>
           ))}
         </div>

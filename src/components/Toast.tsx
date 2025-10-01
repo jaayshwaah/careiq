@@ -78,7 +78,7 @@ export default function Toast({
         onClick={onClick}
         className="
           glass-heavy px-4 py-3 rounded-xl text-sm font-medium 
-          text-[var(--text-primary)] hover:scale-105 active:scale-95
+          text-primary hover:scale-105 active:scale-95
           transition-all duration-200 focus-ring cursor-pointer
           flex items-center gap-3
         "

@@ -383,11 +383,11 @@ const EnhancedHomePage: React.FC = () => {
   const getTrendIcon = (trend: 'up' | 'down' | 'neutral') => {
     switch (trend) {
       case 'up':
-        return <TrendingUp size={16} className="text-[var(--ok)]" />;
+        return <TrendingUp size={16} className="status-ok" />;
       case 'down':
-        return <TrendingUp size={16} className="text-[var(--err)] rotate-180" />;
+        return <TrendingUp size={16} className="status-error rotate-180" />;
       default:
-        return <Activity size={16} className="text-[var(--muted)]" />;
+        return <Activity size={16} className="text-muted" />;
     }
   };
 
@@ -406,10 +406,10 @@ const EnhancedHomePage: React.FC = () => {
           transition={{ duration: 0.5 }}
         >
           <div>
-            <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+            <h1 className="text-3xl font-bold text-primary">
               Welcome back, {userProfile?.full_name || 'User'}
             </h1>
-            <p className="text-[var(--muted)] mt-1">
+            <p className="text-muted mt-1">
               {new Date().toLocaleDateString('en-US', { 
                 weekday: 'long', 
                 year: 'numeric', 
@@ -419,7 +419,7 @@ const EnhancedHomePage: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+            <div className="flex items-center gap-2 text-sm text-muted">
               <Clock size={16} />
               <span>Last updated {lastRefresh.toLocaleTimeString()}</span>
             </div>
@@ -442,7 +442,7 @@ const EnhancedHomePage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <span className="text-sm font-medium text-[var(--text-primary)]">Time Range:</span>
+          <span className="text-sm font-medium text-primary">Time Range:</span>
           <div className="flex gap-1">
             {(['today', '7d', '30d'] as const).map((range) => (
               <Button
@@ -504,11 +504,11 @@ const EnhancedHomePage: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      <div className="text-3xl font-bold text-[var(--text-primary)]">
+                      <div className="text-3xl font-bold text-primary">
                         {widget.value}
                       </div>
                       {widget.change && (
-                        <div className="text-sm text-[var(--muted)]">
+                        <div className="text-sm text-muted">
                           {widget.change}
                         </div>
                       )}
@@ -527,7 +527,7 @@ const EnhancedHomePage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+          <h2 className="text-xl font-semibold text-primary">
             Quick Actions
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -557,10 +557,10 @@ const EnhancedHomePage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-[var(--text-primary)]">
+                        <h3 className="font-semibold text-primary">
                           {action.title}
                         </h3>
-                        <p className="text-sm text-[var(--muted)]">
+                        <p className="text-sm text-muted">
                           {action.description}
                         </p>
                       </div>

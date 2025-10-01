@@ -56,7 +56,7 @@ const EnhancedAppLayout: React.FC<EnhancedAppLayoutProps> = ({ children }) => {
             <span className="text-white font-bold text-xl">CIQ</span>
           </motion.div>
           <motion.div
-            className="text-[var(--text-primary)] font-medium"
+            className="text-primary font-medium"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
@@ -127,14 +127,14 @@ const EnhancedAppLayout: React.FC<EnhancedAppLayoutProps> = ({ children }) => {
           >
             <motion.button
               onClick={() => setCommandPaletteOpen(true)}
-              className="glass-card p-3 text-[var(--text-primary)] hover:bg-[var(--glass-bg)]/90 transition-standard focus-ring"
+              className="glass-card p-3 text-primary hover:bg-[var(--glass-bg)]/90 transition-standard focus-ring"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               title="Open Command Palette (⌘K)"
             >
               <div className="flex items-center gap-2 text-sm">
-                <kbd className="px-2 py-1 bg-[var(--muted)] rounded text-[var(--text-primary)] text-xs">⌘</kbd>
-                <kbd className="px-2 py-1 bg-[var(--muted)] rounded text-[var(--text-primary)] text-xs">K</kbd>
+                <kbd className="px-2 py-1 bg-[var(--muted)] rounded text-primary text-xs">⌘</kbd>
+                <kbd className="px-2 py-1 bg-[var(--muted)] rounded text-primary text-xs">K</kbd>
               </div>
             </motion.button>
           </motion.div>

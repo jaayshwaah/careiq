@@ -208,15 +208,15 @@ const EnhancedCompliancePage: React.FC = () => {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'low':
-        return 'bg-[var(--ok)]/20 text-[var(--ok)]';
+        return 'bg-[var(--ok)]/20 status-ok';
       case 'medium':
-        return 'bg-[var(--warn)]/20 text-[var(--warn)]';
+        return 'bg-[var(--warn)]/20 status-warn';
       case 'high':
-        return 'bg-[var(--err)]/20 text-[var(--err)]';
+        return 'bg-[var(--err)]/20 status-error';
       case 'critical':
         return 'bg-[var(--err)] text-white';
       default:
-        return 'bg-[var(--muted)]/20 text-[var(--muted)]';
+        return 'bg-[var(--muted)]/20 text-muted';
     }
   };
 
@@ -224,33 +224,33 @@ const EnhancedCompliancePage: React.FC = () => {
     switch (status) {
       case 'compliant':
       case 'resolved':
-        return 'text-[var(--ok)]';
+        return 'status-ok';
       case 'at_risk':
       case 'acknowledged':
-        return 'text-[var(--warn)]';
+        return 'status-warn';
       case 'deficient':
       case 'open':
-        return 'text-[var(--err)]';
+        return 'status-error';
       case 'under_review':
       case 'in_progress':
-        return 'text-[var(--info)]';
+        return 'status-info';
       default:
-        return 'text-[var(--muted)]';
+        return 'text-muted';
     }
   };
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'quality':
-        return <Shield size={16} className="text-[var(--info)]" />;
+        return <Shield size={16} className="status-info" />;
       case 'safety':
-        return <AlertTriangle size={16} className="text-[var(--err)]" />;
+        return <AlertTriangle size={16} className="status-error" />;
       case 'rights':
-        return <Users size={16} className="text-[var(--ok)]" />;
+        return <Users size={16} className="status-ok" />;
       case 'administration':
-        return <FileText size={16} className="text-[var(--warn)]" />;
+        return <FileText size={16} className="status-warn" />;
       default:
-        return <Shield size={16} className="text-[var(--muted)]" />;
+        return <Shield size={16} className="text-muted" />;
     }
   };
 
@@ -286,10 +286,10 @@ const EnhancedCompliancePage: React.FC = () => {
           transition={{ duration: 0.5 }}
         >
           <div>
-            <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+            <h1 className="text-3xl font-bold text-primary">
               Compliance & Surveys
             </h1>
-            <p className="text-[var(--muted)] mt-1">
+            <p className="text-muted mt-1">
               Monitor F-Tags, surveys, and compliance status
             </p>
           </div>
@@ -326,7 +326,7 @@ const EnhancedCompliancePage: React.FC = () => {
                 "flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] font-medium transition-standard",
                 activeTab === tab.id
                   ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-soft"
-                  : "text-[var(--text-primary)] hover:bg-[var(--muted)]"
+                  : "text-primary hover:bg-[var(--muted)]"
               )}
             >
               <tab.icon size={18} />
@@ -358,7 +358,7 @@ const EnhancedCompliancePage: React.FC = () => {
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-3 py-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)]"
+            className="px-3 py-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] text-primary focus:outline-none focus:ring-2 focus:ring-[var(--focus)]"
           >
             <option value="all">All Categories</option>
             <option value="quality">Quality</option>
@@ -388,34 +388,34 @@ const EnhancedCompliancePage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <Card variant="glass" className="text-center">
                     <CardContent className="p-6">
-                      <div className="text-3xl font-bold text-[var(--ok)] mb-2">
+                      <div className="text-3xl font-bold status-ok mb-2">
                         {fTags.filter(f => f.status === 'compliant').length}
                       </div>
-                      <div className="text-sm text-[var(--muted)]">Compliant F-Tags</div>
+                      <div className="text-sm text-muted">Compliant F-Tags</div>
                     </CardContent>
                   </Card>
                   <Card variant="glass" className="text-center">
                     <CardContent className="p-6">
-                      <div className="text-3xl font-bold text-[var(--warn)] mb-2">
+                      <div className="text-3xl font-bold status-warn mb-2">
                         {fTags.filter(f => f.status === 'at_risk').length}
                       </div>
-                      <div className="text-sm text-[var(--muted)]">At Risk</div>
+                      <div className="text-sm text-muted">At Risk</div>
                     </CardContent>
                   </Card>
                   <Card variant="glass" className="text-center">
                     <CardContent className="p-6">
-                      <div className="text-3xl font-bold text-[var(--err)] mb-2">
+                      <div className="text-3xl font-bold status-error mb-2">
                         {fTags.filter(f => f.status === 'deficient').length}
                       </div>
-                      <div className="text-sm text-[var(--muted)]">Deficient</div>
+                      <div className="text-sm text-muted">Deficient</div>
                     </CardContent>
                   </Card>
                   <Card variant="glass" className="text-center">
                     <CardContent className="p-6">
-                      <div className="text-3xl font-bold text-[var(--info)] mb-2">
+                      <div className="text-3xl font-bold status-info mb-2">
                         {alerts.filter(a => a.status === 'new').length}
                       </div>
-                      <div className="text-sm text-[var(--muted)]">New Alerts</div>
+                      <div className="text-sm text-muted">New Alerts</div>
                     </CardContent>
                   </Card>
                 </div>
@@ -438,9 +438,9 @@ const EnhancedCompliancePage: React.FC = () => {
                           </div>
                           <div className="flex-1">
                             <div className="font-medium">{alert.title}</div>
-                            <div className="text-sm text-[var(--muted)]">{alert.description}</div>
+                            <div className="text-sm text-muted">{alert.description}</div>
                           </div>
-                          <div className="text-sm text-[var(--muted)]">
+                          <div className="text-sm text-muted">
                             {alert.dueDate?.toLocaleDateString()}
                           </div>
                         </div>
@@ -486,10 +486,10 @@ const EnhancedCompliancePage: React.FC = () => {
                             </span>
                             <span className={cn(
                               "px-2 py-1 text-xs rounded-full font-medium",
-                              fTag.status === 'compliant' && "bg-[var(--ok)]/20 text-[var(--ok)]",
-                              fTag.status === 'at_risk' && "bg-[var(--warn)]/20 text-[var(--warn)]",
-                              fTag.status === 'deficient' && "bg-[var(--err)]/20 text-[var(--err)]",
-                              fTag.status === 'under_review' && "bg-[var(--info)]/20 text-[var(--info)]"
+                              fTag.status === 'compliant' && "bg-[var(--ok)]/20 status-ok",
+                              fTag.status === 'at_risk' && "bg-[var(--warn)]/20 status-warn",
+                              fTag.status === 'deficient' && "bg-[var(--err)]/20 status-error",
+                              fTag.status === 'under_review' && "bg-[var(--info)]/20 status-info"
                             )}>
                               {fTag.status.replace('_', ' ')}
                             </span>
@@ -498,7 +498,7 @@ const EnhancedCompliancePage: React.FC = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-3">
-                          <div className="text-sm text-[var(--muted)]">
+                          <div className="text-sm text-muted">
                             {fTag.description}
                           </div>
                           {fTag.score && (
@@ -518,7 +518,7 @@ const EnhancedCompliancePage: React.FC = () => {
                               <span className="text-sm font-medium">{fTag.score}%</span>
                             </div>
                           )}
-                          <div className="flex items-center gap-4 text-sm text-[var(--muted)]">
+                          <div className="flex items-center gap-4 text-sm text-muted">
                             <div className="flex items-center gap-1">
                               <Calendar size={14} />
                               Last: {fTag.lastSurvey.toLocaleDateString()}
@@ -580,15 +580,15 @@ const EnhancedCompliancePage: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-[var(--muted)] mb-2">
+                            <p className="text-sm text-muted mb-2">
                               {alert.description}
                             </p>
-                            <div className="flex items-center gap-4 text-sm text-[var(--muted)]">
+                            <div className="flex items-center gap-4 text-sm text-muted">
                               <span className={cn(
                                 "px-2 py-1 text-xs rounded-full font-medium",
-                                alert.status === 'new' && "bg-[var(--info)]/20 text-[var(--info)]",
-                                alert.status === 'acknowledged' && "bg-[var(--warn)]/20 text-[var(--warn)]",
-                                alert.status === 'resolved' && "bg-[var(--ok)]/20 text-[var(--ok)]"
+                                alert.status === 'new' && "bg-[var(--info)]/20 status-info",
+                                alert.status === 'acknowledged' && "bg-[var(--warn)]/20 status-warn",
+                                alert.status === 'resolved' && "bg-[var(--ok)]/20 status-ok"
                               )}>
                                 {alert.status}
                               </span>
@@ -599,7 +599,7 @@ const EnhancedCompliancePage: React.FC = () => {
                                 </span>
                               )}
                               {alert.actionRequired && (
-                                <span className="text-[var(--err)] font-medium">
+                                <span className="status-error font-medium">
                                   Action Required
                                 </span>
                               )}

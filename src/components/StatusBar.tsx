@@ -55,13 +55,13 @@ const StatusBar: React.FC<StatusBarProps> = ({ className }) => {
   const getStatusIcon = (status: ConnectionStatus) => {
     switch (status) {
       case 'connected':
-        return <CheckCircle size={14} className="text-[var(--ok)]" />;
+        return <CheckCircle size={14} className="status-ok" />;
       case 'syncing':
-        return <RefreshCw size={14} className="text-[var(--info)] animate-spin" />;
+        return <RefreshCw size={14} className="status-info animate-spin" />;
       case 'offline':
-        return <WifiOff size={14} className="text-[var(--warn)]" />;
+        return <WifiOff size={14} className="status-warn" />;
       case 'error':
-        return <XCircle size={14} className="text-[var(--err)]" />;
+        return <XCircle size={14} className="status-error" />;
     }
   };
 
@@ -81,13 +81,13 @@ const StatusBar: React.FC<StatusBarProps> = ({ className }) => {
   const getStatusColor = (status: ConnectionStatus) => {
     switch (status) {
       case 'connected':
-        return 'text-[var(--ok)]';
+        return 'status-ok';
       case 'syncing':
-        return 'text-[var(--info)]';
+        return 'status-info';
       case 'offline':
-        return 'text-[var(--warn)]';
+        return 'status-warn';
       case 'error':
-        return 'text-[var(--err)]';
+        return 'status-error';
     }
   };
 
@@ -133,7 +133,7 @@ const StatusBar: React.FC<StatusBarProps> = ({ className }) => {
       </div>
 
       {/* Last Sync */}
-      <div className="flex items-center gap-2 text-[var(--muted)]">
+      <div className="flex items-center gap-2 text-muted">
         <Clock size={14} />
         <span>Last synced {formatLastSync(lastSync)}</span>
         <motion.button
@@ -155,7 +155,7 @@ const StatusBar: React.FC<StatusBarProps> = ({ className }) => {
 
       {/* Integration Status */}
       <div className="flex items-center gap-2">
-        <Activity size={14} className="text-[var(--muted)]" />
+        <Activity size={14} className="text-muted" />
         <div className="flex items-center gap-1">
           {integrations.map((integration, index) => (
             <motion.div
@@ -176,7 +176,7 @@ const StatusBar: React.FC<StatusBarProps> = ({ className }) => {
       <AnimatePresence>
         {connectionStatus === 'connected' && (
           <motion.div
-            className="flex items-center gap-1 text-[var(--ok)]"
+            className="flex items-center gap-1 status-ok"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
@@ -192,7 +192,7 @@ const StatusBar: React.FC<StatusBarProps> = ({ className }) => {
       <AnimatePresence>
         {connectionStatus === 'offline' && (
           <motion.div
-            className="flex items-center gap-1 text-[var(--warn)]"
+            className="flex items-center gap-1 status-warn"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}

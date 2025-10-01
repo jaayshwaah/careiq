@@ -203,7 +203,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
   }) => (
     <div className="space-y-1">
       {showTitle && !isCollapsed && title && (
-        <div className="px-2 mb-3 text-xs font-semibold tracking-wider text-[var(--muted)] uppercase">
+        <div className="px-2 mb-3 text-xs font-semibold tracking-wider text-muted uppercase">
           {title}
         </div>
       )}
@@ -228,14 +228,14 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
                 isCollapsed ? "justify-center" : "",
                 isActive
                   ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-soft"
-                  : "text-[var(--text-primary)] hover:bg-[var(--muted)]"
+                  : "text-primary hover:bg-[var(--muted)]"
               )}
               title={isCollapsed ? item.label : undefined}
             >
               <Icon 
                 size={18} 
                 className={cn(
-                  isActive ? "text-[var(--accent-contrast)]" : "text-[var(--muted)] group-hover:text-[var(--text-primary)]"
+                  isActive ? "text-[var(--accent-contrast)]" : "text-muted group-hover:text-primary"
                 )} 
               />
               {!isCollapsed && (
@@ -298,10 +298,10 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
             </motion.div>
             {!isCollapsed && (
               <div className="min-w-0">
-                <div className="text-lg font-semibold text-[var(--text-primary)] truncate">
+                <div className="text-lg font-semibold text-primary truncate">
                   {facilityName || brandingSettings?.company_name || 'CareIQ'}
                 </div>
-                <div className="text-xs text-[var(--muted)]">
+                <div className="text-xs text-muted">
                   AI-Powered Operations
                 </div>
               </div>
@@ -352,13 +352,13 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
           {/* Recent Chats */}
           {!isCollapsed && (
             <div className="space-y-3">
-              <div className="px-2 mb-2 text-xs font-semibold tracking-wider text-[var(--muted)] uppercase">
+              <div className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted uppercase">
                 Recent Chats
               </div>
               
               {/* Search */}
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 text-[var(--muted)] transform -translate-y-1/2" />
+                <Search size={16} className="absolute left-3 top-1/2 text-muted transform -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search chats..."
@@ -394,14 +394,14 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
                           <MessageCircle 
                             size={16} 
                             className={cn(
-                              isActive ? "text-[var(--accent-contrast)]" : "text-[var(--muted)] group-hover:text-[var(--text-primary)]"
+                              isActive ? "text-[var(--accent-contrast)]" : "text-muted group-hover:text-primary"
                             )}
                           />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">
                               {chat.title || "Untitled chat"}
                             </div>
-                            <div className="text-xs text-[var(--muted)]">
+                            <div className="text-xs text-muted">
                               {new Date(chat.created_at).toLocaleDateString()}
                             </div>
                           </div>
@@ -412,13 +412,13 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
                 </AnimatePresence>
                 
                 {filteredChats.length === 0 && searchTerm && (
-                  <div className="py-8 text-sm text-center text-[var(--muted)]">
+                  <div className="py-8 text-sm text-center text-muted">
                     No chats found
                   </div>
                 )}
                 
                 {filteredChats.length === 0 && !searchTerm && (
-                  <div className="py-8 text-sm text-center text-[var(--muted)]">
+                  <div className="py-8 text-sm text-center text-muted">
                     No chats yet
                   </div>
                 )}
@@ -434,13 +434,13 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
           {!isCollapsed && (
             <div className="flex gap-3 items-center min-w-0">
               <div className="flex justify-center items-center w-8 h-8 bg-gradient-to-br from-[var(--muted)] to-[var(--border)] rounded-full">
-                <User size={16} className="text-[var(--text-primary)]" />
+                <User size={16} className="text-primary" />
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-medium text-[var(--text-primary)] truncate">
+                <div className="text-sm font-medium text-primary truncate">
                   {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
                 </div>
-                <div className="text-xs text-[var(--muted)] truncate">
+                <div className="text-xs text-muted truncate">
                   {userProfile?.role || 'Member'}
                 </div>
               </div>
@@ -456,7 +456,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
                 className="p-2 rounded-[var(--radius-md)] transition-standard hover:bg-[var(--muted)] focus-ring"
                 title="Settings"
               >
-                <Settings size={16} className="text-[var(--muted)]" />
+                <Settings size={16} className="text-muted" />
               </Link>
             </motion.button>
             <motion.button
@@ -469,7 +469,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <LogOut size={16} className="text-[var(--muted)]" />
+              <LogOut size={16} className="text-muted" />
             </motion.button>
           </div>
         </div>
