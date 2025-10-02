@@ -206,7 +206,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
   }) => (
     <div className="space-y-1">
       {showTitle && !isCollapsed && title && (
-        <div className="px-2 mb-3 text-xs font-semibold tracking-wider text-muted uppercase">
+        <div className="px-2 mb-3 text-xs font-semibold tracking-wider uppercase text-muted">
           {title}
         </div>
       )}
@@ -261,7 +261,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
   return (
     <motion.div
       className={cn(
-        "h-full glass border-r border-[var(--glass-border)] flex flex-col transition-all duration-300",
+        "flex flex-col h-full border-r transition-all duration-300 glass border-[var(--glass-border)]",
         isCollapsed ? 'w-16' : 'w-80',
         className
       )}
@@ -271,8 +271,8 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
     >
       {/* Header */}
       <div className="flex-none border-b border-[var(--glass-border)] p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-3 items-center">
             <motion.div 
               className="flex justify-center items-center w-8 h-8 rounded-[var(--radius-lg)] shadow-soft"
               whileHover={{ scale: 1.05 }}
@@ -301,7 +301,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
             </motion.div>
             {!isCollapsed && (
               <div className="min-w-0">
-                <div className="text-lg font-semibold text-primary truncate">
+                <div className="text-lg font-semibold truncate text-primary">
                   {facilityName || brandingSettings?.company_name || 'CareIQ'}
                 </div>
                 <div className="text-xs text-muted">
@@ -355,13 +355,13 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
           {/* Recent Chats */}
           {!isCollapsed && (
             <div className="space-y-3">
-              <div className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted uppercase">
+              <div className="px-2 mb-2 text-xs font-semibold tracking-wider uppercase text-muted">
                 Recent Chats
               </div>
               
               {/* Search */}
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 text-muted transform -translate-y-1/2" />
+                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted" />
                 <input
                   type="text"
                   placeholder="Search chats..."
@@ -388,7 +388,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
                       >
                         <div
                           className={cn(
-                            "group flex items-center gap-3 p-2 rounded-[var(--radius-md)] transition-standard",
+                            "flex gap-3 items-center p-2 group rounded-[var(--radius-md)] transition-standard",
                             isActive 
                               ? "bg-[var(--accent)] text-[var(--accent-contrast)]" 
                               : "hover:bg-[var(--muted)]"
@@ -440,10 +440,10 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
                 <User size={16} className="text-primary" />
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-medium text-primary truncate">
+                <div className="text-sm font-medium truncate text-primary">
                   {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
                 </div>
-                <div className="text-xs text-muted truncate">
+                <div className="text-xs truncate text-muted">
                   {userProfile?.role || 'Member'}
                 </div>
               </div>

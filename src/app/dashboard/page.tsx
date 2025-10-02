@@ -38,6 +38,8 @@ export default function FacilityDashboard() {
   const [facilityAnalysis, setFacilityAnalysis] = useState<any>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [lastAnalysisUpdate, setLastAnalysisUpdate] = useState<string | null>(null);
+  const [nextAnalysisUpdate, setNextAnalysisUpdate] = useState<string | null>(null);
   const [showLetterSuggestions, setShowLetterSuggestions] = useState(false);
   
   // Helper function to render star ratings
@@ -223,6 +225,14 @@ export default function FacilityDashboard() {
         const result = await response.json();
         console.log('Facility analysis loaded:', result);
         setFacilityAnalysis(result.data);
+        
+        // Store metadata for display
+        if (result.lastGenerated) {
+          setLastAnalysisUpdate(result.lastGenerated);
+        }
+        if (result.nextUpdate) {
+          setNextAnalysisUpdate(result.nextUpdate);
+        }
       } else {
         const error = await response.json();
         console.error('Facility analysis error:', error);
@@ -241,6 +251,7 @@ export default function FacilityDashboard() {
       loadCurrentPPD();
       loadSurveyCountdown();
       loadComplianceScore();
+      loadFacilityAnalysis(); // Automatically load facility analysis
       
       // Update countdown every minute
       const interval = setInterval(loadSurveyCountdown, 60000);
@@ -511,10 +522,22 @@ export default function FacilityDashboard() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Facility Performance Analysis
-                </h2>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Facility Performance Analysis
+                  </h2>
+                  {lastAnalysisUpdate && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Last updated: {new Date(lastAnalysisUpdate).toLocaleDateString()} at {new Date(lastAnalysisUpdate).toLocaleTimeString()}
+                      {nextAnalysisUpdate && (
+                        <span className="ml-2">
+                          • Next update: {new Date(nextAnalysisUpdate).toLocaleDateString()}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={loadFacilityAnalysis}
                   disabled={loadingAnalysis}
@@ -525,7 +548,7 @@ export default function FacilityDashboard() {
                   ) : (
                     <CheckCircle size={16} />
                   )}
-                  {loadingAnalysis ? 'Analyzing...' : 'Analyze Facility'}
+                  {loadingAnalysis ? 'Analyzing...' : 'Refresh Analysis'}
                 </button>
               </div>
             </div>
@@ -547,14 +570,21 @@ export default function FacilityDashboard() {
                 <div className="space-y-6">
                   {/* Facility Overview */}
                   <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                      {facilityAnalysis.facility.name}
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                        {facilityAnalysis.facility.name}
+                      </h3>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Provider ID: {facilityAnalysis.facility.providerId}
+                      </div>
+                    </div>
+                    
+                    {/* Star Ratings */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                       <div className="text-center">
                         <div className="text-2xl font-bold text-blue-600">{facilityAnalysis.facility.overallRating ?? 'N/A'}</div>
                         <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.overallRating)}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Overall</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Overall Rating</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-green-600">{facilityAnalysis.facility.healthInspections ?? 'N/A'}</div>
@@ -564,22 +594,94 @@ export default function FacilityDashboard() {
                       <div className="text-center">
                         <div className="text-2xl font-bold text-purple-600">{facilityAnalysis.facility.qualityMeasures ?? 'N/A'}</div>
                         <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.qualityMeasures)}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Quality</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Quality Measures</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-orange-600">{facilityAnalysis.facility.staffing ?? 'N/A'}</div>
                         <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.staffing)}</div>
                         <div className="text-xs text-gray-600 dark:text-gray-400">Staffing</div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-indigo-600">{facilityAnalysis.facility.shortStay ?? 'N/A'}</div>
-                        <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.shortStay)}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Short Stay</div>
+                    </div>
+
+                    {/* Detailed Metrics */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Staffing Metrics */}
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-2 text-sm">Staffing Details</h4>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Total Nursing Hours:</span>
+                            <span className="font-medium">{facilityAnalysis.facility.staffingMetrics?.totalNursingHours ?? 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">RN Hours:</span>
+                            <span className="font-medium">{facilityAnalysis.facility.staffingMetrics?.rnHours ?? 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Staff Turnover:</span>
+                            <span className="font-medium">{facilityAnalysis.facility.staffingMetrics?.staffTurnover ? `${(facilityAnalysis.facility.staffingMetrics.staffTurnover * 100).toFixed(1)}%` : 'N/A'}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-pink-600">{facilityAnalysis.facility.longStay ?? 'N/A'}</div>
-                        <div className="text-yellow-500 text-lg mb-1">{renderStars(facilityAnalysis.facility.longStay)}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Long Stay</div>
+
+                      {/* Inspection Metrics */}
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-2 text-sm">Inspection Details</h4>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Total Deficiencies:</span>
+                            <span className="font-medium">{facilityAnalysis.facility.inspectionMetrics?.totalDeficiencies ?? 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Health Survey Score:</span>
+                            <span className="font-medium">{facilityAnalysis.facility.inspectionMetrics?.weightedHealthSurveyScore ?? 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Fire Safety Issues:</span>
+                            <span className="font-medium">{facilityAnalysis.facility.inspectionMetrics?.fireSafetyDeficiencies ?? 'N/A'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quality Metrics */}
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-2 text-sm">Quality Measures</h4>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Long-Stay Antipsychotics:</span>
+                            <span className="font-medium">{facilityAnalysis.facility.qualityMetrics?.longStayAntipsychotics ? `${facilityAnalysis.facility.qualityMetrics.longStayAntipsychotics}%` : 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Short-Stay Rehospitalization:</span>
+                            <span className="font-medium">{facilityAnalysis.facility.qualityMetrics?.shortStayRehospitalization ? `${facilityAnalysis.facility.qualityMetrics.shortStayRehospitalization}%` : 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Falls with Injury:</span>
+                            <span className="font-medium">{facilityAnalysis.facility.qualityMetrics?.longStayFalls ? `${facilityAnalysis.facility.qualityMetrics.longStayFalls}%` : 'N/A'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Facility Information */}
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Address:</span>
+                          <span className="ml-2 text-gray-900 dark:text-white">{facilityAnalysis.facility.address || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Phone:</span>
+                          <span className="ml-2 text-gray-900 dark:text-white">{facilityAnalysis.facility.phoneNumber || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Ownership:</span>
+                          <span className="ml-2 text-gray-900 dark:text-white">{facilityAnalysis.facility.ownershipType || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Data Source:</span>
+                          <span className="ml-2 text-gray-900 dark:text-white">{facilityAnalysis.facility.dataSource || 'CMS Care Compare'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>

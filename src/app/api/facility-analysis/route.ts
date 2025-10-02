@@ -692,7 +692,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // If not a refresh, check for existing recent analysis (within last 24 hours)
+    // Always check for existing analysis first (unless it's a forced refresh)
     if (!isRefresh) {
       const { data: existingAnalysis } = await supa
         .from('knowledge_base')
@@ -706,17 +706,18 @@ export async function POST(req: NextRequest) {
 
       if (existingAnalysis) {
         const lastUpdate = new Date(existingAnalysis.last_updated);
-        const hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
+        const daysSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
         
-        // If analysis is less than 24 hours old, return existing analysis
-        if (hoursSinceUpdate < 24) {
+        // If analysis is less than 7 days old, return existing analysis
+        if (daysSinceUpdate < 7) {
           try {
             const analysisData = JSON.parse(existingAnalysis.content);
             return NextResponse.json({ 
               success: true, 
               data: analysisData,
               fromCache: true,
-              lastGenerated: existingAnalysis.last_updated
+              lastGenerated: existingAnalysis.last_updated,
+              nextUpdate: new Date(lastUpdate.getTime() + (7 * 24 * 60 * 60 * 1000)).toISOString()
             });
           } catch (parseError) {
             // If parse fails, continue with new generation
