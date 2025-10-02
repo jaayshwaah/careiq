@@ -64,6 +64,16 @@ interface ComplianceUpdate {
   link?: string;
 }
 
+interface ComplianceResource {
+  id: string;
+  title: string;
+  description: string;
+  type: 'document' | 'tool' | 'template' | 'guide';
+  category: string;
+  url?: string;
+  lastUpdated: string;
+}
+
 // CMS regulations data - now loaded from database
 const defaultCmsRegulations: ComplianceRegulation[] = [
   {
@@ -624,7 +634,7 @@ export default function CMSGuidancePage() {
 
               {/* Results Count */}
               <div className="mt-4 text-sm text-gray-600">
-                Showing {filteredRegulations.length} of {cmsRegulations.length} regulations
+                Showing {filteredRegulations.length} of {regulations.length} regulations
               </div>
             </div>
 
@@ -790,7 +800,7 @@ export default function CMSGuidancePage() {
                           {/* Common Deficiencies */}
                           {regulation.commonDeficiencies && (
                             <div>
-                              <h5 className="font-medium text-gray-900 mb-2 text-red-700">Common Deficiencies</h5>
+                              <h5 className="font-medium text-red-700 mb-2">Common Deficiencies</h5>
                               <ul className="text-sm text-gray-700 space-y-1">
                                 {regulation.commonDeficiencies.map((def, idx) => (
                                   <li key={idx} className="flex items-start gap-2">

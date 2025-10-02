@@ -20,8 +20,9 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(true); // Default to true for convenience
+  const [lastUsedMethod, setLastUsedMethod] = useState<string | null>(null);
 
-  // Load saved email and check if already signed in
+  // Load saved email and last used method, check if already signed in
   useEffect(() => {
     let isMounted = true;
     
@@ -34,6 +35,25 @@ export default function LoginPage() {
       }
     } catch (error) {
       console.warn('Could not load saved email');
+    }
+
+    // Load last used login method and set appropriate mode
+    try {
+      const lastMethod = localStorage.getItem('careiq-last-login-method');
+      if (lastMethod) {
+        setLastUsedMethod(lastMethod);
+        // Auto-switch to the last used method
+        if (lastMethod === 'email') {
+          setMode('signin');
+        } else if (lastMethod === 'magic') {
+          setMode('magic');
+        } else if (lastMethod === 'google') {
+          // For Google, we'll show the signin mode but highlight Google button
+          setMode('signin');
+        }
+      }
+    } catch (error) {
+      console.warn('Could not load last login method');
     }
     
     // Check if already signed in
@@ -51,6 +71,16 @@ export default function LoginPage() {
   const redirectTo =
     typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
 
+  // Helper function to save login method
+  const saveLoginMethod = (method: string) => {
+    try {
+      localStorage.setItem('careiq-last-login-method', method);
+      setLastUsedMethod(method);
+    } catch (error) {
+      console.warn('Could not save login method');
+    }
+  };
+
   async function signInPassword(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -58,6 +88,9 @@ export default function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      
+      // Save login method
+      saveLoginMethod('email');
       
       // Save or remove email based on remember me setting
       try {
@@ -112,6 +145,10 @@ export default function LoginPage() {
         options: { emailRedirectTo: redirectTo },
       });
       if (error) throw error;
+      
+      // Save login method
+      saveLoginMethod('magic');
+      
       setMsg("Magic link sent. Check your email.");
     } catch (err: any) {
       setMsg(err?.message || "Could not send magic link.");
@@ -144,6 +181,9 @@ export default function LoginPage() {
     setBusy(true);
     setMsg(null);
     try {
+      // Save login method
+      saveLoginMethod('google');
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo },
@@ -158,6 +198,32 @@ export default function LoginPage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-6">
       <h1 className="mb-6 text-2xl font-semibold">Sign in to CareIQ</h1>
+
+      {/* Last used method indicator */}
+      {lastUsedMethod && (
+        <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 p-3 dark:bg-blue-950/20 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+              <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+              <span className="font-medium">Last used:</span>
+              <span className="capitalize">
+                {lastUsedMethod === 'email' ? 'Email & Password' : 
+                 lastUsedMethod === 'magic' ? 'Magic Link' : 
+                 lastUsedMethod === 'google' ? 'Google' : lastUsedMethod}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('careiq-last-login-method');
+                setLastUsedMethod(null);
+              }}
+              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 underline"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Mode switcher */}
       <div className="mb-4 grid grid-cols-4 gap-1 rounded-xl bg-neutral-100 p-1 dark:bg-neutral-900/60">
@@ -261,9 +327,21 @@ export default function LoginPage() {
       <button
         onClick={signInGoogle}
         disabled={busy}
-        className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm disabled:opacity-50 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-950"
+        className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm disabled:opacity-50 transition-colors ${
+          lastUsedMethod === 'google' 
+            ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950/20 dark:text-blue-300 dark:hover:bg-blue-950/30' 
+            : 'border-neutral-300 bg-white hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-950 dark:hover:bg-neutral-800'
+        }`}
       >
-        Continue with Google
+        <div className="flex items-center justify-center gap-2">
+          {lastUsedMethod === 'google' && (
+            <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+          )}
+          Continue with Google
+          {lastUsedMethod === 'google' && (
+            <span className="text-xs opacity-75">(Last used)</span>
+          )}
+        </div>
       </button>
 
       {msg && <div className="mt-4 text-sm text-neutral-700 dark:text-neutral-300">{msg}</div>}
