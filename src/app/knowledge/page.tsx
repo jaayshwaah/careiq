@@ -91,7 +91,7 @@ const KnowledgeManagement = () => {
   }, [isAuthenticated, user, router, supabase]);
 
   useEffect(() => {
-    if (profile?.role?.includes('administrator')) {
+    if (profile) {
       loadDocuments();
       loadStats();
     }
@@ -523,9 +523,18 @@ const KnowledgeManagement = () => {
     </div>
   );
 
-  // Show nothing while checking auth or if not admin
-  if (!isAuthenticated || !profile?.role?.includes('administrator')) {
-    return null;
+  // Show loading while checking auth
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
