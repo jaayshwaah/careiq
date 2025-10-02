@@ -49,22 +49,25 @@ interface SidebarProps {
 }
 
 const mainNavigationItems = [
-  { href: "/", label: "Chat", icon: MessageCircle },
+  { href: "/", label: "Home", icon: Home },
+  { href: "/chat", label: "Chat Assistant", icon: MessageCircle },
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/cms-guidance", label: "Compliance & Surveys", icon: Shield },
+  { href: "/daily-rounds", label: "Daily Operations", icon: CheckSquare },
+  { href: "/care-plan-assistant", label: "Care Planning", icon: BookOpen },
+  { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
+  { href: "/supply-management", label: "Supply & Inventory", icon: Package },
+  { href: "/reports", label: "Analytics & Reports", icon: BarChart3 },
+  { href: "/admin/workflow-designer", label: "Workflows", icon: Workflow },
+  { href: "/calendar-integrations", label: "Integrations", icon: Calendar },
 ];
 
 const toolsNavigationItems = [
   { href: "/ppd-calculator", label: "PPD Calculator", icon: Calculator },
-  { href: "/daily-rounds", label: "Daily Rounds", icon: CheckSquare },
-  { href: "/task-management", label: "Task Management", icon: ListTodo },
-  { href: "/admin/workflow-designer", label: "Workflow Designer", icon: Workflow, adminOnly: true },
   { href: "/survey-prep", label: "Survey Prep", icon: Shield },
   { href: "/pbj-corrector-ai", label: "PBJ Corrector AI", icon: FileSpreadsheet },
-  { href: "/supply-management", label: "Supply Management", icon: Package },
+  { href: "/task-management", label: "Task Management", icon: ListTodo },
   { href: "/supplier-management", label: "Supplier Management", icon: Truck, adminOnly: true },
-  { href: "/calendar-integrations", label: "Calendar", icon: Calendar },
-  { href: "/knowledge", label: "Knowledge", icon: BookOpen, adminOnly: true },
 ];
 
 export default function Sidebar({ className = "", collapsed: externalCollapsed, onToggleCollapse }: SidebarProps) {
@@ -307,9 +310,12 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
 
   const isCurrentPath = (href: string) => {
     if (href === "/") {
-      return pathname === "/" || pathname.startsWith("/chat");
+      return pathname === "/";
     }
-    return pathname.startsWith(href);
+    if (href === "/chat") {
+      return pathname === "/chat" || pathname.startsWith("/chat/");
+    }
+    return pathname === href || pathname.startsWith(href + "/");
   };
 
   const filteredChats = chats.filter(chat => 
@@ -407,12 +413,12 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
                 href={item.href}
                 className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 ${
                   isActive
-                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25 dark:bg-blue-500 dark:text-white"
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
                 }`}
                 title={isCollapsed ? item.label : undefined}
               >
-                <Icon size={18} className={isActive ? "text-blue-600 dark:text-blue-400" : ""} />
+                <Icon size={18} className={isActive ? "text-white dark:text-white" : ""} />
                 {!isCollapsed && item.label}
               </Link>
             );
@@ -446,12 +452,12 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
                     href={item.href}
                     className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 ${
                       isActive
-                        ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        ? "bg-green-600 text-white shadow-lg shadow-green-600/25 dark:bg-green-500 dark:text-white"
                         : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
                     }`}
                     title={isCollapsed ? item.label : undefined}
                   >
-                    <Icon size={18} className={isActive ? "text-green-600 dark:text-green-400" : ""} />
+                    <Icon size={18} className={isActive ? "text-white dark:text-white" : ""} />
                     {!isCollapsed && item.label}
                   </Link>
                 );

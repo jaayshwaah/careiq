@@ -89,14 +89,14 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
   const mainNavigationItems: NavigationItem[] = [
     { href: "/", label: "Home", icon: Home },
     { href: "/chat", label: "Chat Assistant", icon: MessageCircle },
-    { href: "/compliance", label: "Compliance & Surveys", icon: Shield },
-    { href: "/daily-ops", label: "Daily Operations", icon: ClipboardList },
-    { href: "/care-plans", label: "Care Planning", icon: FileText },
+    { href: "/cms-guidance", label: "Compliance & Surveys", icon: Shield },
+    { href: "/daily-rounds", label: "Daily Operations", icon: ClipboardList },
+    { href: "/care-plan-assistant", label: "Care Planning", icon: FileText },
     { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
-    { href: "/supply", label: "Supply & Inventory", icon: Package },
-    { href: "/analytics", label: "Analytics & Reports", icon: BarChart3 },
-    { href: "/workflows", label: "Workflows", icon: Zap },
-    { href: "/integrations", label: "Integrations", icon: ExternalLink },
+    { href: "/supply-management", label: "Supply & Inventory", icon: Package },
+    { href: "/reports", label: "Analytics & Reports", icon: BarChart3 },
+    { href: "/admin/workflow-designer", label: "Workflows", icon: Zap },
+    { href: "/calendar-integrations", label: "Integrations", icon: ExternalLink },
   ];
 
   const adminNavigationItems: NavigationItem[] = [
@@ -122,9 +122,12 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
 
   const isCurrentPath = (href: string) => {
     if (href === "/") {
-      return pathname === "/" || pathname.startsWith("/chat");
+      return pathname === "/";
     }
-    return pathname.startsWith(href);
+    if (href === "/chat") {
+      return pathname === "/chat" || pathname.startsWith("/chat/");
+    }
+    return pathname === href || pathname.startsWith(href + "/");
   };
 
   const createNewChat = async () => {
@@ -227,7 +230,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
                 "flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-md)] font-medium transition-standard group",
                 isCollapsed ? "justify-center" : "",
                 isActive
-                  ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-soft"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25 dark:bg-blue-500 dark:text-white"
                   : "text-primary hover:bg-[var(--muted)]"
               )}
               title={isCollapsed ? item.label : undefined}
@@ -235,7 +238,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
               <Icon 
                 size={18} 
                 className={cn(
-                  isActive ? "text-[var(--accent-contrast)]" : "text-muted group-hover:text-primary"
+                  isActive ? "text-white dark:text-white" : "text-muted group-hover:text-primary"
                 )} 
               />
               {!isCollapsed && (
