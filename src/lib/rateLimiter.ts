@@ -94,7 +94,7 @@ export const RATE_LIMITS = {
   ANALYSIS: { maxRequests: 20, windowMs: 60 * 60 * 1000 }, // 20 per hour
   
   // Stricter limits for expensive operations
-  FACILITY_ANALYSIS: { maxRequests: 10, windowMs: 60 * 60 * 1000 }, // 10 per hour
+  FACILITY_ANALYSIS: { maxRequests: 20, windowMs: 15 * 60 * 1000 }, // 20 per 15 minutes
   PDF_EXPORT: { maxRequests: 20, windowMs: 60 * 60 * 1000 }, // 20 per hour
   
   // Very strict limits for admin operations

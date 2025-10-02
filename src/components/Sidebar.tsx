@@ -327,7 +327,7 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
   }
 
   return (
-    <div className={`h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'} ${className}`}>
+    <div className={`h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col transition-all duration-150 ${isCollapsed ? 'w-16' : 'w-80'} ${className}`}>
       {/* Fixed Header */}
       <div className={`flex-none border-b border-gray-200/30 dark:border-gray-700/30 ${isCollapsed ? 'px-3 py-4' : 'px-6 py-5'}`}>
           <div className="flex justify-between items-center mb-4">
@@ -374,7 +374,7 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
           {/* New Chat Button */}
             <button
               onClick={createNewChat}
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-2 justify-center'} px-4 py-2.5 text-white rounded-lg font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm`}
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-2 justify-center'} px-4 py-2.5 text-white rounded-lg font-medium transition-all duration-100 hover:scale-[1.02] active:scale-[0.98] shadow-sm`}
           style={{
             backgroundColor: brandingSettings?.primary_color || '#3b82f6',
             ':hover': {

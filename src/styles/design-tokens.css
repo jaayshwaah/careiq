@@ -76,9 +76,9 @@
   --shadow-glass: 0 8px 32px oklch(0 0 0 / 0.12);
 
   /* Motion */
-  --duration-fast: 150ms;
-  --duration-med: 250ms;
-  --duration-slow: 400ms;
+  --duration-fast: 100ms;
+  --duration-med: 150ms;
+  --duration-slow: 250ms;
 
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-enter: cubic-bezier(0.2, 0, 0.13, 1.5);

@@ -222,7 +222,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
           <motion.div
             key={item.href}
             whileHover={{ x: 4 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.1 }}
           >
             <Link
               href={item.href}
@@ -261,13 +261,13 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
   return (
     <motion.div
       className={cn(
-        "flex flex-col h-full border-r transition-all duration-300 glass border-[var(--glass-border)]",
+        "flex flex-col h-full border-r transition-all duration-150 glass border-[var(--glass-border)]",
         isCollapsed ? 'w-16' : 'w-80',
         className
       )}
       initial={false}
       animate={{ width: isCollapsed ? 64 : 320 }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
+      transition={{ duration: 0.15, ease: "easeInOut" }}
     >
       {/* Header */}
       <div className="flex-none border-b border-[var(--glass-border)] p-4">
@@ -276,7 +276,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
             <motion.div 
               className="flex justify-center items-center w-8 h-8 rounded-[var(--radius-lg)] shadow-soft"
               whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.1 }}
               style={{
                 background: brandingSettings?.primary_color 
                   ? `linear-gradient(to bottom right, ${brandingSettings.primary_color}, ${brandingSettings.primary_color}CC)`
@@ -383,7 +383,7 @@ const EnhancedSidebar: React.FC<SidebarProps> = ({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
+                        transition={{ duration: 0.1 }}
                         whileHover={{ x: 4 }}
                       >
                         <div

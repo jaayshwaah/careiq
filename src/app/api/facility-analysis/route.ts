@@ -658,10 +658,22 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Apply rate limiting
+    // Apply rate limiting with better error handling
     const rateLimitResponse = await rateLimit(req, RATE_LIMITS.FACILITY_ANALYSIS);
     if (rateLimitResponse) {
-      return rateLimitResponse;
+      // Return a more helpful error message
+      const errorData = await rateLimitResponse.json();
+      return NextResponse.json({
+        error: "Rate limit exceeded",
+        message: "You've reached the limit for facility analysis requests. Please wait a few minutes before trying again.",
+        retryAfter: errorData.retryAfter,
+        suggestion: "The analysis is cached for 7 days, so you may not need to generate a new one immediately."
+      }, { 
+        status: 429,
+        headers: {
+          'Retry-After': errorData.retryAfter.toString()
+        }
+      });
     }
 
     // Get user authentication

@@ -76,15 +76,14 @@ const KnowledgeManagement = () => {
           .eq("user_id", user.id)
           .single();
           
-        if (!profileData?.role?.includes('administrator')) {
-          router.push('/dashboard');
-          return;
-        }
+        // Knowledge base is accessible to all authenticated users
+        // No role restriction needed
         
         setProfile(profileData);
       } catch (error) {
         console.error("Failed to load profile:", error);
-        router.push('/dashboard');
+        // Continue loading the page even if profile loading fails
+        setProfile(null);
       }
     };
     
