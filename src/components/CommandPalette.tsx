@@ -62,7 +62,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
     { id: 'home', title: 'Go to Home', description: 'Dashboard and overview', icon: Home, href: '/', category: 'Navigate', keywords: ['home', 'dashboard', 'overview'] },
     { id: 'chat', title: 'Open Chat Assistant', description: 'AI-powered conversation', icon: MessageCircle, href: '/chat', category: 'Navigate', keywords: ['chat', 'ai', 'assistant', 'conversation'] },
     { id: 'compliance', title: 'Compliance & Surveys', description: 'CMS regulations and survey prep', icon: Shield, href: '/compliance', category: 'Navigate', keywords: ['compliance', 'surveys', 'cms', 'regulations'] },
-    { id: 'daily-ops', title: 'Daily Operations', description: 'Rounds, PPD, census, incidents', icon: ClipboardList, href: '/daily-ops', category: 'Navigate', keywords: ['daily', 'operations', 'rounds', 'ppd', 'census'] },
+    { id: 'daily-ops', title: 'Daily Rounds', description: 'Rounds, PPD, census, incidents', icon: ClipboardList, href: '/daily-rounds', category: 'Navigate', keywords: ['daily', 'rounds', 'ppd', 'census'] },
     { id: 'care-plans', title: 'Care Planning', description: 'AI-assisted care plan creation', icon: FileText, href: '/care-plans', category: 'Navigate', keywords: ['care', 'plans', 'planning', 'documentation'] },
     { id: 'knowledge', title: 'Knowledge Base', description: 'Policies, procedures, and resources', icon: BookOpen, href: '/knowledge', category: 'Navigate', keywords: ['knowledge', 'policies', 'procedures', 'resources'] },
     { id: 'supply', title: 'Supply & Inventory', description: 'Inventory management and tracking', icon: Package, href: '/supply', category: 'Navigate', keywords: ['supply', 'inventory', 'tracking', 'management'] },

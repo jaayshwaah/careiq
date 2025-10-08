@@ -45,6 +45,16 @@ body {
   -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
+/* Typing cursor animation for streaming */
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typing-cursor {
+  animation: blink-cursor 1s step-end infinite;
+}
+
 /* Basic transitions */
 * {
   transition-timing-function: ease;

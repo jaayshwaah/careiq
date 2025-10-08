@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   MessageCircle,
@@ -31,9 +32,22 @@ import {
   Workflow,
   Truck,
   Building2,
+  Command,
+  Activity,
+  AlertCircle,
+  Users,
+  FileText,
+  ClipboardList,
+  Database,
+  Zap,
+  ExternalLink,
+  StarOff,
+  Sliders
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
+import { cn } from "@/lib/utils";
+import SettingsModal from "@/components/SettingsModal";
 
 interface Chat {
   id: string;
@@ -48,265 +62,120 @@ interface SidebarProps {
   onToggleCollapse?: () => void;
 }
 
-const mainNavigationItems = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/chat", label: "Chat Assistant", icon: MessageCircle },
-  { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
-  { href: "/cms-guidance", label: "Compliance & Surveys", icon: Shield },
-  { href: "/daily-rounds", label: "Daily Operations", icon: CheckSquare },
-  { href: "/care-plan-assistant", label: "Care Planning", icon: BookOpen },
-  { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
-  { href: "/supply-management", label: "Supply & Inventory", icon: Package },
-  { href: "/reports", label: "Analytics & Reports", icon: BarChart3 },
-  { href: "/admin/workflow-designer", label: "Workflows", icon: Workflow },
-  { href: "/calendar-integrations", label: "Integrations", icon: Calendar },
-];
+interface NavigationItem {
+  id?: string;
+  href: string;
+  label: string;
+  icon: any;
+  adminOnly?: boolean;
+  badge?: string | number;
+  children?: NavigationItem[];
+  category?: 'main' | 'tools' | 'admin';
+}
 
-const toolsNavigationItems = [
-  { href: "/ppd-calculator", label: "PPD Calculator", icon: Calculator },
-  { href: "/survey-prep", label: "Survey Prep", icon: Shield },
-  { href: "/pbj-corrector-ai", label: "PBJ Corrector AI", icon: FileSpreadsheet },
-  { href: "/task-management", label: "Task Management", icon: ListTodo },
-  { href: "/supplier-management", label: "Supplier Management", icon: Truck, adminOnly: true },
-];
-
-export default function Sidebar({ className = "", collapsed: externalCollapsed, onToggleCollapse }: SidebarProps) {
-  const pathname = usePathname();
+const Sidebar: React.FC<SidebarProps> = ({ 
+  className, 
+  collapsed = false, 
+  onToggleCollapse 
+}) => {
+  const { user, userProfile, isAuthenticated } = useAuth();
   const router = useRouter();
-  const { isAuthenticated, user, signOut } = useAuth();
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [editingChatId, setEditingChatId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState("");
-  const [brandingSettings, setBrandingSettings] = useState<any>(null);
-  const [facilityLogo, setFacilityLogo] = useState<string | null>(null);
-  const [facilityName, setFacilityName] = useState<string>("");
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const pathname = usePathname();
   const supabase = getBrowserSupabase();
-
-  // Use external collapsed state if provided, otherwise use internal state
-  const isCollapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed;
+  const [isCollapsed, setIsCollapsed] = useState(collapsed);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [allChats, setAllChats] = useState<Chat[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isEditing, setIsEditing] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [facilityName, setFacilityName] = useState("");
+  const [facilityLogo, setFacilityLogo] = useState<string | null>(null);
+  const [brandingSettings, setBrandingSettings] = useState<any>(null);
   
-  const toggleCollapse = () => {
-    if (onToggleCollapse) {
-      onToggleCollapse();
-      } else {
-      setInternalCollapsed(!internalCollapsed);
-    }
-  };
+  // Customization state
+  const [sidebarPreferences, setSidebarPreferences] = useState<any>(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showAllChatsModal, setShowAllChatsModal] = useState(false);
+  const [modalSearchTerm, setModalSearchTerm] = useState("");
 
-  // Load user profile and facility logo - using fallback data to avoid RLS recursion
-  const loadProfile = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      // Use fallback profile data to avoid profiles table RLS recursion
-      const profile = {
-      user_id: user.id,
-      role: 'user', 
-      is_admin: false,
-      email: user.email,
-        full_name: user.email?.split('@')[0] || 'User',
-        facility_name: 'Healthcare Facility',
-        facility_logo_url: null
-      };
-      
-      setUserProfile(profile);
-      
-      // Set facility information
-      if (profile?.facility_name) {
-        setFacilityName(profile.facility_name);
-      }
-      if (profile?.facility_logo_url) {
-        setFacilityLogo(profile.facility_logo_url);
-      }
-      
-      // Load branding settings if admin (fallback for custom branding)
-      if (profile?.role?.includes('administrator')) {
-        try {
-          const { data: branding } = await supabase
-            .from("branding_settings")
-            .select("*")
-            .eq("user_id", user.id)
-            .single();
-          setBrandingSettings(branding);
-        } catch (error) {
-          console.warn("Failed to load branding settings:", error);
-        }
-      }
-    } catch (error) {
-      console.warn("Failed to load profile:", error);
-    }
-  }, [user, supabase]);
+  // Default navigation structure
+  const defaultNavigationItems: NavigationItem[] = [
+    { id: 'home', href: "/", label: "Home", icon: Home, category: 'main' },
+    { id: 'chat', href: "/chat", label: "AI Assistant", icon: MessageCircle, category: 'main' },
+    { id: 'compliance', href: "/cms-guidance", label: "Compliance & Survey Prep", icon: Shield, category: 'main' },
+    { id: 'care-planning', href: "/care-plan-assistant", label: "Care Planning", icon: FileText, category: 'main' },
+    { id: 'daily-rounds', href: "/daily-rounds", label: "Daily Rounds", icon: ClipboardList, category: 'main' },
+    { id: 'knowledge', href: "/knowledge", label: "Knowledge Base", icon: BookOpen, category: 'main' },
+    { id: 'ppd-calculator', href: "/ppd-calculator", label: "PPD Calculator", icon: Calculator, category: 'main' },
+    { id: 'pbj-corrector', href: "/pbj-corrector-ai", label: "PBJ Corrector", icon: FileSpreadsheet, category: 'main' },
+    { id: 'supply', href: "/supply-management", label: "Supplies", icon: Package, category: 'main' },
+    { id: 'task-management', href: "/task-management", label: "Tasks", icon: ListTodo, category: 'main' },
+    { id: 'reports', href: "/reports", label: "Reports & Analytics", icon: BarChart3, category: 'main' },
+    { id: 'workflows', href: "/admin/workflow-designer", label: "Workflows", icon: Zap, category: 'main', adminOnly: true },
+  ];
 
-  // Load chats
-  const loadChats = useCallback(async () => {
-    if (!isAuthenticated) {
-      setChats([]);
-      setLoading(false);
-      return;
-    }
+  // Tools navigation - now empty, everything in main
+  const toolsNavigationItems: NavigationItem[] = [];
 
-    try {
-      const { data: chatsData, error } = await supabase
-        .from("chats")
-        .select("id, title, created_at, updated_at")
-        .order("updated_at", { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      
-      const chats = chatsData || [];
-      setChats(chats);
-      
-      // Auto-title chats that need titles (like ChatGPT)
-      const chatsNeedingTitles = chats.filter(chat => 
-        !chat.title || 
-        chat.title === 'New Chat' || 
-        chat.title === 'Untitled chat' ||
-        chat.title.trim() === ''
-      );
-      
-      // Auto-title up to 3 recent chats at a time to avoid API overload
-      const chatsToTitle = chatsNeedingTitles.slice(0, 3);
-      
-      if (chatsToTitle.length > 0) {
-        autoTitleChats(chatsToTitle);
-      }
-    } catch (error) {
-      console.warn("Failed to load chats:", error);
-      setChats([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [isAuthenticated, supabase]);
-
-  // Auto-title chats function - using server-side API
-  const autoTitleChats = async (chatsToTitle: Chat[]) => {
-    for (const chat of chatsToTitle) {
-      try {
-        // Call the existing title API which handles message decryption server-side
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) continue;
-
-        const response = await fetch(`/api/chats/${chat.id}/title`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.ok && result.title) {
-            // Update the chat in our local state
-            setChats(prevChats => 
-              prevChats.map(c => 
-                c.id === chat.id 
-                  ? { ...c, title: result.title }
-                  : c
-              )
-            );
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to auto-title chat:', chat.id, error);
-      }
-      
-      // Add a small delay between requests to be nice to the API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  };
-
-  useEffect(() => {
-    loadProfile();
-    loadChats();
-  }, [loadProfile, loadChats]);
-
-  // Create new chat - go to home page
-  const createNewChat = () => {
-    router.push('/');
-  };
-
-  // Edit chat title
-  const handleEditChat = (chat: Chat) => {
-    setEditingChatId(chat.id);
-    setEditingTitle(chat.title);
-  };
-
-  const handleSaveTitle = async () => {
-    if (!editingChatId || !editingTitle.trim()) return;
+  // Get filtered navigation items based on preferences
+  const getFilteredNavigationItems = (items: NavigationItem[], preferences: any) => {
+    if (!preferences?.items) return items;
     
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-
-      const response = await fetch(`/api/chats/${editingChatId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ title: editingTitle.trim() }),
+    return items
+      .filter(item => {
+        const pref = preferences.items.find((p: any) => p.id === item.id);
+        return pref ? pref.visible : true;
+      })
+      .sort((a, b) => {
+        const prefA = preferences.items.find((p: any) => p.id === a.id);
+        const prefB = preferences.items.find((p: any) => p.id === b.id);
+        const orderA = prefA?.order || 999;
+        const orderB = prefB?.order || 999;
+        return orderA - orderB;
       });
-
-      if (response.ok) {
-        setChats(prev => prev.map(chat => 
-          chat.id === editingChatId 
-            ? { ...chat, title: editingTitle.trim() }
-            : chat
-        ));
-        setEditingChatId(null);
-        setEditingTitle("");
-      }
-    } catch (error) {
-      console.error('Failed to update chat title:', error);
-    }
   };
 
-  const handleCancelEdit = () => {
-    setEditingChatId(null);
-    setEditingTitle("");
-  };
-
-  // Delete chat
-  const handleDeleteChat = async (chatId: string) => {
-    if (!confirm('Are you sure you want to delete this chat?')) return;
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-
-      const response = await fetch(`/api/chats/${chatId}`, {
-        method: 'DELETE',
-        headers: { 
-          'Authorization': `Bearer ${session.access_token}`,
-        },
+  // Get favorite items
+  const getFavoriteItems = (preferences: any) => {
+    if (!preferences?.items) return [];
+    
+    const allItems = [...defaultNavigationItems, ...toolsNavigationItems];
+    return allItems
+      .filter(item => {
+        const pref = preferences.items.find((p: any) => p.id === item.id);
+        return pref?.favorite && pref?.visible;
+      })
+      .sort((a, b) => {
+        const prefA = preferences.items.find((p: any) => p.id === a.id);
+        const prefB = preferences.items.find((p: any) => p.id === b.id);
+        const orderA = prefA?.order || 999;
+        const orderB = prefB?.order || 999;
+        return orderA - orderB;
       });
-
-      if (response.ok) {
-        setChats(prev => prev.filter(chat => chat.id !== chatId));
-        
-        // If we're currently viewing the deleted chat, redirect to home
-        if (pathname === `/chat/${chatId}`) {
-          router.push('/');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to delete chat:', error);
-    }
   };
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.push("/login");
-    } catch (error) {
-      console.error("Sign out failed:", error);
-    }
-  };
+  // Dynamic navigation items
+  const mainNavigationItems = getFilteredNavigationItems(defaultNavigationItems, sidebarPreferences);
+  const favoriteItems = getFavoriteItems(sidebarPreferences);
+  const filteredToolsItems = getFilteredNavigationItems(toolsNavigationItems, sidebarPreferences);
+
+  const adminNavigationItems: NavigationItem[] = [
+    { id: 'admin-dash', href: "/admin", label: "Dashboard", icon: Settings, category: 'admin' },
+    { id: 'admin-users', href: "/admin/users", label: "Users", icon: Users, category: 'admin' },
+    { id: 'admin-facilities', href: "/admin/facilities", label: "Facilities", icon: Building2, category: 'admin' },
+    { id: 'admin-kb', href: "/admin/knowledge-base", label: "CMS Knowledge Base", icon: Database, category: 'admin' },
+  ];
+  
+  // Check if user is a CareIQ admin (internal team)
+  const isAdmin = userProfile?.is_admin || 
+                  userProfile?.role === 'administrator' || 
+                  String(userProfile?.role || '').toLowerCase().includes('administrator');
+  const isCareIQAdmin = isAdmin && (user?.email?.includes('@careiq.') || user?.email === 'jking4600@gmail.com');
+
+  const toggleCollapse = useCallback(() => {
+    setIsCollapsed(!isCollapsed);
+    onToggleCollapse?.();
+  }, [isCollapsed, onToggleCollapse]);
 
   const isCurrentPath = (href: string) => {
     if (href === "/") {
@@ -318,6 +187,99 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
     return pathname === href || pathname.startsWith(href + "/");
   };
 
+  const createNewChat = async () => {
+    try {
+      const supabase = getBrowserSupabase();
+      const { data, error } = await supabase
+        .from('chats')
+        .insert([{ title: 'New Chat' }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      router.push(`/chat/${data.id}`);
+    } catch (error) {
+      console.error('Error creating chat:', error);
+    }
+  };
+
+  const loadChats = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const supabase = getBrowserSupabase();
+      const { data, error } = await supabase
+        .from('chats')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setChats(data || []);
+    } catch (error) {
+      console.error('Error loading chats:', error);
+    }
+  };
+
+  const loadFacilityData = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const supabase = getBrowserSupabase();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('facility_name, facility_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profile?.facility_name) {
+        setFacilityName(profile.facility_name);
+      }
+    } catch (error) {
+      console.error('Error loading facility data:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadChats();
+      loadFacilityData();
+      loadSidebarPreferences();
+    }
+  }, [isAuthenticated, user?.id]);
+
+  // Load sidebar preferences
+  const loadSidebarPreferences = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .select('sidebar_preferences')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading sidebar preferences:', error);
+        return;
+      }
+
+      if (data?.sidebar_preferences) {
+        setSidebarPreferences(data.sidebar_preferences);
+      }
+    } catch (error) {
+      console.error('Error loading sidebar preferences:', error);
+    }
+  };
+
+  // Handle preferences save
+  const handlePreferencesSave = (preferences: any) => {
+    setSidebarPreferences(preferences);
+    setShowCustomizer(false);
+  };
+
   const filteredChats = chats.filter(chat => 
     chat.title?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -326,25 +288,95 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
     return null;
   }
 
+  const NavigationSection = ({ items, title, showTitle = true }: { 
+    items: NavigationItem[], 
+    title?: string,
+    showTitle?: boolean 
+  }) => (
+    <div className={title && showTitle ? "space-y-1" : ""}>
+      {showTitle && !isCollapsed && title && (
+        <div className="px-2 mb-3 text-xs font-semibold tracking-wider uppercase text-muted">
+          {title}
+        </div>
+      )}
+      {items.map((item) => {
+        if (item.adminOnly && !userProfile?.role?.includes('administrator')) {
+          return null;
+        }
+        
+        const Icon = item.icon;
+        const isActive = isCurrentPath(item.href);
+        
+        return (
+          <motion.div
+            key={item.href}
+            whileHover={{ x: 4 }}
+            transition={{ duration: 0.1 }}
+          >
+            <Link
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-md)] font-medium transition-standard group",
+                isCollapsed ? "justify-center" : "",
+                isActive
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25 dark:bg-blue-500 dark:text-white"
+                  : "text-primary hover:bg-[var(--muted)]"
+              )}
+              title={isCollapsed ? item.label : undefined}
+            >
+              <Icon 
+                size={18} 
+                className={cn(
+                  isActive ? "text-white dark:text-white" : "text-muted group-hover:text-primary"
+                )} 
+              />
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge && (
+                    <span className="px-2 py-0.5 text-xs bg-[var(--accent)] text-[var(--accent-contrast)] rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
+                </>
+              )}
+            </Link>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <div className={`h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col transition-all duration-150 ${isCollapsed ? 'w-16' : 'w-80'} ${className}`}>
-      {/* Fixed Header */}
-      <div className={`flex-none border-b border-gray-200/30 dark:border-gray-700/30 ${isCollapsed ? 'px-3 py-4' : 'px-6 py-5'}`}>
+    <motion.div
+      className={cn(
+        "flex flex-col h-full border-r transition-all duration-150 glass border-[var(--glass-border)]",
+        isCollapsed ? 'w-16' : 'w-80',
+        className
+      )}
+      initial={false}
+      animate={{ width: isCollapsed ? 64 : 320 }}
+      transition={{ duration: 0.15, ease: "easeInOut" }}
+    >
+      {/* Header */}
+      <div className="flex-none border-b border-[var(--glass-border)] p-4">
           <div className="flex justify-between items-center mb-4">
           <div className="flex gap-3 items-center">
-            <div 
-              className="flex justify-center items-center w-8 h-8 rounded-lg shadow-sm"
+            <motion.div 
+              className="flex justify-center items-center w-8 h-8 rounded-[var(--radius-lg)] shadow-soft"
+              whileHover={{ scale: 1.05 }}
+              transition={{ duration: 0.1 }}
               style={{
                 background: brandingSettings?.primary_color 
                   ? `linear-gradient(to bottom right, ${brandingSettings.primary_color}, ${brandingSettings.primary_color}CC)`
-                  : 'linear-gradient(to bottom right, #3b82f6, #2563eb)'
+                  : 'linear-gradient(to bottom right, var(--accent), var(--accent-hover))'
               }}
             >
               {facilityLogo || brandingSettings?.logo_url ? (
                 <img 
                   src={facilityLogo || brandingSettings.logo_url} 
                   alt={facilityName ? `${facilityName} logo` : "Company logo"} 
-                  className="object-contain w-full h-full rounded-lg"
+                  className="object-contain w-full h-full rounded-[var(--radius-lg)]"
                 />
               ) : (
                 <span className="text-sm font-semibold text-white">
@@ -355,287 +387,225 @@ export default function Sidebar({ className = "", collapsed: externalCollapsed, 
                       : 'CIQ'}
                 </span>
               )}
-                  </div>
+            </motion.div>
             {!isCollapsed && (
-              <span className="text-lg font-semibold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <div className="text-lg font-semibold truncate text-primary">
                 {facilityName || brandingSettings?.company_name || 'CareIQ'}
-              </span>
+                </div>
+                <div className="text-xs text-muted">
+                  AI-Powered Operations
+                </div>
+              </div>
             )}
           </div>
-          <button
+          <motion.button
             onClick={toggleCollapse}
-            className="p-1 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="p-1 rounded-[var(--radius-md)] transition-standard hover:bg-[var(--muted)] focus-ring"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </button>
+          </motion.button>
           </div>
 
           {/* New Chat Button */}
-            <button
+        {!isCollapsed && (
+          <motion.button
               onClick={createNewChat}
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-2 justify-center'} px-4 py-2.5 text-white rounded-lg font-medium transition-all duration-100 hover:scale-[1.02] active:scale-[0.98] shadow-sm`}
+            className="w-full flex items-center gap-2 justify-center px-4 py-2.5 text-white rounded-[var(--radius-md)] font-medium transition-standard hover:scale-[1.02] active:scale-[0.98] shadow-soft focus-ring"
           style={{
-            backgroundColor: brandingSettings?.primary_color || '#3b82f6',
-            ':hover': {
-              backgroundColor: brandingSettings?.primary_color 
-                ? `${brandingSettings.primary_color}DD` 
-                : '#2563eb'
-            }
-          }}
-          onMouseOver={(e) => {
-            if (brandingSettings?.primary_color) {
-              e.currentTarget.style.backgroundColor = `${brandingSettings.primary_color}DD`;
-            }
-          }}
-          onMouseOut={(e) => {
-            if (brandingSettings?.primary_color) {
-              e.currentTarget.style.backgroundColor = brandingSettings.primary_color;
-            }
-          }}
-          title={isCollapsed ? "New Chat" : undefined}
-        >
-          <Plus size={18} />
-          {!isCollapsed && "New Chat"}
-            </button>
-          </div>
+              backgroundColor: brandingSettings?.primary_color || 'var(--accent)',
+            }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Plus size={16} />
+            New Chat
+          </motion.button>
+        )}
 
-      {/* Fixed Main Navigation */}
-      <div className="flex-none px-3 py-4 border-b border-gray-200/30 dark:border-gray-700/30">
-        <div className="space-y-1">
-          {mainNavigationItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = isCurrentPath(item.href);
-            
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-                  isActive
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25 dark:bg-blue-500 dark:text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                }`}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <Icon size={18} className={isActive ? "text-white dark:text-white" : ""} />
-                {!isCollapsed && item.label}
-              </Link>
-            );
-          })}
-        </div>
       </div>
 
-      {/* Scrollable Content Area - Tools and Chats */}
+      {/* Scrollable Content */}
       <div className="overflow-y-auto flex-1 min-h-0">
-        <div className="p-3">
-          {/* Tools Section */}
-          <div className="mb-6">
+        <div className="p-3 space-y-6">
+          {/* CareIQ Admin Button - Above everything */}
+          {isCareIQAdmin && !isCollapsed && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-md)] font-semibold transition-standard bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Shield size={18} />
+                <span>CareIQ Admin</span>
+              </Link>
+            </motion.div>
+          )}
+          
+          {isCareIQAdmin && isCollapsed && (
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Link
+                href="/admin"
+                className="flex items-center justify-center p-3 rounded-[var(--radius-md)] transition-standard bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg hover:shadow-xl"
+                title="CareIQ Admin"
+              >
+                <Shield size={18} />
+              </Link>
+            </motion.div>
+          )}
+          
+          {/* Favorites Section */}
+          {favoriteItems.length > 0 && (
+            <NavigationSection items={favoriteItems} title="Favorites" />
+          )}
+
+          {/* Main Navigation */}
+          <NavigationSection items={mainNavigationItems} />
+
+          {/* Admin Section */}
+          {userProfile?.role?.includes('administrator') && (
+            <NavigationSection items={adminNavigationItems} title="Administration" />
+          )}
+
+          {/* Recent Chats */}
             {!isCollapsed && (
-              <div className="px-2 mb-3 text-xs font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">
-                Tools
-              </div>
-            )}
-            <div className="space-y-1">
-              {toolsNavigationItems.map((item) => {
-                // Hide admin-only items for non-admin users
-                if (item.adminOnly && !userProfile?.role?.includes('administrator')) {
-                  return null;
-                }
-                
-                const Icon = item.icon;
-                const isActive = isCurrentPath(item.href);
-                
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-                      isActive
-                        ? "bg-green-600 text-white shadow-lg shadow-green-600/25 dark:bg-green-500 dark:text-white"
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                    }`}
-                    title={isCollapsed ? item.label : undefined}
-                  >
-                    <Icon size={18} className={isActive ? "text-white dark:text-white" : ""} />
-                    {!isCollapsed && item.label}
-                  </Link>
-                );
-              })}
-              
-              {/* CareIQ Admin Button - Only for CareIQ team and specific authorized users */}
-              {(userProfile?.email?.endsWith('@careiq.com') || 
-                userProfile?.email === 'jking@pioneervalleyhealth.com' ||
-                user?.email === 'jking@pioneervalleyhealth.com' ||
-                user?.email?.endsWith('@careiq.com') ||
-                userProfile?.role === 'careiq_admin') && (
-                <Link
-                  href="/admin"
-                  className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg font-medium transition-all duration-200 border-t border-gray-200/30 dark:border-gray-700/30 mt-2 pt-4 ${
-                    isCurrentPath('/admin')
-                      ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                  }`}
-                  title={isCollapsed ? "CareIQ Admin" : undefined}
-                >
-                  <Wrench size={18} className={isCurrentPath('/admin') ? "text-purple-600 dark:text-purple-400" : ""} />
-                  {!isCollapsed && "CareIQ Admin"}
-                </Link>
-              )}
-            </div>
+            <div className="space-y-3">
+              <div className="px-2 mb-2 text-xs font-semibold tracking-wider uppercase text-muted">
+                Recent Chats
           </div>
 
           {/* Search */}
-          {!isCollapsed && (
-            <div className="mb-6">
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 text-gray-400 transform -translate-y-1/2" />
+                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted" />
                 <input
                   type="text"
                   placeholder="Search chats..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="py-2 pr-3 pl-9 w-full text-sm placeholder-gray-500 bg-gray-100 rounded-lg border-0 dark:bg-gray-800/50 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="py-2 pr-3 pl-9 w-full text-sm placeholder-[var(--muted)] bg-[var(--muted)] rounded-[var(--radius-md)] border-0 focus:outline-none focus:ring-2 focus:ring-[var(--focus)] transition-standard"
                 />
               </div>
-            </div>
-          )}
 
-          {/* Chat History */}
-          <div>
-            {!isCollapsed && (
-              <div className="px-2 mb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">
-                Recent Chats
-              </div>
-            )}
-
-            {loading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse dark:bg-gray-800" />
-                ))}
-              </div>
-            ) : filteredChats.length > 0 ? (
+              {/* Chat List */}
             <div className="space-y-1">
+                <AnimatePresence>
               {filteredChats.map((chat) => {
                 const isActive = pathname === `/chat/${chat.id}`;
-                const isEditing = editingChatId === chat.id;
                 
                 return (
-                  <div
+                      <motion.div
                     key={chat.id}
-                    className={`group flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} p-2 rounded-lg transition-all duration-200 ${
-                      isActive 
-                        ? "bg-blue-50 dark:bg-blue-900/20" 
-                        : "hover:bg-gray-100 dark:hover:bg-gray-800/30"
-                    }`}
-                    title={isCollapsed ? (chat.title || "Untitled chat") : undefined}
-                  >
-                    <MessageCircle 
-                      size={16} 
-                      className={`${isActive ? "text-blue-600 dark:text-blue-400" : "text-gray-400"} ${isCollapsed ? 'cursor-pointer' : ''}`}
-                      onClick={isCollapsed ? () => router.push(`/chat/${chat.id}`) : undefined}
-                    />
-                    {!isCollapsed && <div className="flex-1 min-w-0">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editingTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
-                          onBlur={handleSaveTitle}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveTitle();
-                            if (e.key === 'Escape') handleCancelEdit();
-                          }}
-                          className="px-2 py-1 w-full text-sm font-medium bg-white rounded border border-gray-300 dark:bg-gray-700 dark:border-gray-600"
-                          autoFocus
-                        />
-                      ) : (
-                        <div 
-                          className={`text-sm font-medium truncate cursor-pointer ${
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.1 }}
+                        whileHover={{ x: 4 }}
+                      >
+                        <div
+                          className={cn(
+                            "flex gap-3 items-center p-2 group rounded-[var(--radius-md)] transition-standard",
                             isActive 
-                              ? "text-blue-700 dark:text-blue-400" 
-                              : "text-gray-900 dark:text-white"
-                          }`}
-                          onClick={() => router.push(`/chat/${chat.id}`)}
+                              ? "bg-[var(--accent)] text-[var(--accent-contrast)]" 
+                              : "hover:bg-[var(--muted)]"
+                          )}
                         >
+                          <MessageCircle 
+                            size={16} 
+                            className={cn(
+                              isActive ? "text-[var(--accent-contrast)]" : "text-muted group-hover:text-primary"
+                            )}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">
                           {chat.title || "Untitled chat"}
+                            </div>
+                            <div className="text-xs text-muted">
+                              {new Date(chat.created_at).toLocaleDateString()}
+                            </div>
                           </div>
-                      )}
-                    </div>}
-                    {!isEditing && !isCollapsed && (
-                      <div className="flex gap-1 items-center opacity-0 transition-opacity group-hover:opacity-100">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditChat(chat);
-                          }}
-                          className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md text-gray-500 hover:text-gray-700"
-                          title="Rename chat"
-                        >
-                          <Pencil size={12} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteChat(chat.id);
-                          }}
-                          className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md text-red-500 hover:text-red-700"
-                          title="Delete chat"
-                        >
-                          <Trash2 size={12} />
-                        </button>
                     </div>
-                  )}
-                </div>
+                      </motion.div>
                 );
               })}
+                </AnimatePresence>
+                
+                {filteredChats.length === 0 && searchTerm && (
+                  <div className="py-8 text-sm text-center text-muted">
+                    No chats found
               </div>
-            ) : (
-            <div className="py-8 text-sm text-center text-gray-500 dark:text-gray-400">
+                )}
+                
+                {filteredChats.length === 0 && !searchTerm && (
+                  <div className="py-8 text-sm text-center text-muted">
               No chats yet
+                  </div>
+                )}
+              </div>
               </div>
             )}
           </div>
         </div>
 
       {/* Fixed Footer - User Section */}
-      <div className="flex-none p-3 border-t backdrop-blur-xl border-gray-200/30 dark:border-gray-700/30 bg-white/95 dark:bg-gray-900/95">
-        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'justify-between'}`}>
+      <div className="flex-none border-t border-[var(--glass-border)] p-3 glass">
+        <div className={cn("flex items-center", isCollapsed ? 'flex-col gap-2' : 'justify-between')}>
           {!isCollapsed && (
             <div className="flex gap-3 items-center min-w-0">
-              <div className="flex justify-center items-center w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full">
-                <User size={16} className="text-white" />
+              <div className="flex justify-center items-center w-8 h-8 bg-gradient-to-br from-[var(--muted)] to-[var(--border)] rounded-full">
+                <User size={16} className="text-primary" />
                   </div>
               <div className="min-w-0">
-                <div className="text-sm font-medium text-gray-900 truncate dark:text-white">
+                <div className="text-sm font-medium truncate text-primary">
                       {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
                     </div>
-                    <div className="text-xs text-gray-500 truncate dark:text-gray-400">
+                <div className="text-xs truncate text-muted">
                   {userProfile?.role || 'Member'}
                 </div>
               </div>
                   </div>
           )}
-          <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-1'}`}>
-            <Link
-              href="/settings"
-              className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+          <div className={cn("flex items-center", isCollapsed ? 'flex-col gap-2' : 'gap-1')}>
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="p-2 rounded-[var(--radius-md)] transition-standard hover:bg-[var(--muted)] focus-ring inline-flex items-center justify-center"
               title="Settings"
             >
-              <Settings size={16} className="text-gray-500 dark:text-gray-400" />
-            </Link>
-                  <button
-                    onClick={handleSignOut}
-              className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-                    title="Sign out"
-                  >
-              <LogOut size={16} className="text-gray-500 dark:text-gray-400" />
-                  </button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Settings size={16} className="text-muted" />
+              </motion.div>
+            </button>
+            <motion.button
+              onClick={() => {
+                const supabase = getBrowserSupabase();
+                supabase.auth.signOut();
+              }}
+              className="p-2 rounded-[var(--radius-md)] transition-standard hover:bg-[var(--muted)] focus-ring"
+              title="Sign out"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <LogOut size={16} className="text-muted" />
+            </motion.button>
                 </div>
         </div>
       </div>
-    </div>
-    </div>
+
+      {/* Settings Modal */}
+      <SettingsModal 
+        isOpen={showSettingsModal} 
+        onClose={() => setShowSettingsModal(false)} 
+      />
+    </motion.div>
   );
-}
+};
+
+export default Sidebar;

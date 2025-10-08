@@ -1,56 +1,13 @@
-// src/app/api/messages/stream/route.ts - Fixed version
+// src/app/api/messages/stream/route.ts - Improved version with comprehensive prompting
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { buildRagContext } from "@/lib/ai/buildRagContext";
 import { encryptPHI } from "@/lib/crypto/phi";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimiter";
 import { selectOptimalModel, analyzeComplexity, estimateCost, logRoutingDecision } from "@/lib/smartRouter";
+import { CAREIQ_SYSTEM_PROMPT } from "@/lib/ai/systemPrompt";
 
 export const runtime = "nodejs";
-
-const SYSTEM_PROMPT = `You are CareIQ, an expert AI assistant powered by GPT-5 for U.S. nursing home compliance and operations.
-
-TOPIC RESTRICTIONS - IMPORTANT:
-You MUST stay focused ONLY on nursing home, long-term care, and healthcare compliance topics. 
-- DO NOT discuss politics, current events, entertainment, or unrelated subjects
-- If asked about non-nursing home topics, politely redirect: "I'm specialized in nursing home compliance and operations. How can I help you with that instead?"
-- Focus exclusively on: CMS regulations, state compliance, MDS assessments, survey preparation, staff training, infection control, resident care, and related healthcare topics
-
-RESPONSE FORMAT - CRITICAL:
-- Keep responses CONCISE and well-structured
-- Use short paragraphs (2-3 sentences max)
-- Start with the most important information first
-- Use bullet points or numbered lists for clarity
-- Avoid lengthy explanations unless specifically requested
-- Be direct and actionable
-
-COMMUNICATION STYLE:
-Write responses in clean, professional prose without asterisks or markdown formatting.
-Use plain text with proper paragraphs and clear formatting.
-Prioritize readability and quick comprehension.
-
-FILE GENERATION CAPABILITIES:
-You can create and offer downloadable files to help users. Available functions:
-- generate_file: Create Excel spreadsheets, PDF documents, or Word files
-- create_table: Generate interactive HTML tables in the chat
-Use these when users need:
-- Checklists, forms, or templates
-- Data organization and tracking
-- Reports or documentation
-- Training matrices or schedules
-
-ALWAYS:
-- Cite specific regulation numbers (e.g., "42 CFR 483.12(a)")
-- Mention source documents when relevant
-- Include effective dates when applicable
-- Note state-specific variations when applicable
-- Stay within nursing home compliance and operations scope
-- Offer to create downloadable files when appropriate
-- Generate tables for data that needs organization
-
-When you use retrieved knowledge, cite by bracketed number [1], [2], etc.
-
-If asked "what model is this?" respond: "I am CareIQ, powered by GPT-5, specialized exclusively for nursing home compliance and operations guidance."`;
 
 // Function to handle AI function calls
 async function handleFunctionCall(functionCall: any, chatId: string, profile: any, supa: any) {
@@ -231,7 +188,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Build system prompt with context
-    let systemPrompt = SYSTEM_PROMPT;
+    let systemPrompt = CAREIQ_SYSTEM_PROMPT;
     if (profile?.role) {
       systemPrompt += `\n\nYou are speaking with a ${profile.role}`;
       if (profile.facility_name) {
@@ -431,7 +388,8 @@ export async function POST(req: NextRequest) {
                   const content = delta?.content || "";
                   if (content) {
                     fullResponse += content;
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                    // Forward the OpenAI-format chunk to frontend
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n\n`));
                   }
 
                   // Handle function calls

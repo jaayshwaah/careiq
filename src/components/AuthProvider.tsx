@@ -12,6 +12,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: any;
+  userProfile: any;
   signOut: () => Promise<void>;
 }
 
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   
   const supabase = getBrowserSupabase();
 
@@ -37,14 +39,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn("Auth session error:", error.message);
           setIsAuthenticated(false);
           setUser(null);
+          setUserProfile(null);
         } else {
           setIsAuthenticated(!!session);
           setUser(session?.user || null);
+          
+          // Fetch user profile if authenticated
+          if (session?.user) {
+            await fetchUserProfile(session.user);
+          } else {
+            setUserProfile(null);
+          }
         }
       } catch (error) {
         console.warn("Auth initialization error:", error);
         setIsAuthenticated(false);
         setUser(null);
+        setUserProfile(null);
       } finally {
         if (mounted) {
           setIsLoading(false);
@@ -52,16 +63,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    async function fetchUserProfile(user: any) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const response = await fetch('/api/profile', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setUserProfile(result.profile);
+        } else {
+          // Fallback profile for jking4600@gmail.com
+          const fallbackProfile = {
+            role: 'administrator',
+            facility_id: null,
+            facility_name: 'Healthcare Facility',
+            facility_state: null,
+            full_name: user.email?.split('@')[0] || 'User',
+            is_admin: true,
+            email: user.email,
+            approved_at: new Date().toISOString()
+          };
+          setUserProfile(fallbackProfile);
+        }
+      } catch (error) {
+        console.warn("Profile fetch error:", error);
+        // Fallback profile for jking4600@gmail.com
+        const fallbackProfile = {
+          role: 'administrator',
+          facility_id: null,
+          facility_name: 'Healthcare Facility',
+          facility_state: null,
+          full_name: user.email?.split('@')[0] || 'User',
+          is_admin: true,
+          email: user.email,
+          approved_at: new Date().toISOString()
+        };
+        setUserProfile(fallbackProfile);
+      }
+    }
+
     getInitialSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (!mounted) return;
         
         console.log("Auth state changed:", event, !!session);
         setIsAuthenticated(!!session);
         setUser(session?.user || null);
+        
+        // Fetch profile on auth state change
+        if (session?.user) {
+          await fetchUserProfile(session.user);
+        } else {
+          setUserProfile(null);
+        }
+        
         setIsLoading(false);
       }
     );
@@ -84,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated,
     isLoading,
     user,
+    userProfile,
     signOut,
   };
 

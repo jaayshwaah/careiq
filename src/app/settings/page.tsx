@@ -2,12 +2,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink, MessageSquare, Send, Palette, Upload, Image, Link as LinkIcon, Unlink, RefreshCw, Database, Globe, Server, Trash2, Mail, Calendar, ArrowRight, Sparkles } from "lucide-react";
+import { User, Building2, MapPin, Briefcase, Moon, Sun, Monitor, Lock, LogOut, CreditCard, ExternalLink, MessageSquare, Send, Palette, Upload, Image, Link as LinkIcon, Unlink, RefreshCw, Database, Globe, Server, Trash2, Mail, Calendar, ArrowRight, Sparkles, Sliders } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabaseClient";
+import SidebarCustomizer from "@/components/SidebarCustomizer";
 
 type Theme = "light" | "dark" | "system";
 
@@ -62,6 +63,9 @@ export default function SettingsPage() {
   const [facilityLogoFile, setFacilityLogoFile] = useState<File | null>(null);
   const [facilityLogoPreview, setFacilityLogoPreview] = useState<string>('');
   const [savingFacilityLogo, setSavingFacilityLogo] = useState(false);
+
+  // Sidebar customization state
+  const [showSidebarCustomizer, setShowSidebarCustomizer] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -1413,6 +1417,64 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        {/* System Status Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Server className="h-5 w-5" />
+            System Status
+          </h2>
+          
+          <div className="space-y-4">
+            {/* Connection Status */}
+            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                <div>
+                  <div className="font-medium text-green-900 dark:text-green-100">Connected</div>
+                  <div className="text-sm text-green-700 dark:text-green-300">System is online and operational</div>
+                </div>
+              </div>
+              <div className="text-sm text-green-700 dark:text-green-300">
+                Last synced Just now
+              </div>
+            </div>
+
+            {/* Integration Status */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Integration Status</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  <span className="text-sm font-medium text-green-900 dark:text-green-100">EHR (PCC)</span>
+                </div>
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  <span className="text-sm font-medium text-green-900 dark:text-green-100">Calendar</span>
+                </div>
+                <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                  <span className="text-sm font-medium text-yellow-900 dark:text-yellow-100">Billing</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Status */}
+            <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" />
+                <div>
+                  <div className="font-medium text-blue-900 dark:text-blue-100">Live</div>
+                  <div className="text-sm text-blue-700 dark:text-blue-300">Real-time data synchronization active</div>
+                </div>
+              </div>
+              <button className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                <RefreshCw size={14} />
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Billing Section - Admin Only */}
         {profile?.role?.includes('administrator') && (

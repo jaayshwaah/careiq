@@ -19,7 +19,11 @@ import {
   Building2,
   Clock,
   User,
-  MapPin
+  MapPin,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  Edit3
 } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
@@ -63,13 +67,20 @@ export default function SupplyManagementPage() {
   const scannerRef = useRef<HTMLInputElement>(null);
 
   // State management
-  const [activeTab, setActiveTab] = useState<'stock' | 'transfer' | 'scan' | 'reports'>('stock');
+  const [activeTab, setActiveTab] = useState<'stock' | 'transfer' | 'scan' | 'reports' | 'bulk'>('stock');
   const [supplyItems, setSupplyItems] = useState<SupplyItem[]>([]);
   const [facilityUnits, setFacilityUnits] = useState<FacilityUnit[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<string>('central_supply');
+  
+  // Bulk update state
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResults, setBulkResults] = useState<any>(null);
+  const [quickUpdateMode, setQuickUpdateMode] = useState(false);
+  const [quickUpdateItems, setQuickUpdateItems] = useState<{[key: string]: number}>({});
   
   // Transfer state
   const [transferMode, setTransferMode] = useState<'stock_in' | 'stock_out' | 'transfer'>('stock_out');
@@ -90,7 +101,7 @@ export default function SupplyManagementPage() {
     try {
       setLoading(true);
       
-      // Load supply items with current stock
+      // Check if supply_items table exists first
       const { data: items, error: itemsError } = await supabase
         .from('supply_items')
         .select(`
@@ -100,9 +111,17 @@ export default function SupplyManagementPage() {
         `)
         .eq('is_active', true)
         .eq('supply_stock.location_type', selectedUnit === 'central_supply' ? 'central_supply' : 'unit_stock')
-        .eq('supply_stock.location_id', selectedUnit === 'central_supply' ? null : selectedUnit);
+        .eq('supply_stock.location_id', selectedUnit === 'central_supply' ? null : selectedUnit)
+        .limit(1); // Just check if we can query
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Error loading supply items:', itemsError);
+        // If table doesn't exist, show friendly message
+        if (itemsError.code === 'PGRST116' || itemsError.message?.includes('does not exist')) {
+          throw new Error('Supply management tables not set up yet. Please contact your administrator.');
+        }
+        throw itemsError;
+      }
 
       const processedItems = items?.map(item => ({
         ...item,
@@ -145,9 +164,9 @@ export default function SupplyManagementPage() {
 
       setRecentTransactions(processedTransactions);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading supply data:', error);
-      setMessage({ type: 'error', text: 'Failed to load supply data' });
+      setMessage({ type: 'error', text: error?.message || 'Failed to load supply data. This feature may require database setup.' });
     } finally {
       setLoading(false);
     }
@@ -214,6 +233,165 @@ export default function SupplyManagementPage() {
   const updateStockLevels = async () => {
     // This would update the supply_stock table based on the transaction
     // Implementation depends on your specific business logic
+  };
+
+  // Bulk import handler
+  const handleBulkImport = async () => {
+    if (!bulkFile) {
+      setMessage({ type: 'error', text: 'Please select a file to upload' });
+      return;
+    }
+
+    setBulkLoading(true);
+    setBulkResults(null);
+
+    try {
+      // Parse the file on server-side
+      const formData = new FormData();
+      formData.append('file', bulkFile);
+      
+      const parseResponse = await fetch('/api/parse-file', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const parseResult = await parseResponse.json();
+      
+      if (!parseResult.ok) {
+        throw new Error(parseResult.error || 'Failed to parse file');
+      }
+      
+      const fileContent = parseResult.content;
+      
+      // Parse CSV/Excel data
+      const lines = fileContent.split('\n').filter(line => line.trim());
+      if (lines.length < 2) {
+        throw new Error('File must contain header row and at least one data row');
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const skuIndex = headers.findIndex(h => h.includes('sku') || h.includes('item'));
+      const qtyIndex = headers.findIndex(h => h.includes('qty') || h.includes('quantity') || h.includes('stock'));
+      
+      if (skuIndex === -1 || qtyIndex === -1) {
+        throw new Error('File must contain SKU/Item and Quantity columns');
+      }
+
+      const results = {
+        total: 0,
+        updated: 0,
+        failed: 0,
+        errors: [] as string[]
+      };
+
+      // Process each row
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.trim());
+        const sku = cols[skuIndex];
+        const qty = parseInt(cols[qtyIndex]);
+
+        if (!sku || isNaN(qty)) {
+          results.failed++;
+          results.errors.push(`Row ${i + 1}: Invalid SKU or quantity`);
+          continue;
+        }
+
+        results.total++;
+
+        // Find item by SKU
+        const item = supplyItems.find(item => item.sku === sku);
+        if (!item) {
+          results.failed++;
+          results.errors.push(`Row ${i + 1}: SKU "${sku}" not found`);
+          continue;
+        }
+
+        // Update stock level
+        const { error } = await supabase
+          .from('supply_stock')
+          .upsert({
+            item_id: item.id,
+            location_type: 'central_supply',
+            location_id: null,
+            current_quantity: qty,
+            last_counted: new Date().toISOString()
+          }, {
+            onConflict: 'item_id,location_type,location_id'
+          });
+
+        if (error) {
+          results.failed++;
+          results.errors.push(`Row ${i + 1}: Database error for SKU "${sku}"`);
+        } else {
+          results.updated++;
+        }
+      }
+
+      setBulkResults(results);
+      setMessage({ 
+        type: results.failed > 0 ? 'error' : 'success', 
+        text: `Bulk import completed: ${results.updated} updated, ${results.failed} failed` 
+      });
+      
+      if (results.updated > 0) {
+        loadSupplyData();
+      }
+    } catch (error: any) {
+      console.error('Bulk import failed:', error);
+      setMessage({ type: 'error', text: error.message || 'Bulk import failed' });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  // Quick update handler
+  const handleQuickUpdate = async () => {
+    const updates = Object.entries(quickUpdateItems).filter(([_, qty]) => qty > 0);
+    
+    if (updates.length === 0) {
+      setMessage({ type: 'error', text: 'No items to update' });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      for (const [itemId, qty] of updates) {
+        await supabase
+          .from('supply_stock')
+          .upsert({
+            item_id: itemId,
+            location_type: 'central_supply',
+            location_id: null,
+            current_quantity: qty,
+            last_counted: new Date().toISOString()
+          }, {
+            onConflict: 'item_id,location_type,location_id'
+          });
+      }
+
+      setMessage({ type: 'success', text: `Updated ${updates.length} items successfully` });
+      setQuickUpdateMode(false);
+      setQuickUpdateItems({});
+      loadSupplyData();
+    } catch (error) {
+      console.error('Quick update failed:', error);
+      setMessage({ type: 'error', text: 'Failed to update inventory' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Download template
+  const downloadTemplate = () => {
+    const template = `SKU,Item Name,Quantity\nEXAMPLE-001,Example Item,100\n`;
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'supply_import_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const filteredItems = supplyItems.filter(item =>

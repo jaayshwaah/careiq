@@ -4,9 +4,9 @@ import { scrubPHI } from "@/lib/privacy/scrub";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY!;
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const TITLE_MODELS = [
-  "meta-llama/llama-3.1-8b-instruct", // Cheapest and most effective first
-  "google/gemini-flash-1.5",          // Fallback 1
-  "openai/gpt-4o-mini",               // Fallback 2
+  "google/gemini-flash-1.5",          // Ultra fast & cheap ($0.001/1K tokens)
+  "meta-llama/llama-3.1-8b-instruct", // Backup cheap option
+  "openai/gpt-4o-mini",               // Final fallback
 ] as const;
 
 export type TitlerInput = {
@@ -63,15 +63,17 @@ export async function generateTitle({ userText, assistantText, targetLang, timeo
     return "New Chat";
   }
 
-  const system = `You generate concise conversation titles.
+  const system = `Generate a concise conversation title (4-8 words, no quotes, no emojis, no punctuation).
 
-Requirements:
-- 4 to 8 words. No quotes. No emojis. No trailing punctuation.
-- Capture the main task or topic, not a generic "Chat with AI".
-- Use the user's language detected from the messages; if unclear, use English.
-- Remove any personal identifiers (names, emails, phone numbers).
-- Prefer noun phrases or imperatives.
-- If content is only greetings or too vague, output: "New Chat".`;
+Focus on nursing home compliance/operations topics. Examples:
+- "F-Tag 689 Abuse Prevention"
+- "PPD Staffing Calculation Help"
+- "Survey Preparation Checklist"
+- "MDS Assessment Question"
+- "Infection Control Protocol"
+
+If too vague or just greetings, output: "New Chat"
+Remove any personal identifiers.`;
 
   const bodyBase = {
     messages: [
@@ -139,18 +141,26 @@ Requirements:
 function extractHealthcareTitle(userText: string, assistantText: string): string {
   const combined = `${userText} ${assistantText}`.toLowerCase();
   
-  // Healthcare-specific patterns for fallback titling
+  // Healthcare-specific patterns for fallback titling (expanded)
   const patterns = [
-    { regex: /ppd|per patient day|staffing ratio/i, title: "PPD Calculation" },
-    { regex: /daily round|rounding|unit management/i, title: "Daily Rounds" },
-    { regex: /schedule|staffing|shift/i, title: "Schedule Management" },
-    { regex: /census|resident count|bed count/i, title: "Census Analysis" },
-    { regex: /survey|cms|compliance|audit/i, title: "Survey Preparation" },
-    { regex: /medication|med pass|pharmacy/i, title: "Medication Management" },
-    { regex: /care plan|treatment plan|assessment/i, title: "Care Planning" },
-    { regex: /incident|fall|accident|report/i, title: "Incident Report" },
-    { regex: /quality|indicator|measure/i, title: "Quality Metrics" },
-    { regex: /documentation|chart|record/i, title: "Documentation Help" },
+    { regex: /f-?tag\s*\d{3}|f-?\d{3}/i, title: "F-Tag Compliance" },
+    { regex: /ppd|per patient day|staffing ratio|hours per resident/i, title: "PPD Staffing Calculation" },
+    { regex: /daily round|rounding|unit management|shift report/i, title: "Daily Rounds" },
+    { regex: /pbj|payroll.*based.*journal/i, title: "PBJ Report" },
+    { regex: /schedule|staffing|shift|roster/i, title: "Schedule Management" },
+    { regex: /census|resident count|bed count|occupancy/i, title: "Census Analysis" },
+    { regex: /survey|state survey|cms.*survey|inspection/i, title: "Survey Preparation" },
+    { regex: /compliance|regulation|42 cfr|citation/i, title: "Compliance Guidance" },
+    { regex: /medication|med pass|pharmacy|drug/i, title: "Medication Management" },
+    { regex: /care plan|treatment plan|assessment|mds/i, title: "Care Planning" },
+    { regex: /incident|fall|accident|injury|report/i, title: "Incident Report" },
+    { regex: /quality|indicator|measure|star.*rating|qapi/i, title: "Quality Metrics" },
+    { regex: /documentation|charting|medical.*record|ehr/i, title: "Documentation Help" },
+    { regex: /infection.*control|covid|isolation|outbreak/i, title: "Infection Control" },
+    { regex: /resident.*rights|dignity|abuse.*prevention/i, title: "Resident Rights" },
+    { regex: /admission|discharge|transfer/i, title: "Admission Process" },
+    { regex: /training|education|in-?service/i, title: "Staff Training" },
+    { regex: /policy|procedure|protocol|guideline/i, title: "Policy Question" },
   ];
   
   for (const pattern of patterns) {
@@ -163,13 +173,16 @@ function extractHealthcareTitle(userText: string, assistantText: string): string
   const keywords = combined
     .replace(/[^\w\s]/g, " ")
     .split(/\s+/)
-    .filter(word => word.length > 3 && !/^(what|how|can|you|help|please|thanks?|hello|hi)$/i.test(word))
+    .filter(word => word.length > 3 && !/^(what|how|can|you|help|please|thanks?|hello|hi|need|want|about)$/i.test(word))
     .slice(0, 3);
     
   if (keywords.length >= 2) {
-    return keywords.map((word, i) => 
+    const title = keywords.map((word, i) => 
       i === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word
     ).join(" ");
+    
+    // Capitalize first letter of each word for better readability
+    return title.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   }
   
   return "";

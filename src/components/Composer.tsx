@@ -136,7 +136,7 @@ export default function Composer({
                 multiple
                 onChange={onFilesChosen}
                 className="hidden"
-                accept=".pdf,.docx,.txt,.md,.csv,.json"
+                accept=".pdf,.docx,.doc,.txt,.md,.csv,.xlsx,.xls"
               />
               <button
                 type="button"
@@ -200,6 +200,11 @@ export default function Composer({
           {files.length} file{files.length !== 1 ? 's' : ''} ready to send
         </div>
       )}
+
+      {/* AI Disclaimer */}
+      <div className="mt-3 text-xs text-center text-gray-500 dark:text-gray-400 px-2">
+        CareIQ AI can make mistakes. Check important information and verify compliance requirements.
+      </div>
     </div>
   );
 }

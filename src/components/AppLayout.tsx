@@ -1,131 +1,142 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
-import { usePathname } from "next/navigation";
-import Sidebar from "@/components/Sidebar";
-import { Menu, X } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/components/AuthProvider';
+import Sidebar from '@/components/Sidebar';
+import CommandPalette from '@/components/CommandPalette';
+import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-export default function AppLayout({ children }: AppLayoutProps) {
-  const [mounted, setMounted] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { isAuthenticated } = useAuth();
-  const pathname = usePathname();
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
-  // Close sidebar on mobile when route changes
+  // Handle ⌘K shortcut
   useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
-
-  // Handle escape key to close sidebar
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
       if (e.key === 'Escape') {
-        setSidebarOpen(false);
+        setCommandPaletteOpen(false);
       }
     };
 
-    if (sidebarOpen) {
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
-    }
-  }, [sidebarOpen]);
-
-  useEffect(() => {
-    setMounted(true);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Don't show loading on auth pages or admin pages
-  const isAuthPage = pathname?.startsWith("/login") || 
-                     pathname?.startsWith("/register") || 
-                     pathname?.startsWith("/(auth)");
-  const isAdminPage = pathname?.startsWith("/admin");
+  const handleCreateChat = () => {
+    // This will be handled by the sidebar component
+    setCommandPaletteOpen(false);
+  };
 
-  if (!mounted && !isAuthPage) {
+  if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Loading CareIQ...</p>
-        </div>
+      <div className="flex items-center justify-center h-screen bg-[var(--bg)]">
+        <motion.div
+          className="flex flex-col items-center gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            className="w-12 h-12 rounded-[var(--radius-lg)] bg-gradient-to-br from-[var(--accent)] to-[var(--accent-hover)] flex items-center justify-center"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          >
+            <span className="text-white font-bold text-xl">CIQ</span>
+          </motion.div>
+          <motion.div
+            className="text-primary font-medium"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            Loading CareIQ...
+          </motion.div>
+        </motion.div>
       </div>
     );
   }
 
-  // Admin pages use their own layout
-  if (isAdminPage) {
-    return <div className="min-h-screen bg-gray-50 dark:bg-gray-900">{children}</div>;
+  if (!isAuthenticated) {
+    return <>{children}</>;
   }
 
-  // Auth pages don't need app shell
-  if (isAuthPage) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {children}
-        </div>
-      </div>
-    );
-  }
+  return (
+    <div className="h-screen bg-[var(--bg)] flex overflow-hidden">
+      {/* Skip Links for Accessibility */}
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+      <a href="#navigation" className="skip-link">
+        Skip to navigation
+      </a>
+      {/* Sidebar */}
+      <nav id="navigation" aria-label="Main navigation">
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className="z-[var(--z-sticky)]"
+        />
+      </nav>
 
-  // Main app with sidebar
-  if (isAuthenticated) {
-    return (
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
-        {/* Mobile sidebar overlay */}
-        {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-        
-        {/* Sidebar */}
-        <div className={`
-          lg:relative fixed z-50 h-full transition-transform duration-300 flex-shrink-0
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}>
-          <Sidebar 
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
-        </div>
-        
-        {/* Main content */}
-        <main className={`
-          flex-1 flex flex-col min-h-0 transition-all duration-300 lg:ml-0
-        `}>
-          {/* Mobile header */}
-          <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between flex-shrink-0">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              aria-label="Open sidebar"
-            >
-              <Menu size={20} className="text-gray-600 dark:text-gray-400" />
-            </button>
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">CareIQ</h1>
-            <div className="w-10" /> {/* Spacer for centering */}
-          </div>
-          
-          {/* Page content - scrollable */}
-          <div className="flex-1 min-h-0 overflow-auto">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Main Content */}
+        <main id="main-content" className="flex-1 overflow-auto" role="main">
+          <motion.div
+            className="h-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
             {children}
-          </div>
+          </motion.div>
         </main>
       </div>
-    );
-  }
 
-  // Landing page for unauthenticated users
-  return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      {children}
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onCreateChat={handleCreateChat}
+      />
+
+      {/* Global Keyboard Shortcuts Hint */}
+      <AnimatePresence>
+        {!commandPaletteOpen && (
+          <motion.div
+            className="fixed bottom-4 right-4 z-[var(--z-tooltip)]"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.button
+              onClick={() => setCommandPaletteOpen(true)}
+              className="glass-card p-3 text-primary hover:bg-[var(--glass-bg)]/90 transition-standard focus-ring"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              title="Open Command Palette (⌘K)"
+            >
+              <div className="flex items-center gap-2 text-sm">
+                <kbd className="px-2 py-1 bg-[var(--muted)] rounded text-primary text-xs">⌘</kbd>
+                <kbd className="px-2 py-1 bg-[var(--muted)] rounded text-primary text-xs">K</kbd>
+              </div>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
-}
+};
+
+export default AppLayout;

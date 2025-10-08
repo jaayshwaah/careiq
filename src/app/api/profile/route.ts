@@ -13,7 +13,23 @@ export async function GET(req: NextRequest) {
   const { data: user } = await supa.auth.getUser();
   if (!user?.user) return NextResponse.json({ ok: true, profile: null });
 
-  // Use fallback profile data to avoid RLS recursion
+  // Try to fetch real profile first using service role to bypass RLS
+  try {
+    const { data: profile, error } = await supabaseService()
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.user.id)
+      .single();
+
+    if (profile && !error) {
+      console.log('Successfully fetched profile for user:', user.user.email);
+      return NextResponse.json({ ok: true, profile });
+    }
+  } catch (profileError) {
+    console.error('Error fetching profile:', profileError);
+  }
+
+  // Use fallback profile data if query fails
   const fallbackProfile = {
     role: 'user',
     facility_id: null,
@@ -25,7 +41,7 @@ export async function GET(req: NextRequest) {
     approved_at: new Date().toISOString()
   };
   
-  console.log('Using fallback profile data in /api/profile to avoid RLS issues');
+  console.log('Using fallback profile data in /api/profile');
   return NextResponse.json({ ok: true, profile: fallbackProfile });
 }
 

@@ -113,7 +113,7 @@ const DISCIPLINES = [
   { value: 'physician', label: 'Physician', icon: '👨‍⚕️' }
 ];
 
-export default function CarePlanAssistant() {
+export default function CarePlans() {
   const [carePlans, setCarePlans] = useState<CarePlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -125,56 +125,9 @@ export default function CarePlanAssistant() {
 
   const loadCarePlans = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        console.error('No session found');
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch('/api/care-plans', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        const plans = result.care_plans || [];
-        
-        // Transform database data to match component interface
-        const transformedPlans: CarePlan[] = plans.map((plan: any) => ({
-          id: plan.id,
-          resident_name: plan.resident_name,
-          resident_id: plan.resident_id,
-          plan_type: plan.plan_type,
-          diagnosis: plan.diagnosis || [],
-          care_goals: (plan.goals || []).map((goal: any) => ({
-            id: goal.id,
-            goal_text: goal.goal_text,
-            target_date: goal.target_date,
-            status: goal.status,
-            progress_notes: goal.progress_notes || [],
-            interventions: goal.interventions || []
-          })),
-          medications: plan.medications || [],
-          allergies: plan.allergies || [],
-          diet_restrictions: plan.diet_restrictions || [],
-          mobility_status: plan.mobility_status || '',
-          cognitive_status: plan.cognitive_status || '',
-          last_updated: plan.updated_at,
-          next_review: plan.next_review,
-          created_by: 'System', // Would need to join with profiles table
-          status: plan.status
-        }));
-        
-        setCarePlans(transformedPlans);
-      } else {
-        console.error('Failed to load care plans');
-        // Fallback to empty array instead of mock data
-        setCarePlans([]);
-      }
+      // For now, start with empty care plans array
+      // In the future, this would fetch from /api/care-plans
+      setCarePlans([]);
     } catch (error) {
       console.error('Error loading care plans:', error);
       setCarePlans([]);
@@ -224,7 +177,7 @@ export default function CarePlanAssistant() {
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <FileText className="h-8 w-8 animate-pulse text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading care plans...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading Care Plans...</p>
         </div>
       </div>
     );
@@ -236,7 +189,7 @@ export default function CarePlanAssistant() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Care Plan Assistant</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Care Plans</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               AI-powered care planning and clinical documentation
             </p>

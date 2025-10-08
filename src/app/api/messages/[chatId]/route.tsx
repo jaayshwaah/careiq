@@ -7,11 +7,11 @@ import { supabaseServerWithAuth } from "@/lib/supabase/server";
 import { decryptPHI } from "@/lib/crypto/phi";
 import type { NextRequest } from "next/server";
 
-export async function GET(req: NextRequest, { params }: { params: { chatId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ chatId: string }> }) {
   const authHeader = req.headers.get("authorization") || undefined;
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
   const supa = supabaseServerWithAuth(token);
-  const chatId = params.chatId;
+  const { chatId } = await params;
 
   // RLS should ensure only owners can see these rows
   const { data, error } = await supa

@@ -49,10 +49,40 @@ interface ExternalCalendar {
   isDefaultCalendar?: boolean;
 }
 
-const PROVIDER_ICONS = {
-  google: '🇬',
-  outlook: '📧',
-  apple_caldav: '🍎'
+const PROVIDER_LOGOS = {
+  google: (
+    <svg viewBox="0 0 24 24" className="w-6 h-6">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+  ),
+  outlook: (
+    <svg clipRule="evenodd" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="1.414" viewBox="170 90.006 220 219.986" className="w-6 h-6">
+      <g fillRule="nonzero">
+        <path d="m366.585 103.756h-118.187c-5.295 0-9.652 4.357-9.652 9.652v10.971l66.614 20.625 70.877-20.625v-10.971c0-5.295-4.357-9.652-9.652-9.652z" fill="#0364b8"/>
+        <path d="m387.58 209.659c1.007-3.165 1.811-6.391 2.406-9.659.001-1.635-.873-3.15-2.289-3.967l-.089-.048-.028-.013-74.507-42.444c-.321-.208-.654-.399-.996-.571-2.885-1.43-6.279-1.43-9.164 0-.342.172-.675.362-.997.571l-74.506 42.444-.028.013-.09.048c-1.415.817-2.289 2.332-2.288 3.967.595 3.268 1.399 6.494 2.406 9.659l79.002 57.78z" fill="#0a2767"/>
+        <path d="m334.99 124.379h-48.122l-13.894 20.625 13.894 20.623 48.122 41.247h41.247v-41.247z" fill="#28a8ea"/>
+      </g>
+      <path d="m238.746 124.379h48.122v41.247h-48.122z" fill="#0078d4"/>
+      <path d="m334.99 124.379h41.247v41.247h-41.247z" fill="#50d9ff"/>
+      <path d="m334.99 206.874-48.122-41.247h-48.122v41.247l48.122 41.248 74.465 12.154z" fill="#0364b8" fillRule="nonzero"/>
+      <path d="m286.868 165.627h48.122v41.247h-48.122z" fill="#0078d4"/>
+      <path d="m238.746 206.874h48.122v41.247h-48.122z" fill="#064a8c"/>
+      <path d="m334.99 206.874h41.247v41.247h-41.247z" fill="#0078d4"/>
+      <g fillRule="nonzero">
+        <path d="m227.402 204.056v-.069h-.068l-.207-.137c-1.334-.821-2.144-2.284-2.131-3.85v85.946c0 5.649 4.649 10.298 10.299 10.298h144.38c.858-.009 1.713-.124 2.543-.344.431-.075.848-.214 1.238-.412.146-.015.286-.062.412-.138.562-.23 1.094-.53 1.581-.894l.275-.206z" fill="#28a8ea"/>
+        <path d="m179.164 145.004h91.658c5.027 0 9.164 4.136 9.164 9.163v91.659c0 5.027-4.137 9.164-9.164 9.164h-91.658c-5.027 0-9.164-4.137-9.164-9.164v-91.659c0-5.027 4.137-9.163 9.164-9.163z" fill="#0078d4"/>
+        <path d="m196.584 182.593c2.435-5.189 6.367-9.532 11.288-12.47 5.453-3.122 11.662-4.677 17.943-4.496 5.817-.128 11.559 1.347 16.595 4.262 4.739 2.822 8.556 6.962 10.985 11.914 2.646 5.456 3.966 11.46 3.85 17.523.129 6.337-1.23 12.617-3.966 18.335-2.483 5.127-6.415 9.416-11.309 12.333-5.232 3.007-11.188 4.522-17.221 4.379-5.943.141-11.812-1.35-16.966-4.311-4.776-2.827-8.639-6.971-11.123-11.934-2.663-5.378-3.998-11.317-3.891-17.317-.118-6.283 1.189-12.511 3.822-18.218zm12.03 29.272c1.299 3.281 3.502 6.128 6.353 8.208 2.901 2.032 6.379 3.08 9.919 2.991 3.772.149 7.491-.932 10.594-3.08 2.816-2.08 4.961-4.942 6.167-8.229 1.356-3.664 2.024-7.547 1.973-11.453.042-3.94-.586-7.86-1.856-11.59-1.12-3.358-3.188-6.322-5.954-8.531-3.021-2.256-6.73-3.402-10.497-3.245-3.617-.094-7.173.96-10.154 3.011-2.904 2.087-5.156 4.958-6.49 8.277-2.95 7.599-2.967 16.031-.048 23.641z" fill="#fff"/>
+      </g>
+    </svg>
+  ),
+  apple_caldav: (
+    <svg viewBox="0 0 24 24" className="w-6 h-6">
+      <path fill="#000000" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+    </svg>
+  )
 };
 
 const PROVIDER_NAMES = {
@@ -281,7 +311,7 @@ export default function CalendarIntegrationsPage() {
                     disabled={connectingProvider === provider}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                   >
-                    <span className="text-lg">{PROVIDER_ICONS[provider]}</span>
+                    <span className="inline-flex">{PROVIDER_LOGOS[provider]}</span>
                     {connectingProvider === provider ? 'Connecting...' : `Connect ${PROVIDER_NAMES[provider]}`}
                   </button>
                 ))}
@@ -296,7 +326,7 @@ export default function CalendarIntegrationsPage() {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{PROVIDER_ICONS[integration.provider]}</span>
+                      <span className="inline-flex w-8 h-8">{PROVIDER_LOGOS[integration.provider]}</span>
                       <div>
                         <h3 className="font-semibold text-gray-900 dark:text-white">
                           {integration.displayName}
@@ -392,7 +422,7 @@ export default function CalendarIntegrationsPage() {
                       disabled={connectingProvider === provider}
                       className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
                     >
-                      <span className="text-lg">{PROVIDER_ICONS[provider]}</span>
+                      <span className="inline-flex">{PROVIDER_LOGOS[provider]}</span>
                       {connectingProvider === provider ? 'Connecting...' : `Add ${PROVIDER_NAMES[provider]}`}
                     </button>
                 ))}

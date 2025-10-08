@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     // Only allow specific emails to bootstrap admin access
     const allowedEmails = [
       'jking@pioneervalleyhealth.com',
+      'jking4600@gmail.com',
       // Add other authorized emails here
     ];
 

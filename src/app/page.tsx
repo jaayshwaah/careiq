@@ -1,15 +1,19 @@
-// src/app/page.tsx - Enhanced CareIQ homepage with design system
+// src/app/page.tsx - Unified CareIQ Homepage & Dashboard
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, FileText, Upload, Plus, MessageCircle, Shield, ClipboardList, BarChart3, Users, Activity, TrendingUp, CheckCircle, AlertTriangle, Clock, BookOpen, Zap } from 'lucide-react';
+import { 
+  Send, FileText, MessageCircle, Shield, ClipboardList, BarChart3, 
+  Users, Activity, TrendingUp, TrendingDown, CheckCircle, AlertTriangle, 
+  Clock, RefreshCw, Calculator, Sparkles, Calendar, Bell, BookOpen, Timer
+} from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { getBrowserSupabase } from '@/lib/supabaseClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 
 const suggestions = [
@@ -17,11 +21,6 @@ const suggestions = [
   "Create a staff training checklist for CNAs", 
   "Summarize infection control requirements",
   "Draft a policy update memo",
-  "Explain MDS assessment timelines",
-  "Review medication administration protocols",
-  "Generate a mock survey question set",
-  "Create incident investigation checklist",
-  "What training is required for new employees?",
   "Help me prepare for a state inspection",
   "Analyze care plan compliance and quality"
 ];
@@ -40,7 +39,7 @@ const quickActions = [
     title: 'Daily Rounds',
     description: 'Digital rounding process',
     icon: ClipboardList,
-    href: '/daily-ops',
+    href: '/daily-rounds',
     color: 'var(--info)'
   },
   {
@@ -61,54 +60,36 @@ const quickActions = [
   }
 ];
 
-const dashboardWidgets = [
-  {
-    id: 'census',
-    title: 'Current Census',
-    value: '120/150',
-    change: '+5 from yesterday',
-    trend: 'up',
-    icon: Users,
-    color: 'var(--info)'
-  },
-  {
-    id: 'ppd',
-    title: 'PPD Compliance',
-    value: '1.125',
-    change: 'Compliant',
-    trend: 'up',
-    icon: Activity,
-    color: 'var(--ok)'
-  },
-  {
-    id: 'incidents',
-    title: 'Open Incidents',
-    value: '3',
-    change: '2 resolved today',
-    trend: 'down',
-    icon: AlertTriangle,
-    color: 'var(--warn)'
-  },
-  {
-    id: 'tasks',
-    title: 'Pending Tasks',
-    value: '7',
-    change: '3 completed today',
-    trend: 'down',
-    icon: CheckCircle,
-    color: 'var(--info)'
-  }
-];
-
 export default function HomePage() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading, user, userProfile } = useAuth();
+  const supabase = getBrowserSupabase();
+  
+  // Chat state
   const [message, setMessage] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
-  const supabase = getBrowserSupabase();
+  
+  // Dashboard state
+  const [currentPPD, setCurrentPPD] = useState<number | null>(null);
+  const [loadingPPD, setLoadingPPD] = useState(true);
+  const [surveyCountdown, setSurveyCountdown] = useState<any>(null);
+  const [complianceScore, setComplianceScore] = useState<{score: number, status: string} | null>(null);
+  const [facilityAnalysis, setFacilityAnalysis] = useState<any>(null);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  // Helper function to render star ratings
+  const renderStars = (rating: number | null) => {
+    if (!rating) return '☆☆☆☆☆';
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(i <= rating ? '★' : '☆');
+    }
+    return stars.join('');
+  };
 
   // Auto-resize textarea
   useEffect(() => {
@@ -118,13 +99,136 @@ export default function HomePage() {
     }
   }, [message]);
 
+  // Load dashboard data on mount
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadCurrentPPD();
+      loadSurveyCountdown();
+      loadComplianceScore();
+      loadFacilityAnalysis();
+      
+      const interval = setInterval(loadSurveyCountdown, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, user]);
+
+  const loadCurrentPPD = async () => {
+    if (!user?.id) return;
+    setLoadingPPD(true);
+    try {
+      const { data } = await supabase
+        .from('ppd_calculations')
+        .select('ppd')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(1);
+      if (data && data.length > 0) {
+        setCurrentPPD(data[0].ppd);
+      }
+    } catch (error) {
+      console.error('Failed to load PPD:', error);
+    } finally {
+      setLoadingPPD(false);
+    }
+  };
+
+  const loadSurveyCountdown = async () => {
+    if (!user?.id) return;
+    try {
+      const { data: surveyPrep } = await supabase
+        .from('survey_prep_progress')
+        .select('expected_survey_date, facility_type')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (surveyPrep?.expected_survey_date) {
+        const now = new Date();
+        const expectedDate = new Date(surveyPrep.expected_survey_date);
+        const windowStart = new Date(expectedDate);
+        windowStart.setMonth(expectedDate.getMonth() - 3);
+        
+        const targetDate = now >= windowStart ? expectedDate : windowStart;
+        const timeDiff = targetDate.getTime() - now.getTime();
+        
+        if (timeDiff > 0) {
+          const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+          setSurveyCountdown({ days, hours, minutes, isInWindow: now >= windowStart });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load survey countdown:', error);
+    }
+  };
+
+  const loadComplianceScore = async () => {
+    try {
+      const response = await fetch('/api/survey-prep');
+      if (response.ok) {
+        const data = await response.json();
+        const totalItems = Object.values(data.sections || {}).reduce((sum: number, section: any) => sum + section.items.length, 0);
+        const completedItems = Object.keys(data.progress || {}).filter(key => data.progress[key]).length;
+        const score = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+        
+        let status = '';
+        if (score >= 90) status = 'Excellent';
+        else if (score >= 80) status = 'Good';
+        else if (score >= 70) status = 'Fair';
+        else if (score >= 50) status = 'Needs Work';
+        else status = 'Critical';
+        
+        setComplianceScore({ score, status });
+      }
+    } catch (error) {
+      console.error('Failed to load compliance score:', error);
+    }
+  };
+
+  const loadFacilityAnalysis = async () => {
+    setLoadingAnalysis(true);
+    setAnalysisError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const response = await fetch('/api/facility-analysis', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setFacilityAnalysis(result.data);
+      } else {
+        const error = await response.json();
+        setAnalysisError(error.error || 'Failed to load facility analysis');
+      }
+    } catch (error) {
+      console.error('Failed to load facility analysis:', error);
+      setAnalysisError('Failed to load facility analysis');
+    } finally {
+      setLoadingAnalysis(false);
+    }
+  };
+
+  const refreshAll = () => {
+    loadCurrentPPD();
+    loadSurveyCountdown();
+    loadComplianceScore();
+    loadFacilityAnalysis();
+  };
+
   const createNewChat = async (initialMessage?: string) => {
     if (isCreating) return;
-    
     setIsCreating(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
       const response = await fetch('/api/chats', {
         method: 'POST',
         headers: {
@@ -141,17 +245,10 @@ export default function HomePage() {
         if (chat?.id) {
           const params = initialMessage ? `?message=${encodeURIComponent(initialMessage)}` : '';
           router.push(`/chat/${chat.id}${params}`);
-        } else {
-          throw new Error('No chat ID returned');
         }
-      } else {
-        throw new Error('Failed to create chat');
       }
     } catch (error) {
       console.error('Failed to create chat:', error);
-      const chatId = crypto.randomUUID();
-      const params = initialMessage ? `?message=${encodeURIComponent(initialMessage)}` : '';
-      router.push(`/chat/${chatId}${params}`);
     } finally {
       setIsCreating(false);
     }
@@ -170,64 +267,34 @@ export default function HomePage() {
       e.preventDefault();
       handleSend();
     }
-    // Support Ctrl/Cmd + Enter to send
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      handleSend();
-    }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
     setMessage(suggestion);
-    // focus composer
     requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
   const handleCarePlanAnalysis = async (file: File) => {
     if (isAnalyzing) return;
-    
     setIsAnalyzing(true);
-    setAnalysisResult(null);
-    
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
       const formData = new FormData();
       formData.append('file', file);
       
       const response = await fetch('/api/care-plan-analysis', {
         method: 'POST',
-        headers: {
-          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
-        },
+        headers: { 'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '' },
         body: formData,
       });
 
       if (response.ok) {
         const result = await response.json();
-        setAnalysisResult(result);
-        
-        // Create a new chat with the analysis results
-        const analysisMessage = `I've analyzed the care plan document "${file.name}". Here's what I found:
-
-**Resident:** ${result.analysis.residentName}
-**Diagnoses:** ${result.analysis.diagnosis.join(', ')}
-**Care Goals:** ${result.analysis.careGoals.join(', ')}
-**Key Interventions:** ${result.analysis.interventions.join(', ')}
-**Medications:** ${result.analysis.medications.join(', ')}
-**Risk Factors:** ${result.analysis.riskFactors.join(', ')}
-**Compliance Issues:** ${result.analysis.complianceIssues.length > 0 ? result.analysis.complianceIssues.join(', ') : 'None identified'}
-**Recommendations:** ${result.analysis.recommendations.join(', ')}
-
-Please provide detailed guidance on improving this care plan and ensuring CMS compliance.`;
-        
+        const analysisMessage = `I've analyzed the care plan document "${file.name}". Please provide detailed guidance on improving this care plan.`;
         createNewChat(analysisMessage);
-      } else {
-        throw new Error('Failed to analyze care plan');
       }
     } catch (error) {
       console.error('Care plan analysis error:', error);
-      setMessage(`I tried to analyze the care plan document but encountered an error. Please try uploading it again or ask me to help with care plan analysis in a different way.`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -235,16 +302,12 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      handleCarePlanAnalysis(file);
-    }
+    if (file) handleCarePlanAnalysis(file);
   };
-
-  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-white dark:bg-gray-900">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -256,120 +319,255 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20 dark:from-gray-950 dark:via-blue-950/30 dark:to-purple-950/20 p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <motion.div
-          className="text-center"
+          className="flex items-center justify-between"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
         >
-          <h1 className="text-4xl font-bold text-primary mb-2">
-            Welcome to CareIQ
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+              Welcome back{userProfile?.full_name ? `, ${userProfile.full_name}` : ''}
           </h1>
-          <p className="text-muted text-lg">
-            AI-powered nursing home operations and compliance
-          </p>
+            <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">
+              {userProfile?.facility_name || 'CareIQ'} Dashboard
+            </p>
+          </div>
+          <button
+            onClick={refreshAll}
+            className="group flex items-center gap-2 px-4 py-2.5 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 shadow-sm hover:shadow-md border border-gray-200/50 dark:border-gray-700/50"
+          >
+            <RefreshCw size={16} className="text-gray-700 dark:text-gray-300 group-hover:rotate-180 transition-transform duration-500" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Refresh</span>
+          </button>
         </motion.div>
 
-        {/* Dashboard Widgets */}
+        {/* Top Stats Grid */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+          transition={{ delay: 0.1 }}
         >
-          {dashboardWidgets.map((widget, index) => (
+          {/* PPD Card */}
+          <motion.div
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100" />
+            <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200/50 dark:border-gray-700/50">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg shadow-blue-500/25">
+                  <Activity className="w-6 h-6 text-white" />
+                </div>
+                <Link href="/ppd-calculator">
+                  <Calculator className="w-5 h-5 text-gray-400 hover:text-blue-600 cursor-pointer transition-colors" />
+                </Link>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Current PPD</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {loadingPPD ? '—' : currentPPD ? currentPPD.toFixed(3) : 'Not set'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  {currentPPD && currentPPD >= 1.0 ? (
+                    <><CheckCircle className="w-3 h-3 text-green-500" /> Compliant</>
+                  ) : (
+                    'Click to calculate'
+                  )}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Survey Countdown Card */}
+          <motion.div
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100" />
+            <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200/50 dark:border-gray-700/50">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2.5 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl shadow-lg shadow-orange-500/25">
+                  <Timer className="w-6 h-6 text-white" />
+                </div>
+                <Link href="/survey-prep">
+                  <Calendar className="w-5 h-5 text-gray-400 hover:text-orange-600 cursor-pointer transition-colors" />
+                </Link>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  {surveyCountdown?.isInWindow ? 'Survey Window' : 'Next Survey'}
+                </p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {surveyCountdown ? `${surveyCountdown.days}d ${surveyCountdown.hours}h` : 'Not set'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  {surveyCountdown?.isInWindow ? (
+                    <><AlertTriangle className="w-3 h-3 text-orange-500" /> In window</>
+                  ) : (
+                    'Until window opens'
+                  )}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Compliance Score Card */}
+          <motion.div
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100" />
+            <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200/50 dark:border-gray-700/50">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2.5 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl shadow-lg shadow-green-500/25">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <Link href="/survey-prep">
+                  <CheckCircle className="w-5 h-5 text-gray-400 hover:text-green-600 cursor-pointer transition-colors" />
+                </Link>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Compliance Score</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {complianceScore ? `${complianceScore.score}%` : '—'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {complianceScore?.status || 'No data yet'}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Star Rating Card */}
+          <motion.div
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-amber-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100" />
+            <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200/50 dark:border-gray-700/50">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2.5 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-xl shadow-lg shadow-yellow-500/25">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Overall Rating</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {facilityAnalysis?.facility?.overallRating ? renderStars(facilityAnalysis.facility.overallRating) : '☆☆☆☆☆'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {facilityAnalysis ? 'CMS Care Compare' : 'Generate analysis'}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Facility Analysis Section */}
+        {facilityAnalysis && (
             <motion.div
-              key={widget.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
-              whileHover={{ scale: 1.02 }}
-            >
-              <Card variant="glass" className="hover:shadow-[var(--shadow-popover)]">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="p-2 rounded-[var(--radius-md)]"
-                        style={{ backgroundColor: `${widget.color}20` }}
-                      >
-                        <widget.icon size={20} style={{ color: widget.color }} />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-primary">
-                          {widget.title}
+            transition={{ delay: 0.2 }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-3xl blur-2xl group-hover:blur-3xl transition-all duration-500 opacity-0 group-hover:opacity-100" />
+            <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+              <div className="p-6 md:p-8 border-b border-gray-200/50 dark:border-gray-700/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Facility Performance Analysis</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">Medicare Care Compare data and AI recommendations</p>
+                  </div>
+                  <button
+                    onClick={loadFacilityAnalysis}
+                    disabled={loadingAnalysis}
+                    className="px-4 py-2 bg-white/70 dark:bg-gray-700/70 backdrop-blur-xl rounded-xl hover:bg-white dark:hover:bg-gray-700 transition-all duration-200 shadow-sm hover:shadow-md border border-gray-200/50 dark:border-gray-600/50 disabled:opacity-50"
+                  >
+                    {loadingAnalysis ? <RefreshCw className="w-4 h-4 animate-spin text-gray-700 dark:text-gray-300" /> : <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Refresh</span>}
+                  </button>
                         </div>
                       </div>
-                    </div>
-                    {widget.trend === 'up' ? (
-                      <TrendingUp size={16} className="status-ok" />
-                    ) : widget.trend === 'down' ? (
-                      <TrendingUp size={16} className="status-error rotate-180" />
-                    ) : (
-                      <Activity size={16} className="text-muted" />
-                    )}
+              <div className="p-6 md:p-8 space-y-6">
+                {/* Star Ratings Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="p-5 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-900/10 dark:to-cyan-900/10 backdrop-blur-sm rounded-xl border border-blue-200/30 dark:border-blue-700/30">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Health Inspections</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {renderStars(facilityAnalysis.facility?.healthInspectionRating)}
+                    </p>
                   </div>
-                  <div className="space-y-1">
-                    <div className="text-2xl font-bold text-primary">
-                      {widget.value}
+                  <div className="p-5 bg-gradient-to-br from-green-50/50 to-emerald-50/50 dark:from-green-900/10 dark:to-emerald-900/10 backdrop-blur-sm rounded-xl border border-green-200/30 dark:border-green-700/30">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Staffing</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {renderStars(facilityAnalysis.facility?.staffingRating)}
+                    </p>
                     </div>
-                    <div className="text-sm text-muted">
-                      {widget.change}
-                    </div>
+                  <div className="p-5 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-900/10 dark:to-pink-900/10 backdrop-blur-sm rounded-xl border border-purple-200/30 dark:border-purple-700/30">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Quality Measures</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {renderStars(facilityAnalysis.facility?.qualityRating)}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
+                  <div className="p-5 bg-gradient-to-br from-yellow-50/50 to-orange-50/50 dark:from-yellow-900/10 dark:to-orange-900/10 backdrop-blur-sm rounded-xl border border-yellow-200/30 dark:border-yellow-700/30">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Overall</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {renderStars(facilityAnalysis.facility?.overallRating)}
+                    </p>
+                    </div>
+                    </div>
+
+                {/* Top Recommendations */}
+                {facilityAnalysis.analysis?.immediateActions && (
+                  <div>
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Immediate Actions (Next 30 Days)</h4>
+                    <ul className="space-y-2">
+                      {facilityAnalysis.analysis.immediateActions.slice(0, 3).map((action: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <span>{action}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Quick Actions */}
         <motion.div
-          className="space-y-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          transition={{ delay: 0.3 }}
         >
-          <h2 className="text-xl font-semibold text-primary">
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {quickActions.map((action, index) => (
               <motion.div
                 key={action.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.4 + index * 0.1 }}
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ y: -4, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="relative group cursor-pointer"
+                onClick={() => router.push(action.href)}
               >
-                <Card
-                  variant="glass"
-                  interactive
-                  className="h-full cursor-pointer"
-                  onClick={() => window.location.href = action.href}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="p-3 rounded-[var(--radius-md)]"
-                        style={{ backgroundColor: `${action.color}20` }}
-                      >
-                        <action.icon size={24} style={{ color: action.color }} />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-primary">
-                          {action.title}
-                        </h3>
-                        <p className="text-sm text-muted">
-                          {action.description}
-                        </p>
-                      </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100" />
+                <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200/50 dark:border-gray-700/50">
+                  <div className="flex flex-col items-center text-center gap-4">
+                    <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl shadow-lg shadow-blue-500/25">
+                      <action.icon className="w-6 h-6 text-white" />
                     </div>
-                  </CardContent>
-                </Card>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">{action.title}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{action.description}</p>
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -377,123 +575,63 @@ Please provide detailed guidance on improving this care plan and ensuring CMS co
 
         {/* AI Chat Section */}
         <motion.div
-          className="space-y-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
+          transition={{ delay: 0.4 }}
+          className="relative group"
         >
-          <h2 className="text-xl font-semibold text-primary">
-            Start a Conversation
-          </h2>
-          <Card variant="glass" className="p-6">
-            <div className="space-y-4">
-              {/* Suggestions Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {suggestions.slice(0, 6).map((suggestion, i) => (
-                  <motion.button
-                    key={i}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    disabled={isCreating}
-                    className="text-left p-3 rounded-[var(--radius-md)] bg-[var(--muted)]/30 hover:bg-[var(--muted)]/50 transition-standard disabled:opacity-50 group"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                  >
-                    <div className="text-sm font-medium text-primary group-hover:text-[var(--accent)] transition-colors">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-3xl blur-2xl group-hover:blur-3xl transition-all duration-500 opacity-0 group-hover:opacity-100" />
+          <div className="relative">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Ask CareIQ</h2>
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+              <div className="p-6 md:p-8 space-y-6">
+                {/* Suggestions */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {suggestions.map((suggestion, i) => (
+                    <motion.button
+                      key={i}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      disabled={isCreating}
+                      className="text-left p-4 rounded-xl bg-gradient-to-br from-gray-50/80 to-gray-100/80 dark:from-gray-700/50 dark:to-gray-600/50 hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-900/20 dark:hover:to-purple-900/20 transition-all duration-200 disabled:opacity-50 text-sm text-gray-700 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50 shadow-sm"
+                    >
                       {suggestion}
-                    </div>
-                  </motion.button>
-                ))}
-                
-                {/* Care Plan Analysis Button */}
+                    </motion.button>
+                  ))}
+                </div>
+
+                {/* Chat Input */}
                 <div className="relative">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.docx,.doc,.txt"
-                    onChange={handleFileUpload}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    disabled={isAnalyzing || isCreating}
+                  <textarea
+                    ref={textareaRef}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Ask anything about compliance, operations, or care planning..."
+                    disabled={isCreating}
+                    className="w-full resize-none rounded-2xl px-5 py-4 pr-14 bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-700/50 dark:to-gray-600/50 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-200/50 dark:border-gray-600/50 shadow-sm backdrop-blur-sm transition-all"
+                    style={{ minHeight: '100px', maxHeight: '200px' }}
+                    rows={3}
                   />
                   <motion.button
-                    disabled={isAnalyzing || isCreating}
-                    className="w-full text-left p-3 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--ok)]/20 to-[var(--ok)]/10 hover:from-[var(--ok)]/30 hover:to-[var(--ok)]/20 transition-standard disabled:opacity-50 group"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleSend}
+                    disabled={!message.trim() || isCreating}
+                    className="absolute right-3 bottom-3 w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-gray-600 dark:disabled:to-gray-700 text-white transition-all shadow-lg disabled:shadow-none"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex-shrink-0">
-                        {isAnalyzing ? (
-                          <div className="w-5 h-5 border-2 border-[var(--ok)] border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <FileText className="w-5 h-5 status-ok" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium status-ok group-hover:status-ok transition-colors">
-                          {isAnalyzing ? 'Analyzing Care Plan...' : 'Analyze Care Plan Document'}
-                        </div>
-                        <div className="text-xs status-ok/70 mt-1">
-                          Upload PDF or Word document
-                        </div>
-                      </div>
-                    </div>
+                    {isCreating ? (
+                      <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send size={20} />
+                    )}
                   </motion.button>
                 </div>
+                <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                  Press <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Enter</kbd> to send • <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Shift+Enter</kbd> for new line
+                </p>
               </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/* AI Chat Composer */}
-        <motion.div
-          className="glass border-t border-[var(--glass-border)] p-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-        >
-          <div className="max-w-4xl mx-auto">
-            <div className="relative glass-card rounded-[var(--radius-xl)] shadow-[var(--shadow-glass)] focus-within:shadow-[var(--shadow-focus)] transition-standard">
-              <textarea
-                ref={textareaRef}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask CareIQ anything about compliance, operations, or care planning..."
-                disabled={isCreating}
-                autoFocus
-                className="w-full resize-none border-0 bg-transparent px-6 py-4 pr-16 text-primary placeholder-muted focus:outline-none text-base leading-6 rounded-[var(--radius-xl)]"
-                style={{ minHeight: '64px', maxHeight: '200px' }}
-                rows={1}
-              />
-              <motion.button
-                onClick={handleSend}
-                disabled={!message.trim() || isCreating}
-                className="absolute right-3 bottom-3 w-10 h-10 rounded-[var(--radius-lg)] flex items-center justify-center transition-standard focus-ring"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                style={{
-                  backgroundColor: message.trim() && !isCreating ? 'var(--accent)' : 'var(--muted)',
-                  color: message.trim() && !isCreating ? 'var(--accent-contrast)' : 'var(--text-primary)'
-                }}
-              >
-                {isCreating ? (
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Send size={18} />
-                )}
-              </motion.button>
-            </div>
-            <div className="text-center mt-4 space-y-2">
-              <div className="flex items-center justify-center gap-4 text-xs text-muted">
-                <span>⌘/Ctrl+K to search</span>
-                <span>•</span>
-                <span>⌘/Ctrl+Enter to send</span>
-                <span>•</span>
-                <span>Shift+Enter for newline</span>
-              </div>
-              <p className="text-xs text-muted">
-                CareIQ can make mistakes. Verify important compliance information.
-              </p>
             </div>
           </div>
         </motion.div>

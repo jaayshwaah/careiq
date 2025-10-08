@@ -71,7 +71,7 @@ const MobileOptimizedLayout: React.FC<MobileOptimizedLayoutProps> = ({ children 
     { href: "/", label: "Home", icon: Home },
     { href: "/chat", label: "Chat Assistant", icon: MessageCircle },
     { href: "/compliance", label: "Compliance & Surveys", icon: Shield },
-    { href: "/daily-ops", label: "Daily Operations", icon: ClipboardList },
+    { href: "/daily-rounds", label: "Daily Rounds", icon: ClipboardList },
     { href: "/care-plans", label: "Care Planning", icon: FileText },
     { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
     { href: "/supply", label: "Supply & Inventory", icon: Package },

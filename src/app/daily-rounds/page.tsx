@@ -66,11 +66,12 @@ export default function DailyRoundsPage() {
   const { isAuthenticated, user } = useAuth();
   const supabase = getBrowserSupabase();
 
-  // Add print styles
+  // Add print styles - optimized for single page
   React.useEffect(() => {
     const printStyles = `
-      <style>
+      <style id="daily-round-print-styles">
         @media print {
+          /* Hide everything except the print area */
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
           .print-area { 
@@ -78,40 +79,114 @@ export default function DailyRoundsPage() {
             left: 0; 
             top: 0; 
             width: 100% !important;
-            font-size: 11px !important;
-            line-height: 1.3 !important;
+            font-size: 9px !important;
+            line-height: 1.2 !important;
           }
           .no-print { display: none !important; }
-          .print-break-inside-avoid { break-inside: avoid; }
           
-          /* Compact spacing for print */
-          .print-area h1, .print-area h2, .print-area h3 { 
-            font-size: 14px !important; 
-            margin: 8px 0 4px 0 !important;
-          }
-          .print-area .bg-white, .print-area .bg-gray-800 { 
-            background: transparent !important; 
-            border: 1px solid #ccc !important;
-            margin: 4px 0 !important;
-            padding: 8px !important;
-          }
-          .print-area .space-y-6 > * + * { margin-top: 8px !important; }
-          .print-area .space-y-4 > * + * { margin-top: 4px !important; }
-          .print-area .p-6 { padding: 6px !important; }
-          .print-area .p-4 { padding: 4px !important; }
-          .print-area .mb-4 { margin-bottom: 4px !important; }
-          .print-area .mt-2 { margin-top: 2px !important; }
-          
+          /* Single page optimization */
           @page { 
-            margin: 0.3in; 
-            size: letter;
+            margin: 0.25in; 
+            size: letter portrait;
+          }
+          
+          /* Compact headers */
+          .print-area h1, .print-area h2 { 
+            font-size: 12px !important; 
+            margin: 4px 0 2px 0 !important;
+            font-weight: 600 !important;
+          }
+          .print-area h3 { 
+            font-size: 10px !important; 
+            margin: 3px 0 2px 0 !important;
+            font-weight: 600 !important;
+          }
+          
+          /* Compact cards and sections */
+          .print-area .bg-white, 
+          .print-area .bg-gray-800,
+          .print-area .rounded-lg,
+          .print-area .border { 
+            background: transparent !important; 
+            border: 1px solid #999 !important;
+            margin: 2px 0 !important;
+            padding: 4px !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+          }
+          
+          /* Ultra compact spacing */
+          .print-area .space-y-6 > * + * { margin-top: 3px !important; }
+          .print-area .space-y-4 > * + * { margin-top: 2px !important; }
+          .print-area .p-6 { padding: 4px !important; }
+          .print-area .p-4 { padding: 3px !important; }
+          .print-area .mb-4 { margin-bottom: 2px !important; }
+          .print-area .mb-2 { margin-bottom: 1px !important; }
+          .print-area .mt-2 { margin-top: 1px !important; }
+          .print-area .mt-1 { margin-top: 0.5px !important; }
+          .print-area .gap-4 { gap: 2px !important; }
+          .print-area .gap-3 { gap: 1.5px !important; }
+          .print-area .gap-2 { gap: 1px !important; }
+          
+          /* Compact grid layout */
+          .print-area .grid { 
+            display: grid !important;
+            gap: 2px !important;
+          }
+          
+          /* Compact dividers */
+          .print-area .divide-y > * + * {
+            border-top-width: 1px !important;
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
+          }
+          
+          /* Compact badges and labels */
+          .print-area .px-2,
+          .print-area .py-1 {
+            padding: 1px 3px !important;
+            font-size: 7px !important;
+          }
+          
+          /* Compact signature section */
+          .print-area .border-b { 
+            border-bottom-width: 1px !important;
+            padding-bottom: 1px !important;
+          }
+          
+          /* Prevent page breaks inside important sections */
+          .print-area > div,
+          .print-break-inside-avoid { 
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          
+          /* Icon sizing */
+          .print-area svg {
+            width: 10px !important;
+            height: 10px !important;
+          }
+          
+          /* Checkbox sizing */
+          .print-area .w-6 { width: 12px !important; }
+          .print-area .h-6 { height: 12px !important; }
+          
+          /* Hide dark mode specific styles */
+          .dark\\:bg-gray-800,
+          .dark\\:bg-gray-700,
+          .dark\\:border-gray-700,
+          .dark\\:border-gray-600,
+          .dark\\:text-gray-100,
+          .dark\\:text-gray-400 {
+            background: transparent !important;
+            color: #000 !important;
           }
         }
       </style>
     `;
     const existingStyles = document.head.querySelector('#daily-round-print-styles');
     if (!existingStyles) {
-      document.head.insertAdjacentHTML('beforeend', printStyles.replace('<style>', '<style id="daily-round-print-styles">'));
+      document.head.insertAdjacentHTML('beforeend', printStyles);
     }
     return () => {
       const styles = document.head.querySelector('#daily-round-print-styles');
@@ -259,64 +334,8 @@ export default function DailyRoundsPage() {
   };
 
   const generatePDF = async (round: DailyRound) => {
-    try {
-      setLoading(true);
-      
-      // Send the round data to AI for PDF generation
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error("Not authenticated");
-      }
-
-      const response = await fetch('/api/daily-rounds/generate-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ 
-          roundData: round,
-          format: 'single-page',
-          includeDate,
-          customDate: customDate || new Date().toLocaleDateString()
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate PDF');
-      }
-
-      const contentType = response.headers.get('content-type');
-      const blob = await response.blob();
-      
-      // Handle both PDF and HTML responses
-      let filename, downloadBlob;
-      if (contentType?.includes('application/pdf')) {
-        filename = `daily-rounds-${round.unit}-${round.shift}-${new Date().toISOString().split('T')[0]}.pdf`;
-        downloadBlob = blob;
-      } else {
-        // HTML fallback - user can print to PDF
-        filename = `daily-rounds-${round.unit}-${round.shift}-${new Date().toISOString().split('T')[0]}.html`;
-        downloadBlob = blob;
-        alert('PDF generation fell back to HTML. You can open the file and print to PDF.');
-      }
-      
-      // Download the file
-      const url = window.URL.createObjectURL(downloadBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      alert('Failed to generate PDF. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    // Just use the browser's print to PDF - it's simpler and works reliably
+    window.print();
   };
 
   const renderCreateTab = () => (
@@ -849,17 +868,21 @@ export default function DailyRoundsPage() {
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
       <motion.div 
-        className="bg-gradient-to-r from-[var(--accent)]/90 to-[var(--accent)]/80 text-white rounded-lg p-6"
+        className="mb-6"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
-          <CheckSquare className="h-6 w-6" />
-          Daily Round Generator
-        </h1>
-        <p className="text-white/90">
-          Generate customizable daily round checklists for unit managers and nursing staff with compliance focus.
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+            <CheckSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Daily Rounds
+          </h1>
+        </div>
+        <p className="text-gray-600 dark:text-gray-400 text-base pl-14">
+          Generate customizable daily round checklists for unit managers and nursing staff with compliance focus
         </p>
       </motion.div>
 

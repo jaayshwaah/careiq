@@ -3,7 +3,6 @@
 import React, { useMemo, forwardRef } from "react";
 import { Virtuoso } from "react-virtuoso";
 import ContentRenderer from "@/components/chat/ContentRenderer";
-import ChatBranching from "@/components/chat/ChatBranching";
 import { RotateCw, Bookmark, Pencil, FileText, Brain, Download } from "lucide-react";
 
 export type Msg = {
@@ -29,12 +28,8 @@ type Props = {
   onEdit: (id: string, content: string) => void;
   onSaveTemplate?: (m: Msg) => void;
   onExtractKnowledge?: (m: Msg) => void;
-  onCreateBranch?: (messageId: string, content: string) => void;
-  onSwitchBranch?: (branchId: string) => void;
-  onDeleteBranch?: (branchId: string) => void;
   onStop?: () => void;
   onDownloadFile?: (fileOffer: NonNullable<Msg['fileOffer']>) => void;
-  branches?: any[];
   filter?: string;
   onAtBottomChange?: (atBottom: boolean) => void;
 };
@@ -48,12 +43,8 @@ const MessageList = forwardRef<any, Props>(function MessageList(
   onEdit,
   onSaveTemplate,
   onExtractKnowledge,
-  onCreateBranch,
-  onSwitchBranch,
-  onDeleteBranch,
   onStop,
   onDownloadFile,
-  branches = [],
   filter,
   onAtBottomChange,
 },
@@ -163,18 +154,6 @@ const MessageList = forwardRef<any, Props>(function MessageList(
                   {new Date(message.created_at).toLocaleTimeString()}
                 </div>
                 
-                {/* Chat Branching */}
-                {message.role === 'assistant' && message.content && onCreateBranch && (
-                  <div className="mt-4">
-                    <ChatBranching
-                      messageId={message.id}
-                      branches={branches.filter(b => b.messageId === message.id)}
-                      onCreateBranch={onCreateBranch}
-                      onSwitchBranch={onSwitchBranch}
-                      onDeleteBranch={onDeleteBranch}
-                    />
-                  </div>
-                )}
 
                 {/* Actions */}
                 {message.role === 'assistant' && message.content && (
